@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+{% block title %}Flashcards — IB Study Companion{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-200">Flashcards</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        <span id="fc-due-count">{{ due_count }}</span> cards due today &middot; {{ total_cards }} total
+    </p>
+</div>
+
+<!-- Flashcard Controls -->
+<div class="flex flex-wrap items-center gap-3 mb-6">
+    <button onclick="loadFlashcards('due')" id="fc-btn-due"
+            class="px-4 py-2 text-sm font-medium rounded-lg border transition-colors bg-indigo-600 text-white border-indigo-600">
+        Due Today (<span id="fc-due-badge">{{ due_count }}</span>)
+    </button>
+    <button onclick="loadFlashcards('all')" id="fc-btn-all"
+            class="px-4 py-2 text-sm font-medium rounded-lg border transition-colors bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-indigo-400">
+        All Cards
+    </button>
+
+    <!-- Subject filter -->
+    <select id="fc-subject-filter" onchange="loadFlashcards('subject')"
+            class="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+        <option value="">Filter by subject...</option>
+        {% for subject in profile.subjects %}
+        <option value="{{ subject.name }}">{{ subject.name }}</option>
+        {% endfor %}
+    </select>
+
+    <div class="ml-auto">
+        <button onclick="showCreateFlashcard()" class="px-4 py-2 text-sm font-medium rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors">
+            + Create Card
+        </button>
+    </div>
+</div>
+
+<!-- Review Mode -->
+<div id="fc-review-mode" class="hidden">
+    <!-- Progress -->
+    <div class="flex items-center gap-3 mb-4">
+        <div class="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+            <div id="fc-progress-bar" class="h-2 rounded-full bg-indigo-500 transition-all" style="width: 0%"></div>
+        </div>
+        <span id="fc-progress-text" class="text-sm text-slate-500 dark:text-slate-400">0/0</span>
+    </div>
+
+    <!-- Flashcard -->
+    <div class="perspective-1000 mb-6" style="perspective: 1000px;">
+        <div id="fc-card" onclick="flipCard()" class="relative w-full min-h-[300px] cursor-pointer transition-transform duration-500" style="transform-style: preserve-3d;">
+            <!-- Front -->
+            <div id="fc-front" class="absolute inset-0 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-8 flex flex-col items-center justify-center" style="backface-visibility: hidden;">
+                <span id="fc-front-subject" class="px-3 py-1 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 mb-4"></span>
+                <p id="fc-front-text" class="text-lg text-center text-slate-800 dark:text-slate-200 leading-relaxed font-medium"></p>
+                <p class="text-sm text-slate-400 dark:text-slate-500 mt-6">Click to reveal answer</p>
+            </div>
+            <!-- Back -->
+            <div id="fc-back" class="absolute inset-0 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-8 flex flex-col items-center justify-center" style="backface-visibility: hidden; transform: rotateY(180deg);">
+                <span class="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-4">Answer</span>
+                <p id="fc-back-text" class="text-lg text-center text-slate-800 dark:text-slate-200 leading-relaxed"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rating Buttons (Anki-style) -->
+    <div id="fc-rating" class="hidden">
+        <p class="text-sm text-slate-500 dark:text-slate-400 text-center mb-3">How well did you know this?</p>
+        <div class="grid grid-cols-4 gap-3">
+            <button onclick="rateCard(1)" class="py-3 rounded-xl text-sm font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors border border-red-200 dark:border-red-800">
+                Again
+                <span class="block text-xs font-normal text-red-500 dark:text-red-500 mt-0.5">&lt;1 min</span>
+            </button>
+            <button onclick="rateCard(2)" class="py-3 rounded-xl text-sm font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors border border-amber-200 dark:border-amber-800">
+                Hard
+                <span class="block text-xs font-normal text-amber-500 dark:text-amber-500 mt-0.5" id="fc-hard-interval"></span>
+            </button>
+            <button onclick="rateCard(3)" class="py-3 rounded-xl text-sm font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors border border-green-200 dark:border-green-800">
+                Good
+                <span class="block text-xs font-normal text-green-500 dark:text-green-500 mt-0.5" id="fc-good-interval"></span>
+            </button>
+            <button onclick="rateCard(4)" class="py-3 rounded-xl text-sm font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors border border-blue-200 dark:border-blue-800">
+                Easy
+                <span class="block text-xs font-normal text-blue-500 dark:text-blue-500 mt-0.5" id="fc-easy-interval"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- End of review -->
+    <div id="fc-review-done" class="hidden text-center py-8">
+        <div class="text-5xl mb-4">&#127881;</div>
+        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">All done!</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">You've reviewed all due cards. +<span id="fc-xp-total">0</span> XP earned.</p>
+        <div class="flex gap-3 justify-center">
+            <button onclick="loadFlashcards('due')" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors">
+                Check Again
+            </button>
+            <a href="/study" class="px-6 py-2.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-sm transition-colors">
+                Go Study
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Card List (when not in review mode) -->
+<div id="fc-list-mode">
+    <!-- Start Review Button -->
+    <div id="fc-start-review" class="{% if due_count == 0 %}hidden{% endif %} mb-6">
+        <button onclick="startReview()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors text-base shadow-sm">
+            Start Review (<span id="fc-start-count">{{ due_count }}</span> cards due)
+        </button>
+    </div>
+
+    <!-- Empty state -->
+    <div id="fc-empty" class="{% if total_cards > 0 %}hidden{% endif %} text-center py-16">
+        <div class="text-5xl mb-4">&#128195;</div>
+        <h2 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">No flashcards yet</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Flashcards are auto-created when you score below 60% on a question, or you can create them manually.</p>
+        <div class="flex gap-3 justify-center">
+            <a href="/study" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors">
+                Start Studying
+            </a>
+            <button onclick="showCreateFlashcard()" class="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg text-sm transition-colors">
+                Create Manually
+            </button>
+        </div>
+    </div>
+
+    <!-- Card List -->
+    <div id="fc-card-list" class="space-y-3"></div>
+</div>
+
+<!-- Create Flashcard Modal -->
+<div id="fc-create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 w-full max-w-lg mx-4">
+        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Create Flashcard</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Subject</label>
+                <select id="fc-create-subject" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-slate-200">
+                    {% for subject in profile.subjects %}
+                    <option value="{{ subject.name }}">{{ subject.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Topic (optional)</label>
+                <input type="text" id="fc-create-topic" placeholder="e.g. Cell Biology"
+                       class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-slate-200">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Front (Question)</label>
+                <textarea id="fc-create-front" rows="3" placeholder="What do you want to remember?"
+                          class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-slate-200 resize-y"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Back (Answer)</label>
+                <textarea id="fc-create-back" rows="3" placeholder="The answer or key points"
+                          class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-slate-200 resize-y"></textarea>
+            </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+            <button onclick="createFlashcard()" class="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-lg text-sm transition-colors">
+                Create Card
+            </button>
+            <button onclick="hideCreateFlashcard()" class="px-6 py-2.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-sm transition-colors">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Flashcard Page Logic ────────────────────────────────────────
+
+let fcCards = [];
+let fcIndex = 0;
+let fcFlipped = false;
+let fcReviewXp = 0;
+let fcCurrentMode = 'due';
+
+// Load flashcards on page load
+document.addEventListener('DOMContentLoaded', () => loadFlashcards('due'));
+
+function loadFlashcards(mode) {
+    fcCurrentMode = mode;
+
+    // Update button styles
+    const btnDue = document.getElementById('fc-btn-due');
+    const btnAll = document.getElementById('fc-btn-all');
+    [btnDue, btnAll].forEach(btn => {
+        if (btn) {
+            btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600');
+            btn.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300', 'border-slate-300', 'dark:border-slate-600');
+        }
+    });
+    const activeBtn = mode === 'due' ? btnDue : (mode === 'all' ? btnAll : null);
+    if (activeBtn) {
+        activeBtn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300', 'border-slate-300', 'dark:border-slate-600');
+        activeBtn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600');
+    }
+
+    let url = '/api/flashcards?mode=' + mode;
+    if (mode === 'subject') {
+        const subject = document.getElementById('fc-subject-filter').value;
+        if (!subject) return;
+        url += '&subject=' + encodeURIComponent(subject);
+    }
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            fcCards = data.cards || [];
+            renderCardList();
+        })
+        .catch(err => console.error('Failed to load flashcards:', err));
+}
+
+function renderCardList() {
+    const listEl = document.getElementById('fc-card-list');
+    const emptyEl = document.getElementById('fc-empty');
+    const startEl = document.getElementById('fc-start-review');
+
+    if (fcCards.length === 0) {
+        listEl.innerHTML = '';
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        if (startEl) startEl.classList.add('hidden');
+        return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    // Show start review button if in due mode and cards exist
+    const dueCards = fcCards.filter(c => c.is_due);
+    if (startEl) {
+        if (dueCards.length > 0) {
+            startEl.classList.remove('hidden');
+            document.getElementById('fc-start-count').textContent = dueCards.length;
+        } else {
+            startEl.classList.add('hidden');
+        }
+    }
+
+    listEl.innerHTML = fcCards.map(card => {
+        const dueBadge = card.is_due
+            ? '<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">Due</span>'
+            : '<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">Reviewed</span>';
+        const sourceBadge = card.source === 'manual'
+            ? ''
+            : ` <span class="px-2 py-0.5 text-xs rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">${escapeHtml(card.source)}</span>`;
+
+        return `
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
+                <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">${escapeHtml(card.subject)}</span>
+                        ${dueBadge}${sourceBadge}
+                    </div>
+                    <button onclick="deleteFlashcard('${card.id}')" class="text-slate-400 hover:text-red-500 transition-colors p-1" title="Delete card">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                </div>
+                <p class="text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">${escapeHtml(card.front)}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 truncate">${escapeHtml(card.back)}</p>
+                <div class="flex items-center gap-3 mt-2 text-xs text-slate-400 dark:text-slate-500">
+                    <span>Next: ${card.next_review}</span>
+                    <span>Reviews: ${card.review_count}</span>
+                    <span>Ease: ${(card.ease_factor || 2.5).toFixed(1)}</span>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function startReview() {
+    // Filter to only due cards
+    fcCards = fcCards.filter(c => c.is_due);
+    if (fcCards.length === 0) return;
+
+    fcIndex = 0;
+    fcReviewXp = 0;
+    fcFlipped = false;
+
+    document.getElementById('fc-list-mode').classList.add('hidden');
+    document.getElementById('fc-review-mode').classList.remove('hidden');
+    document.getElementById('fc-review-done').classList.add('hidden');
+
+    showFlashcard();
+}
+
+function showFlashcard() {
+    if (fcIndex >= fcCards.length) {
+        // Review complete
+        document.getElementById('fc-rating').classList.add('hidden');
+        document.getElementById('fc-card').style.display = 'none';
+        document.getElementById('fc-review-done').classList.remove('hidden');
+        document.getElementById('fc-xp-total').textContent = fcReviewXp;
+        return;
+    }
+
+    const card = fcCards[fcIndex];
+    fcFlipped = false;
+
+    // Update card display
+    document.getElementById('fc-front-subject').textContent = card.subject;
+    document.getElementById('fc-front-text').textContent = card.front;
+    document.getElementById('fc-back-text').textContent = card.back;
+
+    // Reset flip
+    const cardEl = document.getElementById('fc-card');
+    cardEl.style.display = 'block';
+    cardEl.style.transform = 'rotateY(0deg)';
+
+    // Update progress
+    const pct = Math.round((fcIndex / fcCards.length) * 100);
+    document.getElementById('fc-progress-bar').style.width = pct + '%';
+    document.getElementById('fc-progress-text').textContent = `${fcIndex + 1}/${fcCards.length}`;
+
+    // Hide rating until flipped
+    document.getElementById('fc-rating').classList.add('hidden');
+
+    // Show interval estimates
+    const interval = card.interval_days || 1;
+    const ease = card.ease_factor || 2.5;
+    document.getElementById('fc-hard-interval').textContent = formatInterval(Math.max(1, Math.round(interval * 1.2)));
+    document.getElementById('fc-good-interval').textContent = formatInterval(Math.round(interval * ease));
+    document.getElementById('fc-easy-interval').textContent = formatInterval(Math.round(interval * ease * 1.3));
+}
+
+function formatInterval(days) {
+    if (days < 1) return '<1d';
+    if (days === 1) return '1d';
+    if (days < 30) return days + 'd';
+    if (days < 365) return Math.round(days / 30) + 'mo';
+    return (days / 365).toFixed(1) + 'y';
+}
+
+function flipCard() {
+    fcFlipped = !fcFlipped;
+    const cardEl = document.getElementById('fc-card');
+    cardEl.style.transform = fcFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)';
+
+    if (fcFlipped) {
+        document.getElementById('fc-rating').classList.remove('hidden');
+    } else {
+        document.getElementById('fc-rating').classList.add('hidden');
+    }
+}
+
+function rateCard(quality) {
+    const card = fcCards[fcIndex];
+    if (!card) return;
+
+    // Disable buttons during request
+    document.querySelectorAll('#fc-rating button').forEach(b => b.disabled = true);
+
+    fetch('/api/flashcards/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card_id: card.id, quality: quality }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.xp_earned) fcReviewXp += data.xp_earned;
+
+        fcIndex++;
+        document.querySelectorAll('#fc-rating button').forEach(b => b.disabled = false);
+        showFlashcard();
+    })
+    .catch(err => {
+        console.error('Rating error:', err);
+        document.querySelectorAll('#fc-rating button').forEach(b => b.disabled = false);
+        fcIndex++;
+        showFlashcard();
+    });
+}
+
+function showCreateFlashcard() {
+    document.getElementById('fc-create-modal').classList.remove('hidden');
+}
+
+function hideCreateFlashcard() {
+    document.getElementById('fc-create-modal').classList.add('hidden');
+    document.getElementById('fc-create-front').value = '';
+    document.getElementById('fc-create-back').value = '';
+    document.getElementById('fc-create-topic').value = '';
+}
+
+function createFlashcard() {
+    const front = document.getElementById('fc-create-front').value.trim();
+    const back = document.getElementById('fc-create-back').value.trim();
+    const subject = document.getElementById('fc-create-subject').value;
+    const topic = document.getElementById('fc-create-topic').value.trim();
+
+    if (!front || !back) {
+        alert('Please fill in both the front and back of the card.');
+        return;
+    }
+
+    fetch('/api/flashcards/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ front, back, subject, topic }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        hideCreateFlashcard();
+        loadFlashcards(fcCurrentMode);
+    })
+    .catch(err => alert('Error: ' + err.message));
+}
+
+function deleteFlashcard(cardId) {
+    if (!confirm('Delete this flashcard?')) return;
+
+    fetch(`/api/flashcards/${cardId}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            loadFlashcards(fcCurrentMode);
+        })
+        .catch(err => alert('Error: ' + err.message));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% set show_sidebar = false %}
+{% extends "base.html" %}
+{% block title %}Welcome — IB Study Companion{% endblock %}
+
+{% block fullcontent %}
+<div class="min-h-screen bg-gradient-to-br from-indigo-50 to-slate-50 flex items-center justify-center p-8">
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 max-w-2xl w-full p-10">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-slate-800">Welcome to IB Study Companion</h1>
+            <p class="text-slate-500 mt-2">Set up your profile to get personalized, target-driven study tools.</p>
+        </div>
+
+        {% if error %}
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('onboarding_submit') }}" id="onboarding-form">
+            <!-- Step 1: Basic Info -->
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold text-slate-700 mb-4">About You</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Your Name</label>
+                        <input type="text" name="name" required placeholder="e.g. David"
+                               value="{{ profile.name if profile else '' }}"
+                               class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Exam Session</label>
+                        <select name="exam_session" required
+                                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+                            <option value="">Select session...</option>
+                            {% set sessions = ["May 2025", "November 2025", "May 2026", "November 2026", "May 2027", "November 2027"] %}
+                            {% for s in sessions %}
+                            <option value="{{ s }}" {% if (profile and profile.exam_session == s) or (not profile and s == 'May 2026') %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target IB Points -->
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold text-slate-700 mb-2">Target IB Points</h2>
+                <p class="text-sm text-slate-500 mb-3">Most universities want 36+. Top programs want 40+.</p>
+                <div class="flex items-center gap-4">
+                    <input type="number" name="target_total_points" min="24" max="45"
+                           value="{{ profile.target_total_points if profile else 35 }}"
+                           class="w-24 px-4 py-2.5 border border-slate-300 rounded-lg text-sm text-center font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                    <span class="text-sm text-slate-500">out of 45</span>
+                </div>
+            </div>
+
+            <!-- Step 2: Subject Selection -->
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold text-slate-700 mb-2">Your Subjects</h2>
+                <p class="text-sm text-slate-500 mb-4">Select up to 6 subjects. Set each as HL or SL with your target grade.</p>
+
+                <div id="subject-slots" class="space-y-3">
+                    <!-- Subject rows added by JS -->
+                </div>
+
+                <button type="button" id="add-subject-btn"
+                        class="mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
+                    + Add Subject
+                </button>
+            </div>
+
+            <button type="submit"
+                    class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm">
+                {% if profile %}Save Changes{% else %}Get Started{% endif %}
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+const IB_SUBJECTS = {{ ib_subjects | tojson }};
+const EXISTING_PROFILE = {{ profile.to_dict() | tojson if profile else 'null' }};
+let subjectCount = 0;
+const MAX_SUBJECTS = 6;
+
+function addSubjectRow(defaultName = '', defaultLevel = 'HL', defaultTarget = 5) {
+    if (subjectCount >= MAX_SUBJECTS) return;
+
+    const container = document.getElementById('subject-slots');
+    const idx = subjectCount;
+    const row = document.createElement('div');
+    row.className = 'flex gap-3 items-center';
+    row.id = `subject-row-${idx}`;
+
+    let options = '<option value="">Select subject...</option>';
+    for (const [group, subjects] of Object.entries(IB_SUBJECTS)) {
+        options += `<optgroup label="${group}">`;
+        for (const s of subjects) {
+            const sel = s === defaultName ? ' selected' : '';
+            options += `<option value="${s}"${sel}>${s}</option>`;
+        }
+        options += '</optgroup>';
+    }
+
+    let targetOptions = '';
+    for (let g = 7; g >= 1; g--) {
+        const sel = g === defaultTarget ? ' selected' : '';
+        targetOptions += `<option value="${g}"${sel}>${g}</option>`;
+    }
+
+    row.innerHTML = `
+        <select name="subject_${idx}" required
+                class="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+            ${options}
+        </select>
+        <select name="level_${idx}"
+                class="w-20 px-2 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+            <option value="HL"${defaultLevel === 'HL' ? ' selected' : ''}>HL</option>
+            <option value="SL"${defaultLevel === 'SL' ? ' selected' : ''}>SL</option>
+        </select>
+        <select name="target_${idx}"
+                class="w-20 px-2 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
+                title="Target grade">
+            ${targetOptions}
+        </select>
+        <button type="button" onclick="removeSubject(${idx})" class="text-slate-400 hover:text-red-500 transition-colors p-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    `;
+
+    container.appendChild(row);
+    subjectCount++;
+    updateAddButton();
+}
+
+function removeSubject(idx) {
+    const row = document.getElementById(`subject-row-${idx}`);
+    if (row) row.remove();
+    updateAddButton();
+}
+
+function updateAddButton() {
+    const btn = document.getElementById('add-subject-btn');
+    const current = document.getElementById('subject-slots').children.length;
+    btn.style.display = current >= MAX_SUBJECTS ? 'none' : 'block';
+}
+
+document.getElementById('add-subject-btn').addEventListener('click', () => addSubjectRow());
+
+// Pre-fill from existing profile or start with 3 empty rows
+if (EXISTING_PROFILE && EXISTING_PROFILE.subjects) {
+    for (const s of EXISTING_PROFILE.subjects) {
+        addSubjectRow(s.name, s.level, s.target_grade || 5);
+    }
+} else {
+    addSubjectRow();
+    addSubjectRow();
+    addSubjectRow();
+}
+</script>
+{% endblock %}

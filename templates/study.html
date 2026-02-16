@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+{% block title %}Study — IB Study Companion{% endblock %}
+
+{% block content %}
+<!-- Mode Selector -->
+<div id="study-mode-select">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-slate-800">Study</h1>
+        <p class="text-slate-500 text-sm mt-1">Choose a study mode to get started.</p>
+    </div>
+
+    <div class="flex gap-2 mb-4">
+        <button onclick="document.getElementById('study-import-panel').classList.toggle('hidden')"
+                class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            Import Questions
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <!-- Smart Practice -->
+        <button onclick="selectMode('smart')"
+                class="bg-white rounded-xl shadow-sm border-2 border-slate-200 hover:border-indigo-400 p-6 text-left transition-all hover:shadow-md group">
+            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-indigo-200 transition-colors">
+                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            </div>
+            <h3 class="font-semibold text-slate-800 mb-1">Smart Practice</h3>
+            <p class="text-sm text-slate-500">AI picks your weakest subject and generates targeted questions.</p>
+            {% if recommendation.subject %}
+            <p class="text-xs text-indigo-600 mt-2 font-medium">Recommended: {{ recommendation.subject }}</p>
+            {% endif %}
+        </button>
+
+        <!-- Command Term Trainer -->
+        <button onclick="selectMode('command_term')"
+                class="bg-white rounded-xl shadow-sm border-2 border-slate-200 hover:border-amber-400 p-6 text-left transition-all hover:shadow-md group">
+            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-amber-200 transition-colors">
+                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+            </div>
+            <h3 class="font-semibold text-slate-800 mb-1">Command Term Trainer</h3>
+            <p class="text-sm text-slate-500">Master specific IB command terms — where students lose the most marks.</p>
+        </button>
+
+        <!-- Exam Simulation -->
+        <button onclick="selectMode('exam_sim')"
+                class="bg-white rounded-xl shadow-sm border-2 border-slate-200 hover:border-emerald-400 p-6 text-left transition-all hover:shadow-md group">
+            <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition-colors">
+                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <h3 class="font-semibold text-slate-800 mb-1">Exam Simulation</h3>
+            <p class="text-sm text-slate-500">Timed practice with 5+ questions. Builds exam stamina.</p>
+        </button>
+    </div>
+</div>
+
+<!-- Study Setup -->
+<div id="study-setup" class="hidden">
+    <div class="mb-6">
+        <button onclick="backToModes()" class="text-sm text-slate-500 hover:text-slate-700 mb-2 inline-flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Back
+        </button>
+        <h1 class="text-2xl font-bold text-slate-800" id="setup-title">Smart Practice</h1>
+        <p class="text-sm text-slate-500 mt-1" id="setup-description"></p>
+    </div>
+
+    <!-- Recommendation banner (smart mode only) -->
+    <div id="smart-rec-banner" class="hidden mb-4 bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+        <p class="text-sm text-indigo-700 font-medium" id="smart-rec-text"></p>
+    </div>
+
+    <!-- Command Term Definition Card (CT mode only) -->
+    <div id="ct-definition-card" class="hidden mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <h3 class="text-sm font-semibold text-amber-800 mb-1" id="ct-def-title"></h3>
+        <p class="text-sm text-amber-700" id="ct-def-body"></p>
+        <p class="text-xs text-amber-600 mt-1" id="ct-def-mistake"></p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-lg">
+        <div class="space-y-4">
+            <!-- Command Term selector (CT mode only) -->
+            <div id="ct-select-group" class="hidden">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Command Term</label>
+                <select id="study-command-term"
+                        onchange="onCommandTermChange()"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+                    <option value="">Random</option>
+                    <option value="Define">Define</option>
+                    <option value="Describe">Describe</option>
+                    <option value="Outline">Outline</option>
+                    <option value="Explain">Explain</option>
+                    <option value="Analyse">Analyse</option>
+                    <option value="Compare">Compare</option>
+                    <option value="Compare and contrast">Compare and contrast</option>
+                    <option value="Contrast">Contrast</option>
+                    <option value="Distinguish">Distinguish</option>
+                    <option value="Evaluate">Evaluate</option>
+                    <option value="Discuss">Discuss</option>
+                    <option value="Justify">Justify</option>
+                    <option value="Examine">Examine</option>
+                    <option value="Suggest">Suggest</option>
+                    <option value="To what extent">To what extent</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Subject</label>
+                <select id="study-subject"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+                    {% for subject in profile.subjects %}
+                    <option value="{{ subject.name }}" data-level="{{ subject.level }}">
+                        {{ subject.name }} ({{ subject.level }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Topic</label>
+                <select id="study-topic-select" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white hidden">
+                    <option value="">Select a topic...</option>
+                </select>
+                <input type="text" id="study-topic" placeholder="e.g. Cell Biology, Market Structures, WW2..."
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+            </div>
+
+            <!-- Subject Tips Panel -->
+            <div id="subject-tips-panel" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 class="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-2">Subject Tips</h4>
+                <div id="subject-tips-content" class="text-sm text-blue-700 space-y-1"></div>
+            </div>
+
+            <!-- Time limit (exam sim only) -->
+            <div id="time-limit-group" class="hidden">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Time Limit (minutes)</label>
+                <select id="study-time-limit"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+                    <option value="10">10 minutes</option>
+                    <option value="20" selected>20 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="45">45 minutes</option>
+                    <option value="60">60 minutes</option>
+                </select>
+            </div>
+
+            <!-- Question count (not exam sim) -->
+            <div id="count-group">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Number of Questions</label>
+                <select id="study-count"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+                    <option value="1">1 question</option>
+                    <option value="3" selected>3 questions</option>
+                    <option value="5">5 questions</option>
+                </select>
+            </div>
+
+            <button id="generate-btn" onclick="generateStudy()"
+                    class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm mt-2">
+                Generate Questions
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading -->
+<div id="study-loading" class="hidden">
+    <div class="flex flex-col items-center justify-center py-20">
+        <div class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+        <p class="text-slate-600 font-medium">Generating questions...</p>
+        <p class="text-sm text-slate-400 mt-1">This may take a few seconds</p>
+    </div>
+</div>
+
+<!-- Question Display -->
+<div id="study-question" class="hidden">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Study</h1>
+            <p class="text-sm text-slate-500 mt-1">
+                Question <span id="q-current">1</span> of <span id="q-total">3</span>
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- Exam timer (exam sim only) -->
+            <div id="exam-timer" class="hidden px-4 py-2 rounded-lg font-mono text-lg font-bold">
+                <span id="timer-display">20:00</span>
+            </div>
+            <span id="q-badge" class="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm font-semibold rounded-full"></span>
+        </div>
+    </div>
+
+    <!-- Exam paper info banner (exam sim only) -->
+    <div id="exam-paper-banner" class="hidden mb-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
+        <p id="exam-paper-text" class="text-sm text-emerald-700 dark:text-emerald-400 font-medium"></p>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+        <div class="flex items-start justify-between mb-4">
+            <span class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide" id="q-command-term"></span>
+            <span class="text-xs font-medium text-slate-500 dark:text-slate-400" id="q-marks"></span>
+        </div>
+        <p class="text-slate-800 dark:text-slate-200 leading-relaxed" id="q-text"></p>
+    </div>
+
+    <!-- Response Mode Selector -->
+    <div id="response-mode-select" class="mb-4">
+        <label class="block text-sm font-medium text-slate-700 mb-2">How do you want to respond?</label>
+        <div class="grid grid-cols-3 gap-3">
+            <button onclick="selectResponseMode('full')"
+                    class="response-mode-btn p-3 bg-white rounded-xl border-2 border-indigo-500 text-left transition-all hover:shadow-md">
+                <p class="text-sm font-semibold text-slate-800">Full Answer</p>
+                <p class="text-xs text-slate-500 mt-0.5">Write a complete response</p>
+            </button>
+            <button onclick="selectResponseMode('bullet')"
+                    class="response-mode-btn p-3 bg-white rounded-xl border-2 border-slate-200 text-left transition-all hover:shadow-md hover:border-amber-400">
+                <p class="text-sm font-semibold text-slate-800">Bullet Points</p>
+                <p class="text-xs text-slate-500 mt-0.5">Key points only</p>
+            </button>
+            <button onclick="selectResponseMode('model')"
+                    class="response-mode-btn p-3 bg-white rounded-xl border-2 border-slate-200 text-left transition-all hover:shadow-md hover:border-emerald-400">
+                <p class="text-sm font-semibold text-slate-800">Show Model Answer</p>
+                <p class="text-xs text-slate-500 mt-0.5">See the ideal response</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- Answer Input (shown for full/bullet modes) -->
+    <div id="answer-section" class="mb-4">
+        <div class="flex items-center justify-between mb-2">
+            <label class="block text-sm font-medium text-slate-700">Your Answer</label>
+            <div class="flex items-center gap-2">
+                <!-- Speech-to-text button -->
+                <button id="mic-btn" onclick="toggleSpeechToText()" type="button"
+                        title="Dictate your answer"
+                        class="p-1.5 rounded-lg border border-slate-300 text-slate-500 hover:text-indigo-600 hover:border-indigo-400 transition-colors">
+                    <svg id="mic-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z"/>
+                    </svg>
+                </button>
+                <!-- Upload button -->
+                <button id="upload-answer-btn" onclick="document.getElementById('answer-file-input').click()" type="button"
+                        title="Upload photo or document"
+                        class="p-1.5 rounded-lg border border-slate-300 text-slate-500 hover:text-indigo-600 hover:border-indigo-400 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                    </svg>
+                </button>
+                <input type="file" id="answer-file-input" class="hidden" accept="image/*,.pdf" onchange="uploadAnswerFile(this)">
+            </div>
+        </div>
+        <!-- Mic listening indicator -->
+        <div id="mic-status" class="hidden mb-2 flex items-center gap-2 text-sm text-red-600">
+            <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+            Listening...
+            <button onclick="toggleSpeechToText()" class="text-xs text-slate-500 hover:text-slate-700 ml-auto">Stop</button>
+        </div>
+        <!-- Upload processing indicator -->
+        <div id="upload-answer-status" class="hidden mb-2 flex items-center gap-2 text-sm text-indigo-600">
+            <div class="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+            <span id="upload-answer-status-text">Extracting text from file...</span>
+        </div>
+        <textarea id="answer-input" rows="8" placeholder="Write your answer here..."
+                  class="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition resize-y"></textarea>
+    </div>
+
+    <!-- Model Answer Display (shown when "Show Model Answer" is clicked) -->
+    <div id="model-answer-section" class="hidden mb-4">
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-6">
+            <h3 class="text-sm font-semibold text-emerald-800 mb-3">Model Answer (Full Marks)</h3>
+            <div id="model-answer-text" class="text-sm text-emerald-700 leading-relaxed whitespace-pre-line"></div>
+        </div>
+    </div>
+
+    <!-- Hint Panel -->
+    <div id="hint-panel" class="hidden mb-4">
+        <div id="hint-content"></div>
+    </div>
+
+    <div class="flex gap-3">
+        <button onclick="submitAnswer()"
+                class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm"
+                id="submit-btn">
+            Submit Answer
+        </button>
+        <button id="hint-btn" onclick="requestHint()"
+                class="px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium rounded-lg border border-blue-200 transition-colors text-sm">
+            Need a hint? <span id="hint-count"></span>
+        </button>
+        <button onclick="skipQuestion()"
+                class="px-6 py-3 bg-white hover:bg-slate-50 text-slate-600 font-medium rounded-lg border border-slate-300 transition-colors text-sm">
+            Skip
+        </button>
+    </div>
+</div>
+
+<!-- Grading Loading -->
+<div id="grading-loading" class="hidden">
+    <div class="flex flex-col items-center justify-center py-20">
+        <div class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+        <p class="text-slate-600 font-medium">Grading your answer...</p>
+        <p class="text-sm text-slate-400 mt-1">The IB Examiner is reviewing your response</p>
+    </div>
+</div>
+
+<!-- Grade Result -->
+<div id="study-result" class="hidden">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-slate-800">Examiner's Desk</h1>
+        <div class="flex items-center gap-3">
+            <span id="result-mark" class="text-sm font-medium text-slate-600"></span>
+            <span id="result-grade-badge"
+                  class="inline-flex items-center justify-center w-12 h-12 rounded-full text-lg font-bold"></span>
+        </div>
+    </div>
+
+    <!-- Score Bar -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-slate-700">Score</span>
+            <span id="result-percentage" class="text-sm font-bold"></span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-3">
+            <div id="result-bar" class="h-3 rounded-full transition-all duration-700" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- XP & Gamification Notification -->
+    <div id="result-xp-panel" class="hidden bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800 p-4 mb-4 flex items-center gap-3">
+        <span class="text-2xl">&#9889;</span>
+        <div id="result-xp-content" class="text-sm"></div>
+    </div>
+
+    <!-- Target Context Panel -->
+    <div id="target-context-panel" class="bg-slate-50 rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="text-sm font-semibold text-slate-700 mb-2">Target Context</h3>
+        <p class="text-sm text-slate-600" id="target-context-text"></p>
+    </div>
+
+    <!-- Command Term Check -->
+    <div id="ct-check-panel" class="hidden bg-amber-50 rounded-xl border border-amber-200 p-5 mb-4">
+        <h3 class="text-sm font-semibold text-amber-800 mb-1">Command Term Check</h3>
+        <p class="text-sm text-amber-700" id="ct-check-text"></p>
+    </div>
+
+    <!-- Strengths -->
+    <div class="bg-green-50 rounded-xl border border-green-200 p-6 mb-4">
+        <h3 class="text-sm font-semibold text-green-800 mb-3">Strengths</h3>
+        <ul id="result-strengths" class="space-y-2 text-sm text-green-700"></ul>
+    </div>
+
+    <!-- Improvements -->
+    <div class="bg-amber-50 rounded-xl border border-amber-200 p-6 mb-4">
+        <h3 class="text-sm font-semibold text-amber-800 mb-3">Areas for Improvement</h3>
+        <ul id="result-improvements" class="space-y-2 text-sm text-amber-700"></ul>
+    </div>
+
+    <!-- Examiner Tip -->
+    <div class="bg-indigo-50 rounded-xl border border-indigo-200 p-6 mb-4">
+        <h3 class="text-sm font-semibold text-indigo-800 mb-2">Examiner Tip</h3>
+        <p id="result-tip" class="text-sm text-indigo-700"></p>
+    </div>
+
+    <!-- Commentary -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
+        <h3 class="text-sm font-semibold text-slate-700 mb-2">Full Commentary</h3>
+        <p id="result-commentary" class="text-sm text-slate-600 leading-relaxed"></p>
+    </div>
+
+    <!-- Model Answer (in result view) -->
+    <div id="result-model-answer" class="hidden bg-emerald-50 rounded-xl border border-emerald-200 p-6 mb-6">
+        <h3 class="text-sm font-semibold text-emerald-800 mb-3">Model Answer (Full Marks)</h3>
+        <div id="result-model-text" class="text-sm text-emerald-700 leading-relaxed whitespace-pre-line"></div>
+    </div>
+
+    <div class="flex gap-3">
+        <button onclick="nextQuestion()"
+                class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm"
+                id="next-btn">
+            Next Question
+        </button>
+        <button onclick="shareQuestion()"
+                class="px-4 py-3 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/40 text-sky-600 font-medium rounded-lg border border-sky-200 dark:border-sky-800 transition-colors text-sm"
+                title="Share this question">
+            <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+            Share
+        </button>
+        <button onclick="resetStudy()"
+                class="px-6 py-3 bg-white hover:bg-slate-50 text-slate-600 font-medium rounded-lg border border-slate-300 transition-colors text-sm">
+            New Session
+        </button>
+    </div>
+</div>
+
+<!-- Session Summary -->
+<div id="study-session-summary" class="hidden">
+    <div class="mb-6 text-center">
+        <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-200">Session Complete</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ studySubject if studySubject is defined else '' }} Practice Summary</p>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+        <div id="session-summary-content">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+        <button onclick="dismissSessionSummary(); selectMode(studyMode);"
+                class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm">
+            Practice Again
+        </button>
+        <button onclick="exportSessionQuestions()"
+                class="px-4 py-3 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/40 text-sky-600 font-medium rounded-lg border border-sky-200 dark:border-sky-800 transition-colors text-sm">
+            Export Questions
+        </button>
+        <a href="/flashcards"
+           class="px-6 py-3 bg-violet-50 hover:bg-violet-100 text-violet-700 font-medium rounded-lg border border-violet-200 transition-colors text-sm text-center">
+            Review Flashcards
+        </a>
+        <button onclick="dismissSessionSummary()"
+                class="px-6 py-3 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-medium rounded-lg border border-slate-300 dark:border-slate-600 transition-colors text-sm">
+            Done
+        </button>
+    </div>
+</div>
+
+<!-- Import Questions Panel -->
+<div id="study-import-panel" class="hidden mt-6">
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+        <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Import Shared Questions</h3>
+        <textarea id="import-json-input" rows="4" placeholder="Paste shared question JSON here..."
+                  class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition resize-y bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"></textarea>
+        <div class="flex gap-2 mt-3">
+            <button onclick="importQuestions()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                Import & Practice
+            </button>
+            <button onclick="document.getElementById('study-import-panel').classList.add('hidden')" class="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Error Display -->
+<div id="study-error" class="hidden">
+    <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <p class="text-red-700 font-medium" id="error-message"></p>
+        <button onclick="resetStudy()" class="mt-4 px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+            Try Again
+        </button>
+    </div>
+</div>
+
+<script>
+    // Pass recommendation data to JS
+    window.RECOMMENDATION = {{ recommendation | tojson }};
+</script>
+{% endblock %}

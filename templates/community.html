@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Community Papers — IB Study Companion{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold">Community Paper Library</h1>
+        <button onclick="showUploadModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Upload Paper</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex gap-3 flex-wrap">
+        <select id="filter-subject" onchange="loadPapers()" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
+            <option value="">All Subjects</option>
+        </select>
+        <select id="filter-level" onchange="loadPapers()" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
+            <option value="">All Levels</option>
+            <option value="HL">HL</option>
+            <option value="SL">SL</option>
+        </select>
+    </div>
+
+    <!-- Paper Grid -->
+    <div id="papers-grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="text-center text-slate-500 py-12 col-span-full">Loading papers...</div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="upload-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
+        <h3 class="text-lg font-bold">Upload Past Paper</h3>
+        <input id="paper-title" placeholder="Paper title" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="paper-subject" placeholder="Subject" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <div class="grid grid-cols-2 gap-2">
+            <select id="paper-level" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+                <option value="HL">HL</option>
+                <option value="SL">SL</option>
+            </select>
+            <input id="paper-year" type="number" placeholder="Year" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        </div>
+        <textarea id="paper-questions" rows="4" placeholder="Paste questions (one per line)" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"></textarea>
+        <div class="flex gap-2 justify-end">
+            <button onclick="hideModal('upload-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
+            <button onclick="uploadPaper()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Upload</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/modules/community.js') }}"></script>
+{% endblock %}

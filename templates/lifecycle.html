@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+{% block title %}IB Lifecycle — IB Study Companion{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-slate-800">IB Lifecycle</h1>
+    <p class="text-slate-500 text-sm mt-1">Track your Extended Essay, Internal Assessments, TOK, and CAS all in one place.</p>
+</div>
+
+<!-- Overall Progress Bar -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
+    <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-semibold text-slate-700">Overall Progress</h3>
+        <span class="text-sm font-bold text-slate-600">{{ summary.completed_milestones }}/{{ summary.total_milestones }} milestones</span>
+    </div>
+    <div class="w-full bg-slate-100 rounded-full h-3">
+        <div class="h-3 rounded-full bg-indigo-500 transition-all duration-500" style="width: {{ summary.progress_pct }}%"></div>
+    </div>
+</div>
+
+<!-- EE + TOK Cards -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <!-- Extended Essay -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5" id="ee-card">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-slate-800">Extended Essay</h3>
+            <span class="text-xs font-medium text-slate-500">{{ summary.ee_progress.completed }}/{{ summary.ee_progress.total }}</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-2 mb-3">
+            <div class="h-2 rounded-full bg-purple-500 transition-all" style="width: {{ summary.ee_progress.pct }}%"></div>
+        </div>
+        {% if lifecycle.extended_essay.subject %}
+        <p class="text-sm text-slate-600 mb-1"><strong>Subject:</strong> {{ lifecycle.extended_essay.subject }}</p>
+        {% endif %}
+        {% if lifecycle.extended_essay.research_question %}
+        <p class="text-sm text-slate-600 mb-1"><strong>RQ:</strong> {{ lifecycle.extended_essay.research_question }}</p>
+        {% endif %}
+        <p class="text-xs text-indigo-600 font-medium mt-2">Next: {{ summary.ee_progress.next }}</p>
+
+        <!-- EE Details Form -->
+        <div class="mt-4 pt-4 border-t border-slate-100">
+            <div class="space-y-2">
+                <input type="text" id="ee-subject" placeholder="EE Subject" value="{{ lifecycle.extended_essay.subject }}"
+                       class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <input type="text" id="ee-rq" placeholder="Research Question" value="{{ lifecycle.extended_essay.research_question }}"
+                       class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <input type="text" id="ee-supervisor" placeholder="Supervisor" value="{{ lifecycle.extended_essay.supervisor }}"
+                       class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <button onclick="updateLifecycleSection('ee')"
+                        class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors">
+                    Save EE Details
+                </button>
+            </div>
+        </div>
+
+        <!-- Milestones -->
+        <div class="mt-4 space-y-2">
+            {% for m in lifecycle.extended_essay.milestones %}
+            <label class="flex items-center gap-3 cursor-pointer group" onclick="toggleMilestone('{{ m.id }}', this)">
+                <div class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                    {% if m.completed %}bg-purple-600 border-purple-600{% else %}border-slate-300 group-hover:border-purple-400{% endif %}">
+                    {% if m.completed %}
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    {% endif %}
+                </div>
+                <span class="text-sm {% if m.completed %}text-slate-400 line-through{% else %}text-slate-700{% endif %}">{{ m.title }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- TOK -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5" id="tok-card">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-slate-800">Theory of Knowledge</h3>
+            <span class="text-xs font-medium text-slate-500">{{ summary.tok_progress.completed }}/{{ summary.tok_progress.total }}</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-2 mb-3">
+            <div class="h-2 rounded-full bg-cyan-500 transition-all" style="width: {{ summary.tok_progress.pct }}%"></div>
+        </div>
+        {% if lifecycle.tok.essay_title %}
+        <p class="text-sm text-slate-600 mb-1"><strong>Essay:</strong> {{ lifecycle.tok.essay_title }}</p>
+        {% endif %}
+        <p class="text-xs text-indigo-600 font-medium mt-2">Next: {{ summary.tok_progress.next }}</p>
+
+        <div class="mt-4 pt-4 border-t border-slate-100">
+            <div class="space-y-2">
+                <input type="text" id="tok-title" placeholder="Essay Title / Prescribed Title" value="{{ lifecycle.tok.essay_title }}"
+                       class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <input type="text" id="tok-exhibition" placeholder="Exhibition Theme" value="{{ lifecycle.tok.exhibition_theme }}"
+                       class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <button onclick="updateLifecycleSection('tok')"
+                        class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium rounded-lg transition-colors">
+                    Save TOK Details
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-4 space-y-2">
+            {% for m in lifecycle.tok.milestones %}
+            <label class="flex items-center gap-3 cursor-pointer group" onclick="toggleMilestone('{{ m.id }}', this)">
+                <div class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                    {% if m.completed %}bg-cyan-600 border-cyan-600{% else %}border-slate-300 group-hover:border-cyan-400{% endif %}">
+                    {% if m.completed %}
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    {% endif %}
+                </div>
+                <span class="text-sm {% if m.completed %}text-slate-400 line-through{% else %}text-slate-700{% endif %}">{{ m.title }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- AI Tools for EE/IA -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+    <!-- Draft Feedback -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+        <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-3">Draft Feedback</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Paste your EE or IA draft to get rubric-aligned feedback from AI.</p>
+        <select id="draft-section" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-slate-200 mb-2">
+            <option value="ee">Extended Essay</option>
+            <option value="ia">Internal Assessment</option>
+        </select>
+        <select id="draft-subject" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-slate-200 mb-2">
+            {% for subject in profile.subjects %}
+            <option value="{{ subject.name }}">{{ subject.name }}</option>
+            {% endfor %}
+        </select>
+        <textarea id="draft-text" rows="6" placeholder="Paste your draft text here..."
+                  class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-slate-200 resize-y mb-2"
+                  oninput="updateWordCount()"></textarea>
+        <div class="flex items-center justify-between mb-2">
+            <span id="draft-word-count" class="text-xs text-slate-500 dark:text-slate-400">0 words</span>
+            <div id="draft-word-limit-bar" class="hidden flex-1 ml-3">
+                <div class="bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
+                    <div id="draft-word-bar" class="h-1.5 rounded-full bg-indigo-500 transition-all" style="width: 0%"></div>
+                </div>
+                <span id="draft-word-limit-text" class="text-xs text-slate-400 ml-2"></span>
+            </div>
+        </div>
+        <button onclick="requestDraftFeedback()" id="draft-feedback-btn"
+                class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors">
+            Get AI Feedback
+        </button>
+        <div id="draft-feedback-result" class="hidden mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+            <h4 class="text-xs font-semibold text-purple-800 dark:text-purple-400 mb-2">Feedback</h4>
+            <div id="draft-feedback-content" class="text-xs text-purple-700 dark:text-purple-300 leading-relaxed whitespace-pre-line"></div>
+        </div>
+    </div>
+
+    <!-- Research Question Check -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+        <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-3">RQ Quality Check</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Check if your research question meets IB criteria for focus and researchability.</p>
+        <input type="text" id="rq-subject" placeholder="Subject area" value="{{ lifecycle.extended_essay.subject }}"
+               class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-slate-200 mb-2">
+        <textarea id="rq-text" rows="3" placeholder="Enter your research question..."
+                  class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-slate-200 resize-y mb-2">{{ lifecycle.extended_essay.research_question }}</textarea>
+        <button onclick="checkResearchQuestion()" id="rq-check-btn"
+                class="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium rounded-lg transition-colors">
+            Check RQ Quality
+        </button>
+        <div id="rq-result" class="hidden mt-3 p-3 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg">
+            <div id="rq-result-content" class="text-xs text-cyan-700 dark:text-cyan-300 leading-relaxed whitespace-pre-line"></div>
+        </div>
+    </div>
+
+    <!-- Word Count Tracker -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+        <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-3">Word Count Tracker</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Track progress toward your word limits.</p>
+        <div class="space-y-4">
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Extended Essay</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">Limit: 4,000 words</span>
+                </div>
+                <div class="bg-slate-100 dark:bg-slate-700 rounded-full h-3">
+                    <div id="wc-ee-bar" class="h-3 rounded-full bg-purple-500 transition-all" style="width: 0%"></div>
+                </div>
+                <input type="number" id="wc-ee-count" placeholder="Current word count" min="0" max="5000"
+                       oninput="updateWordTracker('ee', 4000)"
+                       class="w-full mt-1 px-3 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-700 dark:text-slate-200">
+            </div>
+            {% for ia_info in summary.ia_summaries %}
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ ia_info.subject }} IA</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">Check subject guide</span>
+                </div>
+                <div class="bg-slate-100 dark:bg-slate-700 rounded-full h-3">
+                    <div class="h-3 rounded-full bg-amber-500 transition-all" style="width: 0%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Internal Assessment Cards -->
+<h2 class="text-lg font-semibold text-slate-700 mb-4">Internal Assessments</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+    {% for ia_info in summary.ia_summaries %}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-slate-800 text-sm">{{ ia_info.subject }}</h3>
+            <span class="text-xs font-medium text-slate-500">{{ ia_info.progress.completed }}/{{ ia_info.progress.total }}</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-2 mb-2">
+            <div class="h-2 rounded-full bg-amber-500 transition-all" style="width: {{ ia_info.progress.pct }}%"></div>
+        </div>
+        {% if ia_info.title %}
+        <p class="text-xs text-slate-600 mb-1">{{ ia_info.title }}</p>
+        {% endif %}
+        <p class="text-xs text-indigo-600 font-medium">Next: {{ ia_info.progress.next }}</p>
+
+        {% set ia = lifecycle.get_ia_for_subject(ia_info.subject) %}
+        {% if ia %}
+        <div class="mt-3 space-y-2">
+            {% for m in ia.milestones %}
+            <label class="flex items-center gap-2 cursor-pointer group" onclick="toggleMilestone('{{ m.id }}', this)">
+                <div class="w-4 h-4 rounded border-2 flex items-center justify-center transition-colors
+                    {% if m.completed %}bg-amber-500 border-amber-500{% else %}border-slate-300 group-hover:border-amber-400{% endif %}">
+                    {% if m.completed %}
+                    <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    {% endif %}
+                </div>
+                <span class="text-xs {% if m.completed %}text-slate-400 line-through{% else %}text-slate-600{% endif %}">{{ m.title }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<!-- CAS Section -->
+<h2 class="text-lg font-semibold text-slate-700 mb-4">CAS Portfolio</h2>
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
+    <!-- CAS Hours Summary -->
+    <div class="grid grid-cols-3 gap-4 mb-4">
+        {% for strand, hours in summary.cas_hours.items() %}
+        <div class="text-center p-3 rounded-lg
+            {% if strand == 'Creativity' %}bg-pink-50{% elif strand == 'Activity' %}bg-green-50{% else %}bg-blue-50{% endif %}">
+            <p class="text-2xl font-bold {% if strand == 'Creativity' %}text-pink-600{% elif strand == 'Activity' %}text-green-600{% else %}text-blue-600{% endif %}">{{ hours }}</p>
+            <p class="text-xs font-medium {% if strand == 'Creativity' %}text-pink-500{% elif strand == 'Activity' %}text-green-500{% else %}text-blue-500{% endif %}">{{ strand }} hrs</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Add Reflection Form -->
+    <div class="border-t border-slate-100 pt-4 mb-4">
+        <h4 class="text-sm font-semibold text-slate-700 mb-3">Add CAS Reflection</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <select id="cas-strand" class="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <option value="">Select strand...</option>
+                <option value="Creativity">Creativity</option>
+                <option value="Activity">Activity</option>
+                <option value="Service">Service</option>
+            </select>
+            <input type="text" id="cas-title" placeholder="Activity title" class="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+            <textarea id="cas-description" placeholder="Reflection / description" rows="2" class="px-3 py-2 border border-slate-200 rounded-lg text-sm md:col-span-2"></textarea>
+            <select id="cas-outcome" class="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <option value="">Learning outcome...</option>
+                {% for outcome in cas_outcomes %}
+                <option value="{{ outcome }}">{{ outcome[:60] }}...</option>
+                {% endfor %}
+            </select>
+            <input type="number" id="cas-hours" placeholder="Hours" step="0.5" min="0" class="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+        </div>
+        <button onclick="addCASReflection()"
+                class="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors">
+            Add Reflection
+        </button>
+    </div>
+
+    <!-- Recent Reflections -->
+    {% if lifecycle.cas_reflections %}
+    <div class="border-t border-slate-100 pt-4">
+        <h4 class="text-sm font-semibold text-slate-700 mb-3">Recent Reflections</h4>
+        <div class="space-y-3">
+            {% for r in lifecycle.cas_reflections[-5:]|reverse %}
+            <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                <span class="px-2 py-0.5 text-xs font-semibold rounded-full
+                    {% if r.strand == 'Creativity' %}bg-pink-100 text-pink-700
+                    {% elif r.strand == 'Activity' %}bg-green-100 text-green-700
+                    {% else %}bg-blue-100 text-blue-700{% endif %}">
+                    {{ r.strand[:1] }}
+                </span>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-slate-700">{{ r.title }}</p>
+                    <p class="text-xs text-slate-500">{{ r.date }} &middot; {{ r.hours }}h</p>
+                    {% if r.description %}
+                    <p class="text-xs text-slate-500 mt-1">{{ r.description[:100] }}{% if r.description|length > 100 %}...{% endif %}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateWordCount() {
+    const text = document.getElementById('draft-text').value;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    document.getElementById('draft-word-count').textContent = words + ' words';
+
+    const section = document.getElementById('draft-section').value;
+    const limitBar = document.getElementById('draft-word-limit-bar');
+    const bar = document.getElementById('draft-word-bar');
+    const limitText = document.getElementById('draft-word-limit-text');
+
+    if (section === 'ee') {
+        limitBar.classList.remove('hidden');
+        const pct = Math.min((words / 4000) * 100, 100);
+        bar.style.width = pct + '%';
+        bar.className = 'h-1.5 rounded-full transition-all ' + (pct > 100 ? 'bg-red-500' : pct > 80 ? 'bg-amber-500' : 'bg-indigo-500');
+        limitText.textContent = words + '/4000';
+    } else {
+        limitBar.classList.add('hidden');
+    }
+}
+
+function requestDraftFeedback() {
+    const text = document.getElementById('draft-text').value.trim();
+    const section = document.getElementById('draft-section').value;
+    const subject = document.getElementById('draft-subject').value;
+
+    if (!text) { alert('Please paste your draft text.'); return; }
+
+    const btn = document.getElementById('draft-feedback-btn');
+    btn.disabled = true;
+    btn.textContent = 'Analyzing...';
+
+    fetch('/api/lifecycle/draft-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, section, subject }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.textContent = 'Get AI Feedback';
+        const resultEl = document.getElementById('draft-feedback-result');
+        const contentEl = document.getElementById('draft-feedback-content');
+        if (data.error) {
+            contentEl.textContent = data.error;
+        } else {
+            contentEl.textContent = data.feedback;
+        }
+        resultEl.classList.remove('hidden');
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.textContent = 'Get AI Feedback';
+        alert('Error: ' + err.message);
+    });
+}
+
+function checkResearchQuestion() {
+    const rq = document.getElementById('rq-text').value.trim();
+    const subject = document.getElementById('rq-subject').value.trim();
+
+    if (!rq) { alert('Please enter a research question.'); return; }
+
+    const btn = document.getElementById('rq-check-btn');
+    btn.disabled = true;
+    btn.textContent = 'Evaluating...';
+
+    fetch('/api/lifecycle/rq-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ research_question: rq, subject }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.textContent = 'Check RQ Quality';
+        const resultEl = document.getElementById('rq-result');
+        const contentEl = document.getElementById('rq-result-content');
+        if (data.error) {
+            contentEl.textContent = data.error;
+        } else {
+            contentEl.textContent = data.evaluation;
+        }
+        resultEl.classList.remove('hidden');
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.textContent = 'Check RQ Quality';
+        alert('Error: ' + err.message);
+    });
+}
+
+function updateWordTracker(section, limit) {
+    const input = document.getElementById('wc-' + section + '-count');
+    const bar = document.getElementById('wc-' + section + '-bar');
+    if (!input || !bar) return;
+
+    const count = parseInt(input.value) || 0;
+    const pct = Math.min((count / limit) * 100, 100);
+    bar.style.width = pct + '%';
+    if (pct > 100) bar.className = 'h-3 rounded-full bg-red-500 transition-all';
+    else if (pct > 80) bar.className = 'h-3 rounded-full bg-amber-500 transition-all';
+    else bar.className = 'h-3 rounded-full bg-purple-500 transition-all';
+}
+</script>
+{% endblock %}

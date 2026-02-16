@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Parent Sharing — IB Study Companion{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-slate-800">Parent Sharing</h1>
+    <p class="text-slate-500 text-sm mt-1">Share your progress with your parents via a secure, read-only link.</p>
+</div>
+
+<div class="max-w-2xl">
+    <!-- Enable/Disable Toggle -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="font-semibold text-slate-800">Parent Dashboard</h3>
+                <p class="text-sm text-slate-500 mt-1">When enabled, your parents can view an aggregated summary of your progress.</p>
+            </div>
+            <button id="parent-toggle-btn"
+                    onclick="toggleParentSharing()"
+                    class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors
+                        {% if parent_config.enabled %}bg-indigo-600{% else %}bg-slate-300{% endif %}">
+                <span class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm
+                    {% if parent_config.enabled %}translate-x-6{% else %}translate-x-1{% endif %}"></span>
+            </button>
+        </div>
+
+        <!-- Shareable Link -->
+        <div id="parent-link-section" class="{% if not parent_config.enabled %}hidden{% endif %}">
+            <label class="block text-sm font-medium text-slate-700 mb-2">Shareable Link</label>
+            <div class="flex gap-2">
+                <input type="text" id="parent-link-input" readonly
+                       value="{% if parent_config.token %}{{ request.host_url }}parent/{{ parent_config.token }}{% endif %}"
+                       class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-600">
+                <button onclick="copyParentLink()"
+                        class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    Copy
+                </button>
+                <button onclick="regenerateToken()"
+                        class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-medium rounded-lg transition-colors">
+                    Regenerate
+                </button>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Regenerating creates a new link and invalidates the old one.</p>
+        </div>
+    </div>
+
+    <!-- Display Name -->
+    <div id="privacy-settings" class="{% if not parent_config.enabled %}hidden{% endif %}">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+            <h3 class="font-semibold text-slate-800 mb-4">Display Name</h3>
+            <input type="text" id="parent-display-name" placeholder="Name shown to parents"
+                   value="{{ parent_config.student_display_name or profile.name }}"
+                   class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm">
+            <p class="text-xs text-slate-400 mt-2">This name appears on the parent dashboard instead of your profile name.</p>
+        </div>
+
+        <!-- Privacy Toggles -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+            <h3 class="font-semibold text-slate-800 mb-4">What Parents Can See</h3>
+            <p class="text-sm text-slate-500 mb-4">You control exactly what appears on the parent dashboard.</p>
+
+            <div class="space-y-4">
+                <label class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">Subject Grades & Gaps</p>
+                        <p class="text-xs text-slate-400">Target vs predicted per subject</p>
+                    </div>
+                    <input type="checkbox" id="priv-grades" {% if parent_config.show_subject_grades %}checked{% endif %}
+                           class="w-5 h-5 rounded text-indigo-600 border-slate-300">
+                </label>
+                <label class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">Recent Activity</p>
+                        <p class="text-xs text-slate-400">Subject, date, and average grade per session</p>
+                    </div>
+                    <input type="checkbox" id="priv-activity" {% if parent_config.show_recent_activity %}checked{% endif %}
+                           class="w-5 h-5 rounded text-indigo-600 border-slate-300">
+                </label>
+                <label class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">Study Consistency</p>
+                        <p class="text-xs text-slate-400">Streak, days active, activity heatmap</p>
+                    </div>
+                    <input type="checkbox" id="priv-consistency" {% if parent_config.show_study_consistency %}checked{% endif %}
+                           class="w-5 h-5 rounded text-indigo-600 border-slate-300">
+                </label>
+                <label class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">Command Term Stats</p>
+                        <p class="text-xs text-slate-400">Performance by command term type</p>
+                    </div>
+                    <input type="checkbox" id="priv-ct" {% if parent_config.show_command_term_stats %}checked{% endif %}
+                           class="w-5 h-5 rounded text-indigo-600 border-slate-300">
+                </label>
+                <label class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">Insights</p>
+                        <p class="text-xs text-slate-400">AI-generated insights about performance trends</p>
+                    </div>
+                    <input type="checkbox" id="priv-insights" {% if parent_config.show_insights %}checked{% endif %}
+                           class="w-5 h-5 rounded text-indigo-600 border-slate-300">
+                </label>
+                <label class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">Exam Countdown</p>
+                        <p class="text-xs text-slate-400">Days remaining until exams</p>
+                    </div>
+                    <input type="checkbox" id="priv-countdown" {% if parent_config.show_exam_countdown %}checked{% endif %}
+                           class="w-5 h-5 rounded text-indigo-600 border-slate-300">
+                </label>
+            </div>
+
+            <button onclick="savePrivacySettings()"
+                    class="mt-6 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                Save Privacy Settings
+            </button>
+        </div>
+
+        <!-- What Parents Don't See -->
+        <div class="bg-slate-50 rounded-xl border border-slate-200 p-6">
+            <h3 class="font-semibold text-slate-700 mb-3">Parents Never See</h3>
+            <ul class="text-sm text-slate-500 space-y-1.5">
+                <li class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Individual questions and your written answers
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Examiner commentary and detailed feedback
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Your uploaded documents and writing profile
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Any ability to modify your data
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

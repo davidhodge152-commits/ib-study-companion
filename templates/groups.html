@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Study Groups — IB Study Companion{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold">Study Groups</h1>
+        <div class="flex gap-2">
+            <button onclick="showJoinModal()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium hover:bg-slate-300 dark:hover:bg-slate-600">Join Group</button>
+            <button onclick="showCreateModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Create Group</button>
+        </div>
+    </div>
+
+    <!-- My Groups -->
+    <div id="groups-list" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="text-center text-slate-500 py-12 col-span-full">Loading groups...</div>
+    </div>
+
+    <!-- Group Detail Panel -->
+    <div id="group-detail" class="hidden bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+            <h2 id="group-name" class="text-xl font-bold"></h2>
+            <button onclick="closeGroupDetail()" class="text-slate-400 hover:text-slate-600">&times;</button>
+        </div>
+        <p class="text-sm text-slate-500">Invite code: <code id="group-invite" class="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded"></code></p>
+
+        <div class="grid gap-4 md:grid-cols-2">
+            <!-- Members -->
+            <div>
+                <h3 class="font-semibold mb-2">Members</h3>
+                <div id="group-members" class="space-y-1"></div>
+            </div>
+            <!-- Challenges -->
+            <div>
+                <h3 class="font-semibold mb-2">Challenges</h3>
+                <button onclick="showChallengeModal()" class="mb-2 text-sm text-indigo-600 hover:underline">+ New Challenge</button>
+                <div id="group-challenges" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
+        <h2 class="text-lg font-bold mb-4">Global Leaderboard</h2>
+        <div id="leaderboard" class="space-y-2"></div>
+    </div>
+</div>
+
+<!-- Create Group Modal -->
+<div id="create-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
+        <h3 class="text-lg font-bold">Create Study Group</h3>
+        <input id="new-group-name" placeholder="Group name" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="new-group-subject" placeholder="Subject (optional)" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <div class="flex gap-2 justify-end">
+            <button onclick="hideModal('create-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
+            <button onclick="createGroup()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Create</button>
+        </div>
+    </div>
+</div>
+
+<!-- Join Modal -->
+<div id="join-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
+        <h3 class="text-lg font-bold">Join Study Group</h3>
+        <input id="join-code" placeholder="Enter invite code" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <div class="flex gap-2 justify-end">
+            <button onclick="hideModal('join-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
+            <button onclick="joinGroup()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Join</button>
+        </div>
+    </div>
+</div>
+
+<!-- Challenge Modal -->
+<div id="challenge-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
+        <h3 class="text-lg font-bold">Create Challenge</h3>
+        <input id="challenge-title" placeholder="Challenge title" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="challenge-subject" placeholder="Subject" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <div class="flex gap-2 justify-end">
+            <button onclick="hideModal('challenge-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
+            <button onclick="createChallenge()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Create</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/modules/groups.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}IB Study Companion{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .pulse-red { animation: pulse-red 1s ease-in-out infinite; }
+        @keyframes pulse-orange { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.1); } }
+        .streak-active { animation: pulse-orange 2s ease-in-out infinite; }
+        /* Mobile sidebar overlay */
+        .sidebar-overlay { display: none; }
+        .sidebar-overlay.active { display: block; }
+        @media (max-width: 1023px) {
+            .sidebar-desktop { transform: translateX(-100%); position: fixed; z-index: 40; transition: transform 0.3s; }
+            .sidebar-desktop.open { transform: translateX(0); }
+            .main-content { margin-left: 0 !important; }
+        }
+    </style>
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    {% block head %}{% endblock %}
+    <script>
+        // Dark mode init (before render to prevent flash)
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+    <div class="flex h-full">
+        {% if show_sidebar is not defined or show_sidebar %}
+
+        <!-- Mobile hamburger -->
+        <button onclick="toggleMobileSidebar()" class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-900 dark:bg-slate-800 text-white rounded-lg shadow-lg">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+
+        <!-- Mobile overlay -->
+        <div id="sidebar-overlay" class="sidebar-overlay fixed inset-0 bg-black/50 z-30 lg:hidden" onclick="toggleMobileSidebar()"></div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar-desktop w-64 bg-slate-900 dark:bg-slate-950 text-white flex flex-col flex-shrink-0 fixed h-full lg:transform-none">
+            <div class="p-5 border-b border-slate-700">
+                <h1 class="text-lg font-bold">IB Study Companion</h1>
+                {% if profile %}
+                <p class="text-sm text-slate-400 mt-1">{{ profile.name }}</p>
+                <p class="text-xs text-slate-500">{{ profile.exam_session }}</p>
+                {% endif %}
+
+                <!-- XP & Streak Bar -->
+                {% if gam is defined and gam %}
+                <div class="mt-3 space-y-2">
+                    <!-- Level & XP -->
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-indigo-600 text-xs font-bold">{{ gam.level }}</span>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-400">Level {{ gam.level }}</span>
+                                <span class="text-indigo-400">{{ gam.total_xp }} XP</span>
+                            </div>
+                            <div class="w-full bg-slate-700 rounded-full h-1.5 mt-0.5">
+                                <div class="h-1.5 rounded-full bg-indigo-500 transition-all" style="width: {{ gam.xp_progress_pct }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Streak & Daily Goal -->
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-1">
+                            <span class="text-lg {% if gam.current_streak > 0 %}streak-active{% else %}opacity-40{% endif %}">&#128293;</span>
+                            <span class="{% if gam.current_streak > 0 %}text-orange-400 font-semibold{% else %}text-slate-500{% endif %}">{{ gam.current_streak }} day{{ 's' if gam.current_streak != 1 else '' }}</span>
+                            {% if gam.streak_freeze_available > 0 %}
+                            <span class="text-cyan-400 ml-1" title="{{ gam.streak_freeze_available }} freeze(s) available">&#10052;{{ gam.streak_freeze_available }}</span>
+                            {% endif %}
+                        </div>
+                        <!-- Daily goal ring -->
+                        <div class="flex items-center gap-1" title="Daily goal: {{ gam.daily_xp_today }}/{{ gam.daily_goal_xp }} XP">
+                            <svg class="w-5 h-5" viewBox="0 0 36 36">
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#374151" stroke-width="3"/>
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="{% if gam.daily_goal_pct >= 100 %}#22c55e{% else %}#6366f1{% endif %}" stroke-width="3" stroke-dasharray="{{ gam.daily_goal_pct }}, 100" stroke-linecap="round"/>
+                            </svg>
+                            <span class="text-slate-400">{{ gam.daily_goal_pct }}%</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <a href="{{ url_for('dashboard') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/dashboard' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    Command Center
+                </a>
+                <a href="{{ url_for('study') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/study' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    Study
+                </a>
+                <a href="{{ url_for('flashcards_page') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/flashcards' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    Flashcards
+                    {% if flashcard_due is defined and flashcard_due > 0 %}
+                    <span class="ml-auto px-2 py-0.5 text-xs font-bold rounded-full bg-violet-500 text-white">{{ flashcard_due }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('upload') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/upload' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    Upload
+                </a>
+                <a href="{{ url_for('documents') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/documents' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Documents
+                </a>
+                <a href="{{ url_for('insights') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/insights' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Insights
+                </a>
+                <a href="{{ url_for('lifecycle_page') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path.startswith('/lifecycle') %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    IB Lifecycle
+                </a>
+                <a href="{{ url_for('planner_page') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/planner' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    Study Plan
+                </a>
+
+                <div class="pt-2 mt-2 border-t border-slate-700">
+                    <p class="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Social</p>
+                </div>
+                <a href="{{ url_for('groups_page') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/groups' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    Study Groups
+                </a>
+                <a href="{{ url_for('community_page') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/community' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    Community Papers
+                </a>
+                <a href="{{ url_for('tutor_page') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/tutor' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                    AI Tutor
+                </a>
+                <a href="{{ url_for('community_analytics_page') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/community-analytics' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                    Analytics
+                </a>
+
+                <div class="pt-2 mt-2 border-t border-slate-700">
+                    <p class="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Settings</p>
+                </div>
+                <a href="{{ url_for('parent_settings') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                          {% if request.path == '/settings/parent' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Parent Sharing
+                </a>
+            </nav>
+            <div class="p-4 border-t border-slate-700 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <a href="{{ url_for('onboarding') }}" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                        Edit Profile
+                    </a>
+                    {% if current_user and current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.logout') }}" class="text-xs text-slate-500 hover:text-red-400 transition-colors">
+                        Logout
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-1">
+                    <!-- Notification bell -->
+                    <button onclick="toggleNotificationPanel()" class="relative p-1.5 rounded-lg text-slate-500 hover:text-slate-300 transition-colors" id="notif-bell" title="Notifications">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">0</span>
+                    </button>
+                    <!-- Dark mode toggle -->
+                    <button onclick="toggleDarkMode()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 transition-colors" title="Toggle dark mode">
+                        <svg id="dark-mode-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Notification Panel (slide-out) -->
+            <div id="notif-panel" class="hidden absolute bottom-16 left-0 w-64 max-h-80 bg-slate-800 dark:bg-slate-900 border border-slate-700 rounded-t-lg shadow-xl overflow-y-auto z-50">
+                <div class="p-3 border-b border-slate-700 flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-300 uppercase tracking-wide">Notifications</span>
+                    <button onclick="markAllNotificationsRead()" class="text-xs text-indigo-400 hover:text-indigo-300">Mark all read</button>
+                </div>
+                <div id="notif-list" class="divide-y divide-slate-700">
+                    <p class="text-xs text-slate-500 text-center py-4">No notifications</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main-content flex-1 lg:ml-64 overflow-y-auto">
+            {% if session.get('guest') and not current_user.is_authenticated %}
+            <div class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-center text-sm py-2.5 px-4">
+                You're using guest mode ({{ session.get('guest_questions', 0) }}/3 questions used).
+                <a href="/register" class="underline font-semibold ml-1">Sign up free</a> for unlimited access.
+            </div>
+            {% endif %}
+            <div class="max-w-6xl mx-auto px-4 sm:px-8 py-8 pt-16 lg:pt-8">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+
+        <!-- Mobile bottom nav -->
+        <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 z-20 flex justify-around py-2 px-1">
+            <a href="{{ url_for('dashboard') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 {% if request.path == '/dashboard' %}text-indigo-600{% else %}text-slate-500{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                <span class="text-[10px] font-medium">Home</span>
+            </a>
+            <a href="{{ url_for('study') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 {% if request.path == '/study' %}text-indigo-600{% else %}text-slate-500{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                <span class="text-[10px] font-medium">Study</span>
+            </a>
+            <a href="{{ url_for('flashcards_page') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 {% if request.path == '/flashcards' %}text-indigo-600{% else %}text-slate-500{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                <span class="text-[10px] font-medium">Cards</span>
+            </a>
+            <a href="{{ url_for('insights') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 {% if request.path == '/insights' %}text-indigo-600{% else %}text-slate-500{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span class="text-[10px] font-medium">Insights</span>
+            </a>
+        </nav>
+
+        {% else %}
+        <!-- Full-width (no sidebar) for onboarding -->
+        <main class="flex-1 overflow-y-auto">
+            {% block fullcontent %}{% endblock %}
+        </main>
+        {% endif %}
+    </div>
+    <!-- Offline indicator -->
+    <div id="offline-banner" class="hidden fixed top-0 left-0 right-0 z-[60] bg-amber-500 text-amber-950 text-center text-sm font-medium py-1.5">
+        You're offline — some features are unavailable
+    </div>
+
+    <!-- PWA Install Banner -->
+    <div id="pwa-install-banner" class="hidden fixed bottom-20 lg:bottom-4 left-4 right-4 lg:left-auto lg:right-4 lg:w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-4 z-50 flex items-center gap-3">
+        <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm font-medium text-slate-800 dark:text-slate-200">Install IB Study Companion</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Get offline access & faster loading</p>
+        </div>
+        <button onclick="installApp()" class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700">Install</button>
+        <button onclick="dismissInstallBanner()" class="p-1 text-slate-400 hover:text-slate-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
+
+    <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registered:', reg.scope))
+            .catch(err => console.error('SW registration failed:', err));
+    }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Teacher Dashboard — IB Study Companion{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold">Teacher Dashboard</h1>
+        <button onclick="showCreateClassModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Create Class</button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid gap-4 sm:grid-cols-3">
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
+            <p class="text-sm text-slate-500">Classes</p>
+            <p class="text-2xl font-bold">{{ classes|length }}</p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
+            <p class="text-sm text-slate-500">Total Students</p>
+            <p id="total-students" class="text-2xl font-bold">{{ classes|sum(attribute='member_count') }}</p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
+            <p class="text-sm text-slate-500">Active Assignments</p>
+            <p id="active-assignments" class="text-2xl font-bold">-</p>
+        </div>
+    </div>
+
+    <!-- Classes -->
+    <div class="space-y-4">
+        <h2 class="text-lg font-bold">Your Classes</h2>
+        {% for cls in classes %}
+        <a href="/teacher/classes/{{ cls.id }}" class="block bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="font-semibold">{{ cls.name }}</h3>
+                    <p class="text-sm text-slate-500">{{ cls.subject }} {{ cls.level }} &middot; {{ cls.member_count }} students</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-slate-400">Join code</p>
+                    <code class="text-sm bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{{ cls.join_code }}</code>
+                </div>
+            </div>
+        </a>
+        {% else %}
+        <p class="text-slate-500 text-center py-8">No classes yet. Create one to get started.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Create Class Modal -->
+<div id="create-class-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
+        <h3 class="text-lg font-bold">Create Class</h3>
+        <input id="class-name" placeholder="Class name" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="class-subject" placeholder="Subject" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <select id="class-level" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+            <option value="HL">HL</option>
+            <option value="SL">SL</option>
+        </select>
+        <div class="flex gap-2 justify-end">
+            <button onclick="hideModal('create-class-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
+            <button onclick="createClass()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Create</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/modules/teacher.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,253 @@
+"""
+The Archivist — Ingestion & RAG Engine
+
+Parses PDFs from the ./data folder, chunks them intelligently by
+question type and section boundaries, and stores embeddings in ChromaDB.
+
+Usage:
+    python ingest.py              # Ingest all PDFs in ./data
+    python ingest.py --reset      # Wipe the vector store and re-ingest
+"""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import re
+import sys
+from pathlib import Path
+
+import chromadb
+from pypdf import PdfReader
+
+DATA_DIR = Path(__file__).parent / "data"
+CHROMA_DIR = Path(__file__).parent / "chroma_db"
+COLLECTION_NAME = "ib_documents"
+
+# ── Chunking heuristics ────────────────────────────────────────────
+
+# Patterns that signal a new logical section in IB papers / mark schemes
+SECTION_BREAK = re.compile(
+    r"(?i)"
+    r"(?:^|\n)"
+    r"(?:"
+    r"(?:question|q)\s*\d+"           # "Question 3" / "Q3"
+    r"|section\s+[a-z]"              # "Section A"
+    r"|paper\s+\d"                   # "Paper 2"
+    r"|part\s+\([a-z]\)"            # "Part (a)"
+    r"|topic\s+\d+"                  # "Topic 4"
+    r"|criterion\s+[a-z]"           # "Criterion A"  (EE / IA rubrics)
+    r"|markband"                     # Markband tables
+    r"|assessment\s+criteria"        # Generic rubric header
+    r")"
+)
+
+
+def classify_document(filename: str, text_sample: str) -> str:
+    """Return a document‑type tag used as ChromaDB metadata."""
+    name = filename.lower()
+    sample = text_sample[:2000].lower()
+
+    if "mark" in name and "scheme" in name or "markscheme" in name:
+        return "mark_scheme"
+    if "mark scheme" in sample or "markscheme" in sample or "markband" in sample:
+        return "mark_scheme"
+    if "paper" in name or "exam" in name or "past" in name:
+        return "past_paper"
+    if "guide" in name or "syllabus" in name:
+        return "subject_guide"
+    if any(kw in sample for kw in ("syllabus content", "assessment outline", "aims")):
+        return "subject_guide"
+    return "notes"
+
+
+def detect_subject(filename: str, text_sample: str) -> str:
+    """Best-effort extraction of the IB subject from filename / content."""
+    subjects = [
+        "biology", "chemistry", "physics", "mathematics", "math",
+        "english", "history", "geography", "economics", "psychology",
+        "philosophy", "computer science", "visual arts", "music",
+        "french", "spanish", "german", "mandarin", "tok",
+        "theory of knowledge", "extended essay", "business management",
+        "environmental systems", "ess", "global politics",
+    ]
+    combined = (filename + " " + text_sample[:1500]).lower()
+    for subj in subjects:
+        if subj in combined:
+            return subj.replace(" ", "_")
+    return "unknown"
+
+
+def detect_level(filename: str, text_sample: str) -> str:
+    """Detect HL / SL from filename or text."""
+    combined = (filename + " " + text_sample[:1000]).lower()
+    if "higher level" in combined or "(hl)" in combined or "_hl" in combined or " hl " in combined:
+        return "HL"
+    if "standard level" in combined or "(sl)" in combined or "_sl" in combined or " sl " in combined:
+        return "SL"
+    return "unknown"
+
+
+def chunk_text(text: str, max_tokens: int = 800) -> list[str]:
+    """
+    Split text into chunks, preferring section boundaries.
+
+    Approximate token count via whitespace splitting (1 token ≈ 1 word).
+    """
+    parts = SECTION_BREAK.split(text)
+    chunks: list[str] = []
+    buffer = ""
+
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        if len((buffer + " " + part).split()) <= max_tokens:
+            buffer = (buffer + "\n\n" + part).strip()
+        else:
+            if buffer:
+                chunks.append(buffer)
+            # If a single part exceeds max_tokens, split by paragraphs
+            if len(part.split()) > max_tokens:
+                paragraphs = part.split("\n\n")
+                sub = ""
+                for para in paragraphs:
+                    if len((sub + " " + para).split()) <= max_tokens:
+                        sub = (sub + "\n\n" + para).strip()
+                    else:
+                        if sub:
+                            chunks.append(sub)
+                        sub = para
+                buffer = sub
+            else:
+                buffer = part
+
+    if buffer:
+        chunks.append(buffer)
+
+    return chunks
+
+
+def file_hash(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+
+
+def extract_text(pdf_path: Path) -> str:
+    reader = PdfReader(str(pdf_path))
+    pages: list[str] = []
+    for page in reader.pages:
+        text = page.extract_text()
+        if text:
+            pages.append(text)
+    return "\n\n".join(pages)
+
+
+def extract_text_from_image(image_path: Path) -> str:
+    """Use Gemini Vision to OCR text from an image file."""
+    try:
+        import google.generativeai as genai
+        from dotenv import load_dotenv
+        load_dotenv()
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            return ""
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-2.0-flash")
+
+        import PIL.Image
+        img = PIL.Image.open(str(image_path))
+        response = model.generate_content([
+            "Extract ALL text from this image. Preserve the original formatting, "
+            "headings, and structure as closely as possible. If this is an IB exam paper "
+            "or mark scheme, maintain question numbers and mark allocations.",
+            img,
+        ])
+        return response.text
+    except ImportError:
+        return ""
+    except Exception:
+        return ""
+
+
+def ingest(reset: bool = False) -> None:
+    if not DATA_DIR.exists():
+        DATA_DIR.mkdir(parents=True)
+        print(f"[Archivist] Created data folder at {DATA_DIR}")
+        print("[Archivist] Drop your IB PDFs there and re-run this script.")
+        return
+
+    pdfs = sorted(DATA_DIR.glob("*.pdf"))
+    if not pdfs:
+        print(f"[Archivist] No PDFs found in {DATA_DIR}")
+        print("[Archivist] Add your Past Papers, Mark Schemes, or Notes as PDF files.")
+        return
+
+    client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+
+    if reset:
+        try:
+            client.delete_collection(COLLECTION_NAME)
+            print("[Archivist] Existing collection wiped.")
+        except Exception:
+            pass
+
+    collection = client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        metadata={"hnsw:space": "cosine"},
+    )
+
+    existing_ids = set(collection.get()["ids"]) if collection.count() > 0 else set()
+
+    total_chunks = 0
+    for pdf in pdfs:
+        fhash = file_hash(pdf)
+        prefix = f"{pdf.stem}_{fhash}"
+
+        # Skip if already ingested (any chunk with this prefix exists)
+        if any(eid.startswith(prefix) for eid in existing_ids):
+            print(f"  [skip] {pdf.name} (already ingested)")
+            continue
+
+        print(f"  [read] {pdf.name} ... ", end="", flush=True)
+        try:
+            text = extract_text(pdf)
+        except Exception as e:
+            print(f"ERROR: {e}")
+            continue
+
+        if not text.strip():
+            print("WARNING: no extractable text (scanned PDF?)")
+            continue
+
+        doc_type = classify_document(pdf.name, text)
+        subject = detect_subject(pdf.name, text)
+        level = detect_level(pdf.name, text)
+        chunks = chunk_text(text)
+
+        ids = [f"{prefix}_c{i:04d}" for i in range(len(chunks))]
+        metadatas = [
+            {
+                "source": pdf.name,
+                "doc_type": doc_type,
+                "subject": subject,
+                "level": level,
+                "chunk_index": i,
+                "total_chunks": len(chunks),
+            }
+            for i in range(len(chunks))
+        ]
+
+        collection.add(documents=chunks, ids=ids, metadatas=metadatas)
+        total_chunks += len(chunks)
+        print(f"{len(chunks)} chunks  [{doc_type} | {subject} | {level}]")
+
+    print(f"\n[Archivist] Done. {total_chunks} new chunks added.")
+    print(f"[Archivist] Collection now holds {collection.count()} total chunks.")
+
+
+if __name__ == "__main__":
+    reset_flag = "--reset" in sys.argv
+    print("=" * 60)
+    print("  IB Study Companion — The Archivist (Ingestion Engine)")
+    print("=" * 60)
+    ingest(reset=reset_flag)

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}AI Tutor — IB Study Companion{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-[calc(100vh-8rem)]">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">AI Tutor</h1>
+        <button onclick="showNewConversation()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">New Conversation</button>
+    </div>
+
+    <div class="flex flex-1 gap-4 min-h-0">
+        <!-- Conversation History Sidebar -->
+        <div class="hidden md:block w-56 flex-shrink-0 bg-white dark:bg-slate-800 rounded-xl p-3 overflow-y-auto">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase mb-2">History</h3>
+            <div id="conv-history" class="space-y-1"></div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="flex-1 flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
+            <!-- Setup Banner (shows when no active conversation) -->
+            <div id="tutor-setup" class="flex-1 flex flex-col items-center justify-center p-8 space-y-4">
+                <div class="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                </div>
+                <h2 class="text-xl font-bold">Start a Tutoring Session</h2>
+                <p class="text-sm text-slate-500 text-center max-w-md">Choose a subject and topic. Your AI tutor uses the Socratic method to guide you through concepts, adapting to your level.</p>
+                <div class="flex gap-2 flex-wrap justify-center">
+                    <input id="tutor-subject" placeholder="Subject" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 w-40">
+                    <input id="tutor-topic" placeholder="Topic" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 w-40">
+                    <button onclick="startConversation()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">Start</button>
+                </div>
+
+                <div class="pt-4">
+                    <p class="text-xs text-slate-400 mb-2">Suggested prompts:</p>
+                    <div class="flex gap-2 flex-wrap justify-center">
+                        <button onclick="quickStart('Biology','Photosynthesis')" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs hover:bg-slate-200">Biology: Photosynthesis</button>
+                        <button onclick="quickStart('Chemistry','Bonding')" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs hover:bg-slate-200">Chemistry: Bonding</button>
+                        <button onclick="quickStart('Economics','Market Failure')" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs hover:bg-slate-200">Economics: Market Failure</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div id="tutor-messages" class="hidden flex-1 overflow-y-auto p-4 space-y-4"></div>
+
+            <!-- Input -->
+            <div id="tutor-input" class="hidden border-t dark:border-slate-700 p-3 flex gap-2">
+                <input id="tutor-message" placeholder="Ask your tutor..." class="flex-1 px-4 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600" onkeydown="if(event.key==='Enter')sendMessage()">
+                <button onclick="sendMessage()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/modules/tutor.js') }}"></script>
+{% endblock %}
