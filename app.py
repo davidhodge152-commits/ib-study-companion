@@ -3078,6 +3078,97 @@ End with an OVERALL rating (Strong / Adequate / Needs Work) and a SUGGESTED IMPR
         return jsonify({"conversation": conv})
 
     # ══════════════════════════════════════════════════════════════════
+    # ─── COMPOUND AI ORCHESTRATOR ─────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+
+    @app.route("/api/ai/chat", methods=["POST"])
+    @login_required
+    def api_ai_chat():
+        """Unified AI chat endpoint — routes through the orchestrator."""
+        uid = current_user_id()
+        data = request.get_json(force=True)
+        message = data.get("message", "")
+        context = data.get("context", {})
+        conversation_id = data.get("conversation_id")
+
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+
+        try:
+            from orchestrator import Orchestrator
+            orch = Orchestrator(user_id=uid, rag_engine=get_engine())
+        except Exception:
+            from orchestrator import Orchestrator
+            orch = Orchestrator(user_id=uid)
+
+        # Get conversation history if conversation_id provided
+        messages = []
+        if conversation_id:
+            store = TutorConversationStoreDB(uid)
+            conv = store.get(conversation_id)
+            if conv:
+                messages = conv.get("messages", [])
+                # Inherit subject/topic from conversation if not in context
+                if not context.get("subject"):
+                    context["subject"] = conv.get("subject", "")
+                if not context.get("topic"):
+                    context["topic"] = conv.get("topic", "")
+
+        intent = orch.classify_intent(message, context)
+        response = orch.route(intent, message, context, messages)
+
+        # Save to conversation if conversation_id provided
+        if conversation_id:
+            store = TutorConversationStoreDB(uid)
+            store.add_message(conversation_id, "user", message)
+            store.add_message(conversation_id, "assistant", response.content)
+
+        return jsonify({
+            "response": response.content,
+            "intent": intent,
+            "agent": response.agent,
+            "confidence": response.confidence,
+            "metadata": response.metadata,
+            "follow_up": response.follow_up,
+        })
+
+    @app.route("/api/knowledge-graph/<subject>")
+    @login_required
+    def api_knowledge_graph(subject):
+        """Return mastery map + prerequisite graph for visualization."""
+        uid = current_user_id()
+        try:
+            from knowledge_graph import SyllabusGraph
+            graph = SyllabusGraph(subject)
+            mastery_map = graph.get_mastery_map(uid)
+            prerequisites = {}
+            for topic_id in mastery_map:
+                prerequisites[topic_id] = graph.get_prerequisites(topic_id)
+            return jsonify({
+                "subject": subject,
+                "mastery_map": mastery_map,
+                "prerequisites": prerequisites,
+            })
+        except (ImportError, Exception) as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/recommended-topics/<subject>")
+    @login_required
+    def api_recommended_topics(subject):
+        """Return ordered list of what to study next based on KG."""
+        uid = current_user_id()
+        try:
+            from knowledge_graph import SyllabusGraph
+            graph = SyllabusGraph(subject)
+            recommended = graph.get_recommended_next(uid)
+            return jsonify({
+                "subject": subject,
+                "recommended": recommended,
+            })
+        except (ImportError, Exception) as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ══════════════════════════════════════════════════════════════════
     # ─── COMMUNITY ANALYTICS (Step 13) ───────────────────────────────
     # ══════════════════════════════════════════════════════════════════
 

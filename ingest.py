@@ -88,6 +88,172 @@ def detect_level(filename: str, text_sample: str) -> str:
     return "unknown"
 
 
+def parse_examiner_report(text: str) -> list[dict]:
+    """Extract per-question examiner commentary from an examiner report.
+
+    Returns list of dicts with keys:
+        question_num, topic, common_errors, examiner_advice, marks_lost_pct
+    """
+    entries: list[dict] = []
+    current: dict | None = None
+
+    for line in text.splitlines():
+        stripped = line.strip()
+
+        # Detect question headers
+        q_match = re.match(r"(?i)(?:question|q)\s*(\d+[a-z]?)", stripped)
+        if q_match:
+            if current:
+                entries.append(current)
+            current = {
+                "question_num": q_match.group(1),
+                "topic": "",
+                "common_errors": [],
+                "examiner_advice": "",
+                "marks_lost_pct": 0,
+            }
+            continue
+
+        if current is None:
+            continue
+
+        low = stripped.lower()
+
+        # Topic detection
+        if low.startswith("topic:") or low.startswith("syllabus:"):
+            current["topic"] = stripped.split(":", 1)[1].strip()
+
+        # Common errors
+        error_triggers = [
+            "common error", "many candidates", "frequent mistake",
+            "students often", "most candidates", "candidates failed",
+            "poorly answered", "marks were lost", "candidates lost marks",
+        ]
+        if any(t in low for t in error_triggers):
+            current["common_errors"].append(stripped)
+
+        # Advice
+        advice_triggers = [
+            "candidates should", "it is recommended", "students are advised",
+            "to improve", "better answers", "stronger responses",
+        ]
+        if any(t in low for t in advice_triggers):
+            current["examiner_advice"] += stripped + " "
+
+        # Percentage of marks lost
+        pct_match = re.search(r"(\d{1,3})%", stripped)
+        if pct_match and any(t in low for t in ["lost", "failed", "incorrect"]):
+            try:
+                current["marks_lost_pct"] = int(pct_match.group(1))
+            except ValueError:
+                pass
+
+    if current:
+        entries.append(current)
+
+    # Clean up advice strings
+    for e in entries:
+        e["examiner_advice"] = e["examiner_advice"].strip()
+
+    return entries
+
+
+def parse_mark_scheme(text: str) -> list[dict]:
+    """Extract structured mark allocations from a mark scheme.
+
+    Returns list of dicts with keys:
+        question_num, marks, mark_types, criteria
+    """
+    entries: list[dict] = []
+    current: dict | None = None
+
+    for line in text.splitlines():
+        stripped = line.strip()
+
+        # Detect question headers
+        q_match = re.match(r"(?i)(?:question|q)\s*(\d+[a-z]?)", stripped)
+        if q_match:
+            if current:
+                entries.append(current)
+            current = {
+                "question_num": q_match.group(1),
+                "marks": 0,
+                "mark_types": [],
+                "criteria": [],
+            }
+            # Check for mark allocation on the same line as question header
+            mark_match = re.search(r"[\[\(](\d+)\s*(?:marks?)?[\]\)]", stripped)
+            if mark_match:
+                try:
+                    current["marks"] = int(mark_match.group(1))
+                except ValueError:
+                    pass
+            continue
+
+        if current is None:
+            continue
+
+        # Mark types: M1, A1, R1, C1, etc.
+        mark_codes = re.findall(r"\b([MARCN]\d)\b", stripped)
+        if mark_codes:
+            current["mark_types"].extend(mark_codes)
+            # Only update marks from codes if no explicit allocation set
+            if current["marks"] == 0:
+                current["marks"] = len(current["mark_types"])
+            current["criteria"].append(stripped)
+
+        # Explicit mark allocation "[3 marks]" or "(3)" on subsequent lines
+        mark_match = re.search(r"[\[\(](\d+)\s*(?:marks?)?[\]\)]", stripped)
+        if mark_match and not mark_codes:
+            try:
+                current["marks"] = int(mark_match.group(1))
+            except ValueError:
+                pass
+
+        # Criteria lines (bullet points or numbered)
+        if re.match(r"^[-•]\s+", stripped) or re.match(r"^\d+\.", stripped):
+            current["criteria"].append(stripped.lstrip("-•0123456789. "))
+
+    if current:
+        entries.append(current)
+
+    return entries
+
+
+def detect_year(filename: str, text_sample: str) -> int:
+    """Extract exam year from filename or text."""
+    combined = filename + " " + text_sample[:1000]
+    year_match = re.search(r"(20[12]\d)", combined)
+    if year_match:
+        try:
+            return int(year_match.group(1))
+        except ValueError:
+            pass
+    return 0
+
+
+def detect_session(filename: str, text_sample: str) -> str:
+    """Detect May/November session."""
+    combined = (filename + " " + text_sample[:1000]).lower()
+    if "november" in combined or "nov" in combined:
+        return "Nov"
+    if "may" in combined:
+        return "May"
+    return ""
+
+
+def detect_paper_number(filename: str, text_sample: str) -> int:
+    """Detect paper number (1, 2, 3)."""
+    combined = (filename + " " + text_sample[:500]).lower()
+    match = re.search(r"paper\s*(\d)", combined)
+    if match:
+        try:
+            return int(match.group(1))
+        except ValueError:
+            pass
+    return 0
+
+
 def chunk_text(text: str, max_tokens: int = 800) -> list[str]:
     """
     Split text into chunks, preferring section boundaries.
@@ -222,6 +388,9 @@ def ingest(reset: bool = False) -> None:
         doc_type = classify_document(pdf.name, text)
         subject = detect_subject(pdf.name, text)
         level = detect_level(pdf.name, text)
+        year = detect_year(pdf.name, text)
+        session = detect_session(pdf.name, text)
+        paper_number = detect_paper_number(pdf.name, text)
         chunks = chunk_text(text)
 
         ids = [f"{prefix}_c{i:04d}" for i in range(len(chunks))]
@@ -231,6 +400,9 @@ def ingest(reset: bool = False) -> None:
                 "doc_type": doc_type,
                 "subject": subject,
                 "level": level,
+                "year": year,
+                "session": session,
+                "paper_number": paper_number,
                 "chunk_index": i,
                 "total_chunks": len(chunks),
             }

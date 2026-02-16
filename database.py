@@ -523,6 +523,55 @@ MIGRATIONS: list[tuple[int, str]] = [
     (9, """
         ALTER TABLE users ADD COLUMN locale TEXT NOT NULL DEFAULT 'en';
     """),
+    # Migration 10: Agent interaction logging
+    (10, """
+        CREATE TABLE IF NOT EXISTS agent_interactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            conversation_id INTEGER,
+            intent TEXT NOT NULL,
+            agent TEXT NOT NULL,
+            confidence REAL NOT NULL DEFAULT 0.0,
+            input_summary TEXT NOT NULL DEFAULT '',
+            response_summary TEXT NOT NULL DEFAULT '',
+            latency_ms INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_agent_interactions_user
+            ON agent_interactions(user_id, created_at);
+    """),
+    # Migration 11: Topic prerequisite edges (Knowledge Graph)
+    (11, """
+        CREATE TABLE IF NOT EXISTS topic_prerequisites (
+            subject TEXT NOT NULL,
+            topic_id TEXT NOT NULL,
+            requires_topic_id TEXT NOT NULL,
+            strength REAL NOT NULL DEFAULT 1.0,
+            PRIMARY KEY (subject, topic_id, requires_topic_id)
+        );
+    """),
+    # Migration 12: Mastery states on student_ability
+    (12, """
+        ALTER TABLE student_ability ADD COLUMN mastery_state TEXT NOT NULL DEFAULT 'unknown';
+        ALTER TABLE student_ability ADD COLUMN last_correct_ratio REAL DEFAULT 0.0;
+    """),
+    # Migration 13: Semantic student memory
+    (13, """
+        CREATE TABLE IF NOT EXISTS student_memory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            memory_type TEXT NOT NULL,
+            key TEXT NOT NULL,
+            value TEXT NOT NULL,
+            confidence REAL NOT NULL DEFAULT 1.0,
+            source TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE(user_id, memory_type, key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_student_memory_user
+            ON student_memory(user_id, memory_type);
+    """),
 ]
 
 

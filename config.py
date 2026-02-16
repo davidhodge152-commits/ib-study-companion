@@ -14,6 +14,8 @@ class BaseConfig:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-key-change-in-production")
     DATABASE = os.environ.get("DATABASE_URL", str(BASE_DIR / "ib_study.db"))
     GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+    ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
     WTF_CSRF_ENABLED = True
 
 

@@ -41,6 +41,26 @@ def estimate_difficulty(marks: int, command_term: str = "") -> float:
     return max(0.1, min(3.0, base + adj))
 
 
+def compute_mastery(
+    theta: float, uncertainty: float, attempts: int, correct_ratio: float
+) -> str:
+    """Compute mastery state from ability parameters.
+
+    States:
+        unknown  — Never attempted (theta = 0, uncertainty = 1.0)
+        learning — Attempted but low mastery (theta < -0.3 OR uncertainty > 0.5)
+        partial  — Some understanding (theta between -0.3 and 0.5)
+        mastered — Strong understanding (theta > 0.5 AND uncertainty < 0.3 AND attempts >= 5)
+    """
+    if attempts == 0:
+        return "unknown"
+    if theta < -0.3 or uncertainty > 0.5:
+        return "learning"
+    if theta > 0.5 and uncertainty < 0.3 and attempts >= 5:
+        return "mastered"
+    return "partial"
+
+
 def update_theta(user_id: int, subject: str, topic: str,
                  difficulty: float, correct_ratio: float) -> dict:
     """Bayesian theta update using simplified IRT model.
@@ -53,7 +73,7 @@ def update_theta(user_id: int, subject: str, topic: str,
         correct_ratio: Fraction of marks earned (0.0-1.0)
 
     Returns:
-        Updated ability dict with theta, uncertainty, attempts.
+        Updated ability dict with theta, uncertainty, attempts, mastery_state.
     """
     store = StudentAbilityStoreDB(user_id)
     current = store.get_theta(subject, topic)
@@ -76,7 +96,25 @@ def update_theta(user_id: int, subject: str, topic: str,
 
     store.update_theta(subject, topic, theta, uncertainty, attempts)
 
-    return {"theta": theta, "uncertainty": uncertainty, "attempts": attempts}
+    # Compute and persist mastery state
+    mastery_state = compute_mastery(theta, uncertainty, attempts, correct_ratio)
+    try:
+        db = get_db()
+        db.execute(
+            "UPDATE student_ability SET mastery_state = ?, last_correct_ratio = ? "
+            "WHERE user_id = ? AND subject = ? AND topic = ?",
+            (mastery_state, correct_ratio, user_id, subject, topic),
+        )
+        db.commit()
+    except Exception:
+        pass  # Mastery state update is best-effort (column may not exist yet)
+
+    return {
+        "theta": theta,
+        "uncertainty": uncertainty,
+        "attempts": attempts,
+        "mastery_state": mastery_state,
+    }
 
 
 def select_difficulty(user_id: int, subject: str, topic: str) -> float:

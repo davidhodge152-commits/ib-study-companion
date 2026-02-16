@@ -156,6 +156,81 @@ class RAGEngine:
             )
         return chunks
 
+    # ── Examiner report retrieval ─────────────────────────────────
+
+    def get_examiner_warnings(
+        self, subject: str, topic: str
+    ) -> list[str]:
+        """Query examiner report chunks for warnings about a topic.
+
+        Returns list of warning strings like:
+        "60% of students lost marks because they failed to define key terms"
+        """
+        try:
+            chunks = self.query(
+                query_text=f"{subject} {topic} common errors candidates lost marks",
+                n_results=5,
+                subject=subject if subject != "any" else None,
+                doc_type="examiner_report",
+            )
+        except (FileNotFoundError, Exception):
+            return []
+
+        warnings: list[str] = []
+        for chunk in chunks:
+            # Extract sentences that contain examiner warning patterns
+            for sentence in chunk.text.split("."):
+                sentence = sentence.strip()
+                lower = sentence.lower()
+                triggers = [
+                    "candidates", "students", "marks were lost",
+                    "common error", "many failed", "poorly",
+                    "frequent mistake", "often lost",
+                ]
+                if any(t in lower for t in triggers) and len(sentence) > 20:
+                    warnings.append(sentence.strip() + ".")
+                    if len(warnings) >= 5:
+                        break
+            if len(warnings) >= 5:
+                break
+
+        return warnings
+
+    def get_mark_scheme_criteria(
+        self, subject: str, question_type: str, marks: int
+    ) -> list[str]:
+        """Retrieve specific mark allocation criteria for a question type.
+
+        Returns list of criteria strings like:
+        "M1: correct substitution into formula"
+        """
+        try:
+            chunks = self.query(
+                query_text=f"{subject} {question_type} {marks} marks mark scheme criteria",
+                n_results=4,
+                subject=subject if subject != "any" else None,
+                doc_type="mark_scheme",
+            )
+        except (FileNotFoundError, Exception):
+            return []
+
+        criteria: list[str] = []
+        import re
+        for chunk in chunks:
+            # Extract mark type lines (M1, A1, R1, etc.)
+            for line in chunk.text.splitlines():
+                stripped = line.strip()
+                if re.search(r"\b[MARCN]\d\b", stripped):
+                    criteria.append(stripped)
+                elif stripped.startswith("- ") or stripped.startswith("• "):
+                    criteria.append(stripped.lstrip("-• "))
+                if len(criteria) >= 10:
+                    break
+            if len(criteria) >= 10:
+                break
+
+        return criteria
+
     # ── Question generation ────────────────────────────────────────
 
     def generate_questions(
