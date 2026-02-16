@@ -1,0 +1,84 @@
+# Spanish translations for IB Study Companion.
+# Copyright (C) 2026 IB Study Companion
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: IB Study Companion 1.0\n"
+"POT-Creation-Date: 2026-02-16 20:07+0800\n"
+"PO-Revision-Date: 2026-02-16 20:08+0800\n"
+"Language: es\n"
+"Language-Team: es\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+msgid "Command Center"
+msgstr "Centro de Control"
+
+msgid "Study"
+msgstr "Estudiar"
+
+msgid "Flashcards"
+msgstr "Tarjetas de Estudio"
+
+msgid "Upload"
+msgstr "Subir"
+
+msgid "Documents"
+msgstr "Documentos"
+
+msgid "Insights"
+msgstr "Analisis"
+
+msgid "IB Lifecycle"
+msgstr "Ciclo de vida IB"
+
+msgid "Study Plan"
+msgstr "Plan de estudio"
+
+msgid "Social"
+msgstr "Social"
+
+msgid "Study Groups"
+msgstr "Grupos de estudio"
+
+msgid "Community Papers"
+msgstr "Examenes comunitarios"
+
+msgid "AI Tutor"
+msgstr "Tutor IA"
+
+msgid "Analytics"
+msgstr "Estadisticas"
+
+msgid "Settings"
+msgstr "Configuracion"
+
+msgid "Parent Sharing"
+msgstr "Compartir con padres"
+
+msgid "Logout"
+msgstr "Cerrar sesion"
+
+msgid "Welcome back"
+msgstr "Bienvenido"
+
+msgid "Sign in to your IB Study Companion"
+msgstr "Inicia sesion en tu companero de estudio IB"
+
+msgid "Email"
+msgstr "Correo electronico"
+
+msgid "Password"
+msgstr "Contrasena"
+
+msgid "Sign In"
+msgstr "Iniciar sesion"
+
+msgid "Don't have an account?"
+msgstr "No tienes una cuenta?"
+
+msgid "Create one"
+msgstr "Crear una"

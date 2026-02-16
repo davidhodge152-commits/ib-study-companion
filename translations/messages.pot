@@ -1,0 +1,111 @@
+# Translations template for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-02-16 20:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:109
+msgid "Command Center"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:115
+msgid "Study"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:121
+msgid "Flashcards"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:130
+msgid "Upload"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:136
+msgid "Documents"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:142
+msgid "Insights"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:148
+msgid "IB Lifecycle"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:154
+msgid "Study Plan"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:158
+msgid "Social"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:164
+msgid "Study Groups"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:170
+msgid "Community Papers"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:176
+msgid "AI Tutor"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:182
+msgid "Analytics"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:186
+msgid "Settings"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:192
+msgid "Parent Sharing"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/base.html:202
+msgid "Logout"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/login.html:16
+msgid "Welcome back"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/login.html:17
+msgid "Sign in to your IB Study Companion"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/login.html:28
+msgid "Email"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/login.html:34
+msgid "Password"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/login.html:41
+msgid "Sign In"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/login.html:46
+msgid "Don't have an account?"
+msgstr ""
+
+#: /Users/davidhodge/ib-study-companion/templates/login.html:47
+msgid "Create one"
+msgstr ""
+

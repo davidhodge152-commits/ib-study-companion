@@ -1992,6 +1992,83 @@ class ClassStoreDB:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    @staticmethod
+    def topic_gaps(class_id: int) -> list[dict]:
+        """Find topics where the class average is lowest — reveals syllabus gaps."""
+        db = get_db()
+        rows = db.execute(
+            "SELECT g.topic, g.subject_display, "
+            "AVG(g.percentage) as avg_pct, COUNT(*) as attempts, "
+            "AVG(g.grade) as avg_grade "
+            "FROM grades g JOIN class_members cm ON g.user_id = cm.user_id "
+            "WHERE cm.class_id = ? AND g.topic != '' "
+            "GROUP BY g.topic, g.subject_display "
+            "HAVING attempts >= 2 "
+            "ORDER BY avg_pct ASC LIMIT 20",
+            (class_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def at_risk_students(class_id: int, pct_threshold: float = 45.0, inactive_days: int = 7) -> list[dict]:
+        """Flag students who are at risk: low average OR inactive for N days."""
+        db = get_db()
+        cutoff = (datetime.now() - timedelta(days=inactive_days)).isoformat()
+        rows = db.execute(
+            "SELECT u.id, u.name, "
+            "COUNT(g.id) as total_grades, "
+            "COALESCE(AVG(g.percentage), 0) as avg_pct, "
+            "MAX(g.timestamp) as last_active "
+            "FROM class_members cm "
+            "JOIN users u ON cm.user_id = u.id "
+            "LEFT JOIN grades g ON g.user_id = u.id "
+            "WHERE cm.class_id = ? "
+            "GROUP BY u.id "
+            "HAVING avg_pct < ? OR last_active < ? OR last_active IS NULL "
+            "ORDER BY avg_pct ASC",
+            (class_id, pct_threshold, cutoff),
+        ).fetchall()
+        result = []
+        for r in rows:
+            reasons = []
+            if r["avg_pct"] < pct_threshold and r["total_grades"] > 0:
+                reasons.append(f"Low average ({round(r['avg_pct'], 1)}%)")
+            if r["last_active"] is None or r["last_active"] < cutoff:
+                reasons.append(f"Inactive {inactive_days}+ days")
+            if r["total_grades"] == 0:
+                reasons.append("No activity")
+            result.append({**dict(r), "risk_reasons": reasons})
+        return result
+
+    @staticmethod
+    def export_class_csv(class_id: int) -> str:
+        """Generate CSV string of class progress data for export."""
+        import csv
+        import io
+        db = get_db()
+        cls = db.execute("SELECT name, subject FROM classes WHERE id = ?", (class_id,)).fetchone()
+        rows = db.execute(
+            "SELECT u.name as student_name, g.subject_display, g.topic, "
+            "g.command_term, g.grade, g.percentage, g.mark_earned, g.mark_total, "
+            "g.timestamp "
+            "FROM grades g "
+            "JOIN class_members cm ON g.user_id = cm.user_id "
+            "JOIN users u ON g.user_id = u.id "
+            "WHERE cm.class_id = ? "
+            "ORDER BY u.name, g.timestamp",
+            (class_id,),
+        ).fetchall()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Student", "Subject", "Topic", "Command Term",
+                         "Grade", "Percentage", "Mark Earned", "Mark Total", "Date"])
+        for r in rows:
+            writer.writerow([r["student_name"], r["subject_display"], r["topic"],
+                             r["command_term"], r["grade"], r["percentage"],
+                             r["mark_earned"], r["mark_total"], r["timestamp"]])
+        return output.getvalue()
+
 
 class AssignmentStoreDB:
     """Manage assignments and submissions."""

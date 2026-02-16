@@ -15,6 +15,7 @@ from pathlib import Path
 
 from flask import (
     Flask,
+    Response,
     abort,
     current_app,
     jsonify,
@@ -90,8 +91,21 @@ def current_user_id() -> int:
     return 1
 
 
+def login_or_guest(f):
+    """Allow both authenticated users and guest sessions."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        from flask import session as flask_session
+        if current_user.is_authenticated or flask_session.get("guest"):
+            return f(*args, **kwargs)
+        return login_manager.unauthorized()
+    return decorated
+
+
 def create_app(test_config=None):
     app = Flask(__name__)
+    from flask import session as flask_session
 
     # Load config
     if test_config is not None:
@@ -881,8 +895,9 @@ Student's exam text:
         return render_template("study.html", profile=profile, recommendation=recommendation)
 
     @app.route("/api/study/generate", methods=["POST"])
-    @login_required
+    @login_or_guest
     def api_study_generate():
+        is_guest = flask_session.get("guest") and not current_user.is_authenticated
         data = request.get_json()
         subject = data.get("subject", "")
         topic = data.get("topic", "")
@@ -891,8 +906,8 @@ Student's exam text:
         mode = data.get("mode", "smart")
         style = data.get("style", "mixed")
 
-        uid = current_user_id()
-        profile = StudentProfileDB.load(uid)
+        uid = current_user_id() if not is_guest else None
+        profile = StudentProfileDB.load(uid) if uid else None
 
         if mode == "smart" and not subject and profile:
             grade_log = GradeDetailLogDB(uid)
@@ -940,6 +955,8 @@ Student's exam text:
             # Compute adaptive difficulty from recent grades
             difficulty_level = 0  # 0 = use default/mixed
             try:
+                if not uid:
+                    raise ValueError("guest")
                 grade_log = GradeDetailLogDB(uid)
                 recent_entries = grade_log.by_subject(subject_key)
                 if len(recent_entries) >= 3:
@@ -982,6 +999,13 @@ Student's exam text:
             }
             if exam_paper_info:
                 result["exam_paper_info"] = exam_paper_info
+
+            # Increment guest question counter
+            if is_guest:
+                flask_session["guest_questions"] = flask_session.get("guest_questions", 0) + 1
+                result["guest_questions_used"] = flask_session["guest_questions"]
+                result["guest_questions_limit"] = 3
+
             return jsonify(result)
         except FileNotFoundError:
             return jsonify({"error": "No documents ingested yet. Upload some PDFs first."}), 400
@@ -989,8 +1013,9 @@ Student's exam text:
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/study/grade", methods=["POST"])
-    @login_required
+    @login_or_guest
     def api_study_grade():
+        is_guest = flask_session.get("guest") and not current_user.is_authenticated
         data = request.get_json()
         question = data.get("question", "")
         answer = data.get("answer", "")
@@ -1004,7 +1029,6 @@ Student's exam text:
             return jsonify({"error": "Question and answer are required"}), 400
 
         try:
-            uid = current_user_id()
             grader = get_grader()
             subject_key = subject.lower().split(":")[0].strip().replace(" ", "_")
 
@@ -1016,6 +1040,24 @@ Student's exam text:
                 command_term=command_term,
                 subject_display=subject,
             )
+
+            # Guest mode: return grade result only, skip DB persistence
+            if is_guest:
+                return jsonify({
+                    "mark_earned": result.mark_earned,
+                    "mark_total": result.mark_total,
+                    "grade": result.grade,
+                    "percentage": result.percentage,
+                    "strengths": result.strengths,
+                    "improvements": result.improvements,
+                    "examiner_tip": result.examiner_tip,
+                    "full_commentary": result.full_commentary,
+                    "model_answer": result.model_answer,
+                    "guest_questions_used": flask_session.get("guest_questions", 0),
+                    "guest_questions_limit": 3,
+                })
+
+            uid = current_user_id()
 
             # Save to GradeDetailLog
             grade_log = GradeDetailLogDB(uid)
@@ -2623,7 +2665,19 @@ End with an OVERALL rating (Strong / Adequate / Needs Work) and a SUGGESTED IMPR
         if flask_session.get("guest") and not current_user.is_authenticated:
             allowed = ["/try", "/static", "/login", "/register", "/api/study/generate",
                        "/api/study/grade", "/study", "/sw.js", "/analytics",
-                       "/api/analytics", "/api/push/vapid-key"]
+                       "/api/analytics", "/api/push/vapid-key", "/community-analytics"]
+
+            # Enforce 3-question limit on study API calls
+            if request.path in ("/api/study/generate", "/api/study/grade"):
+                used = flask_session.get("guest_questions", 0)
+                if used >= 3:
+                    return jsonify({
+                        "error": "You've used all 3 free questions. Sign up to continue!",
+                        "guest_limit": True,
+                        "used": used,
+                        "limit": 3,
+                    }), 403
+
             if not any(request.path.startswith(p) for p in allowed):
                 if request.path.startswith("/api/"):
                     return jsonify({"error": "Sign up for full access", "guest_limit": True}), 403
@@ -2815,6 +2869,40 @@ End with an OVERALL rating (Strong / Adequate / Needs Work) and a SUGGESTED IMPR
             "total_students": total_students,
             "classes": classes,
         })
+
+    @app.route("/api/teacher/class/<int:class_id>/topic-gaps")
+    @teacher_required
+    def api_teacher_topic_gaps(class_id):
+        uid = current_user_id()
+        cls = ClassStoreDB.get(class_id)
+        if not cls or cls["teacher_id"] != uid:
+            abort(404)
+        gaps = ClassStoreDB.topic_gaps(class_id)
+        return jsonify({"topic_gaps": gaps})
+
+    @app.route("/api/teacher/class/<int:class_id>/at-risk")
+    @teacher_required
+    def api_teacher_at_risk(class_id):
+        uid = current_user_id()
+        cls = ClassStoreDB.get(class_id)
+        if not cls or cls["teacher_id"] != uid:
+            abort(404)
+        students = ClassStoreDB.at_risk_students(class_id)
+        return jsonify({"at_risk_students": students})
+
+    @app.route("/api/teacher/class/<int:class_id>/export")
+    @teacher_required
+    def api_teacher_export_csv(class_id):
+        uid = current_user_id()
+        cls = ClassStoreDB.get(class_id)
+        if not cls or cls["teacher_id"] != uid:
+            abort(404)
+        csv_data = ClassStoreDB.export_class_csv(class_id)
+        return Response(
+            csv_data,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=class_{class_id}_report.csv"},
+        )
 
     @app.route("/api/classes/join", methods=["POST"])
     @login_required
@@ -3018,6 +3106,14 @@ End with an OVERALL rating (Strong / Adequate / Needs Work) and a SUGGESTED IMPR
     # ─── IMAGE UPLOAD / CAMERA (Step 14) ─────────────────────────────
     # ══════════════════════════════════════════════════════════════════
     # Handled by extending existing /api/upload — see ingest.py updates
+
+    # ── Start push notification scheduler (non-blocking) ─────────────
+    if not app.config.get("TESTING"):
+        try:
+            from push import init_scheduler
+            init_scheduler(app)
+        except Exception:
+            pass
 
     return app
 

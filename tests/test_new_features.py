@@ -354,6 +354,100 @@ class TestCommunityAnalytics:
         assert "topics" in data
 
 
+class TestGuestLimit:
+    """Step 5: Guest 3-question limit enforcement."""
+
+    def test_guest_session_created(self, client):
+        res = client.get("/try")
+        assert res.status_code == 200
+        with client.session_transaction() as sess:
+            assert sess.get("guest") is True
+            assert sess.get("guest_questions") == 0
+
+    def test_guest_blocked_after_limit(self, client):
+        client.get("/try")
+        # Simulate 3 questions used
+        with client.session_transaction() as sess:
+            sess["guest_questions"] = 3
+        res = client.post("/api/study/generate", data=json.dumps({
+            "subject": "Biology", "topic": "Cells",
+        }), content_type="application/json")
+        assert res.status_code == 403
+        data = res.get_json()
+        assert data["guest_limit"] is True
+
+
+class TestTeacherAnalytics:
+    """Step 8: Deep teacher analytics."""
+
+    @pytest.fixture(autouse=False)
+    def teacher_client(self, app):
+        from werkzeug.security import generate_password_hash
+        from database import get_db
+        with app.app_context():
+            db = get_db()
+            db.execute(
+                "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, created_at) "
+                "VALUES (10, 'Teacher', 'teacher@test.com', ?, 'teacher', '')",
+                (generate_password_hash("teachpass"),),
+            )
+            db.execute("INSERT OR IGNORE INTO gamification (user_id) VALUES (10)")
+            db.commit()
+        client = app.test_client()
+        with client:
+            client.post("/login", data={
+                "email": "teacher@test.com", "password": "teachpass",
+            }, follow_redirects=True)
+            yield client
+
+    def test_topic_gaps_endpoint(self, teacher_client):
+        # Create class first
+        create_res = teacher_client.post("/teacher/classes", data=json.dumps({
+            "name": "Gap Test", "subject": "Biology",
+        }), content_type="application/json")
+        cid = create_res.get_json()["id"]
+        res = teacher_client.get(f"/api/teacher/class/{cid}/topic-gaps")
+        data = res.get_json()
+        assert "topic_gaps" in data
+
+    def test_at_risk_endpoint(self, teacher_client):
+        create_res = teacher_client.post("/teacher/classes", data=json.dumps({
+            "name": "Risk Test", "subject": "Chemistry",
+        }), content_type="application/json")
+        cid = create_res.get_json()["id"]
+        res = teacher_client.get(f"/api/teacher/class/{cid}/at-risk")
+        data = res.get_json()
+        assert "at_risk_students" in data
+
+    def test_export_csv_endpoint(self, teacher_client):
+        create_res = teacher_client.post("/teacher/classes", data=json.dumps({
+            "name": "Export Test", "subject": "Physics",
+        }), content_type="application/json")
+        cid = create_res.get_json()["id"]
+        res = teacher_client.get(f"/api/teacher/class/{cid}/export")
+        assert res.status_code == 200
+        assert res.content_type == "text/csv; charset=utf-8"
+        assert "Student" in res.data.decode()
+
+
+class TestPushScheduler:
+    """Step 6: Push notification scheduling."""
+
+    def test_find_inactive_subjects(self, app):
+        with app.app_context():
+            from push import _find_inactive_subjects
+            # No grades for user 1 yet, so should return empty
+            result = _find_inactive_subjects(1, days_threshold=0)
+            assert isinstance(result, list)
+
+    def test_check_streak_at_risk(self, app):
+        with app.app_context():
+            from push import _check_streak_at_risk
+            # User has no streak, should return False
+            result = _check_streak_at_risk(1)
+            assert result is False
+
+
 class TestNewPages:
     """Test that new pages load without errors."""
 

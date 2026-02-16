@@ -560,7 +560,11 @@ def run_migrations() -> None:
     }
     for version, sql in MIGRATIONS:
         if version not in applied:
-            db.executescript(sql)
+            try:
+                db.executescript(sql)
+            except sqlite3.OperationalError as e:
+                if "duplicate column" not in str(e):
+                    raise
             db.execute(
                 "INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
                 (version, datetime.now().isoformat()),
