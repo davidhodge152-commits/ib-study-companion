@@ -11,7 +11,9 @@ from db_stores import (
     CommunityPaperStoreDB,
     GamificationProfileDB,
     LeaderboardStoreDB,
+    SharedFlashcardDeckDB,
     StudentProfileDB,
+    StudyBuddyDB,
     StudyGroupStoreDB,
 )
 
@@ -214,6 +216,104 @@ def api_approve_paper(paper_id):
     if not (current_user.is_authenticated and getattr(current_user, "role", "") in ("teacher", "admin")):
         return jsonify({"error": "Forbidden"}), 403
     CommunityPaperStoreDB.approve(paper_id)
+    return jsonify({"success": True})
+
+
+# ── Shared Flashcard Decks ──────────────────────────────────────
+
+@bp.route("/api/flashcards/share", methods=["POST"])
+@login_required
+def api_share_flashcards():
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    title = data.get("title", "")
+    subject = data.get("subject", "")
+    if not title or not subject:
+        return jsonify({"error": "Title and subject are required"}), 400
+    deck_id = SharedFlashcardDeckDB.share(
+        user_id=uid,
+        title=title,
+        subject=subject,
+        topic=data.get("topic", ""),
+        description=data.get("description", ""),
+        cards=data.get("cards", []),
+    )
+    return jsonify({"success": True, "deck_id": deck_id})
+
+
+@bp.route("/api/flashcards/shared")
+@login_required
+def api_list_shared_flashcards():
+    subject = request.args.get("subject", "")
+    topic = request.args.get("topic", "")
+    decks = SharedFlashcardDeckDB.list_decks(subject=subject, topic=topic)
+    return jsonify({"decks": decks})
+
+
+@bp.route("/api/flashcards/shared/<int:deck_id>")
+@login_required
+def api_get_shared_flashcard(deck_id):
+    deck = SharedFlashcardDeckDB.get(deck_id)
+    if not deck:
+        return jsonify({"error": "Deck not found"}), 404
+    return jsonify({"deck": deck})
+
+
+@bp.route("/api/flashcards/shared/<int:deck_id>/import", methods=["POST"])
+@login_required
+def api_import_shared_flashcard(deck_id):
+    uid = current_user_id()
+    count = SharedFlashcardDeckDB.import_deck(deck_id, uid)
+    return jsonify({"success": True, "imported_count": count})
+
+
+# ── Study Buddy ──────────────────────────────────────
+
+@bp.route("/api/buddy/preferences", methods=["POST"])
+@login_required
+def api_buddy_preferences():
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    StudyBuddyDB.save_preferences(
+        user_id=uid,
+        subjects=data.get("subjects", []),
+        availability=data.get("availability", ""),
+        timezone=data.get("timezone", ""),
+        looking_for=data.get("looking_for", "study_partner"),
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/buddy/matches")
+@login_required
+def api_buddy_matches():
+    uid = current_user_id()
+    matches = StudyBuddyDB.find_matches(uid)
+    return jsonify({"matches": matches})
+
+
+@bp.route("/api/buddy/connect", methods=["POST"])
+@login_required
+def api_buddy_connect():
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    target_id = data.get("user_id")
+    if not target_id:
+        return jsonify({"error": "user_id required"}), 400
+    from db_stores import NotificationStoreDB
+    from profile import Notification
+    from datetime import datetime
+    store = NotificationStoreDB(int(target_id))
+    notif = Notification(
+        id=f"buddy_{uid}_{target_id}",
+        type="study_buddy_request",
+        title="Study buddy request!",
+        body=f"A student wants to study with you.",
+        created_at=datetime.now().isoformat(),
+        action_url="/groups",
+        data={"from_user_id": uid},
+    )
+    store.add(notif)
     return jsonify({"success": True})
 
 

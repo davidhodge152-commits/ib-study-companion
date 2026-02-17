@@ -469,3 +469,171 @@ def api_difficulty(subject):
         "command_terms": command_term_map.get(level, []),
         "entries_used": len(recent),
     })
+
+
+@bp.route("/api/study/review-calendar")
+@login_required
+def api_review_calendar():
+    """Return items due for review grouped by date for the next 30 days."""
+    from datetime import datetime, timedelta
+    from database import get_db
+
+    uid = current_user_id()
+    db = get_db()
+    today = datetime.now().date()
+    end_date = today + timedelta(days=30)
+
+    # Spaced repetition review schedule items
+    schedule_rows = db.execute(
+        "SELECT subject, topic, command_term, next_review, interval_days "
+        "FROM review_schedule WHERE user_id = ? AND next_review != '' "
+        "ORDER BY next_review",
+        (uid,),
+    ).fetchall()
+
+    # Flashcards due for review
+    flashcard_rows = db.execute(
+        "SELECT subject, topic, front, next_review "
+        "FROM flashcards WHERE user_id = ? AND next_review != '' "
+        "ORDER BY next_review",
+        (uid,),
+    ).fetchall()
+
+    calendar = {}
+    for row in schedule_rows:
+        try:
+            d = datetime.fromisoformat(row["next_review"]).date()
+        except (ValueError, TypeError):
+            continue
+        if today <= d <= end_date:
+            key = d.isoformat()
+            calendar.setdefault(key, []).append({
+                "type": "review",
+                "subject": row["subject"],
+                "topic": row["topic"],
+                "command_term": row["command_term"],
+                "interval_days": row["interval_days"],
+            })
+
+    for row in flashcard_rows:
+        try:
+            d = datetime.fromisoformat(row["next_review"]).date()
+        except (ValueError, TypeError):
+            continue
+        if today <= d <= end_date:
+            key = d.isoformat()
+            calendar.setdefault(key, []).append({
+                "type": "flashcard",
+                "subject": row["subject"],
+                "topic": row["topic"],
+                "front": row["front"][:80],
+            })
+
+    return jsonify({"calendar": calendar})
+
+
+@bp.route("/api/study/weak-topics")
+@login_required
+def api_weak_topics():
+    """Return topics where the student is struggling (low avg or few attempts)."""
+    from database import get_db
+
+    uid = current_user_id()
+    db = get_db()
+
+    # Topics with low average or few attempts
+    rows = db.execute(
+        "SELECT subject, topic_id, subtopic, attempts, avg_percentage, last_practiced "
+        "FROM topic_progress WHERE user_id = ? AND (avg_percentage < 50 OR attempts < 3) "
+        "ORDER BY avg_percentage ASC, attempts ASC LIMIT 20",
+        (uid,),
+    ).fetchall()
+
+    weak_topics = [
+        {
+            "subject": r["subject"],
+            "topic_id": r["topic_id"],
+            "subtopic": r["subtopic"],
+            "attempts": r["attempts"],
+            "avg_percentage": r["avg_percentage"],
+            "last_practiced": r["last_practiced"],
+        }
+        for r in rows
+    ]
+
+    # Also include active SOS alerts
+    sos_rows = db.execute(
+        "SELECT subject, topic, command_term, failure_count, avg_percentage "
+        "FROM sos_alerts WHERE user_id = ? AND status = 'active' "
+        "ORDER BY avg_percentage ASC",
+        (uid,),
+    ).fetchall()
+
+    sos_alerts = [
+        {
+            "subject": r["subject"],
+            "topic": r["topic"],
+            "command_term": r["command_term"],
+            "failure_count": r["failure_count"],
+            "avg_percentage": r["avg_percentage"],
+        }
+        for r in sos_rows
+    ]
+
+    return jsonify({"weak_topics": weak_topics, "sos_alerts": sos_alerts})
+
+
+@bp.route("/api/study/exam-history")
+@login_required
+def api_exam_history():
+    """Return exam simulation history with per-session stats."""
+    import json as _json
+    from database import get_db
+
+    uid = current_user_id()
+    db = get_db()
+
+    rows = db.execute(
+        "SELECT id, subject, level, paper_number, duration_minutes, "
+        "started_at, completed_at, total_marks, earned_marks, grade, questions, answers "
+        "FROM exam_sessions WHERE user_id = ? ORDER BY started_at DESC LIMIT 20",
+        (uid,),
+    ).fetchall()
+
+    sessions = []
+    for r in rows:
+        percentage = round(r["earned_marks"] / r["total_marks"] * 100, 1) if r["total_marks"] > 0 else 0
+
+        # Parse questions for command term breakdown
+        command_term_stats = {}
+        try:
+            questions = _json.loads(r["questions"]) if r["questions"] else []
+            answers = _json.loads(r["answers"]) if r["answers"] else []
+            for i, q in enumerate(questions):
+                ct = q.get("command_term", "Unknown")
+                if ct not in command_term_stats:
+                    command_term_stats[ct] = {"total": 0, "earned": 0, "count": 0}
+                command_term_stats[ct]["count"] += 1
+                mark_total = q.get("marks", 0)
+                command_term_stats[ct]["total"] += mark_total
+                if i < len(answers):
+                    command_term_stats[ct]["earned"] += answers[i].get("marks_earned", 0)
+        except (ValueError, TypeError):
+            pass
+
+        sessions.append({
+            "id": r["id"],
+            "subject": r["subject"],
+            "level": r["level"],
+            "paper_number": r["paper_number"],
+            "duration_minutes": r["duration_minutes"],
+            "started_at": r["started_at"],
+            "completed_at": r["completed_at"],
+            "total_marks": r["total_marks"],
+            "earned_marks": r["earned_marks"],
+            "grade": r["grade"],
+            "percentage": percentage,
+            "command_term_breakdown": command_term_stats,
+        })
+
+    return jsonify({"sessions": sessions})

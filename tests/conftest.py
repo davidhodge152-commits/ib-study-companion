@@ -101,6 +101,45 @@ def auth_client(app):
 
 
 @pytest.fixture
+def teacher_client(app):
+    """Authenticated test client logged in as a teacher with a class and student."""
+    from werkzeug.security import generate_password_hash
+    from database import get_db
+
+    with app.app_context():
+        db = get_db()
+        # Create a school
+        db.execute(
+            "INSERT INTO schools (id, name, code, created_at) VALUES (1, 'Test School', 'SCHOOL1', '2026-01-01')"
+        )
+        # Create teacher user
+        db.execute(
+            "INSERT INTO users (id, name, email, password_hash, role, school_id, created_at) "
+            "VALUES (2, 'Test Teacher', 'teacher@test.com', ?, 'teacher', 1, '2026-01-01')",
+            (generate_password_hash("TeacherPass1"),),
+        )
+        db.execute("INSERT OR IGNORE INTO gamification (user_id) VALUES (2)")
+        # Create a class owned by the teacher
+        db.execute(
+            "INSERT INTO classes (id, school_id, teacher_id, name, subject, level, join_code, created_at) "
+            "VALUES (1, 1, 2, 'Biology HL', 'Biology', 'HL', 'TESTJOIN', '2026-01-01')"
+        )
+        # Add the test student (user 1) to the class
+        db.execute(
+            "INSERT INTO class_members (class_id, user_id, joined_at) VALUES (1, 1, '2026-01-01')"
+        )
+        db.commit()
+
+    client = app.test_client()
+    with client:
+        client.post("/login", data={
+            "email": "teacher@test.com",
+            "password": "TeacherPass1",
+        }, follow_redirects=True)
+        yield client
+
+
+@pytest.fixture
 def db(app):
     """Direct database access for store tests."""
     with app.app_context():

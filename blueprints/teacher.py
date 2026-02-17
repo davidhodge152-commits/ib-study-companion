@@ -120,6 +120,58 @@ def api_teacher_at_risk(class_id):
     return jsonify({"at_risk_students": students})
 
 
+@bp.route("/api/teacher/class/<int:class_id>/grade-distribution")
+@teacher_required
+def api_teacher_grade_distribution(class_id):
+    uid = current_user_id()
+    cls = ClassStoreDB.get(class_id)
+    if not cls or cls["teacher_id"] != uid:
+        abort(404)
+    data = ClassStoreDB.grade_distribution(class_id)
+    return jsonify({"grade_distribution": data})
+
+
+@bp.route("/api/teacher/class/<int:class_id>/activity-heatmap")
+@teacher_required
+def api_teacher_activity_heatmap(class_id):
+    uid = current_user_id()
+    cls = ClassStoreDB.get(class_id)
+    if not cls or cls["teacher_id"] != uid:
+        abort(404)
+    data = ClassStoreDB.activity_heatmap(class_id)
+    return jsonify({"activity_heatmap": data})
+
+
+@bp.route("/api/teacher/class/<int:class_id>/command-term-breakdown")
+@teacher_required
+def api_teacher_command_term_breakdown(class_id):
+    uid = current_user_id()
+    cls = ClassStoreDB.get(class_id)
+    if not cls or cls["teacher_id"] != uid:
+        abort(404)
+    data = ClassStoreDB.command_term_breakdown(class_id)
+    return jsonify({"command_term_breakdown": data})
+
+
+@bp.route("/api/teacher/sos-alerts")
+@teacher_required
+def api_teacher_sos_alerts():
+    uid = current_user_id()
+    from database import get_db as _get_db
+    db = _get_db()
+    rows = db.execute(
+        "SELECT sa.*, u.name as student_name "
+        "FROM sos_alerts sa "
+        "JOIN class_members cm ON sa.user_id = cm.user_id "
+        "JOIN classes c ON cm.class_id = c.id "
+        "JOIN users u ON sa.user_id = u.id "
+        "WHERE c.teacher_id = ? AND sa.status = 'active' "
+        "ORDER BY sa.created_at DESC",
+        (uid,),
+    ).fetchall()
+    return jsonify({"alerts": [dict(r) for r in rows]})
+
+
 @bp.route("/api/teacher/class/<int:class_id>/export")
 @teacher_required
 def api_teacher_export_csv(class_id):
@@ -380,6 +432,38 @@ def api_reviews_complete(review_id):
     ExaminerPipeline.submit_examiner_feedback(review_id, feedback, grade, video_url)
     ExaminerPipeline.deliver_to_student(review_id)
     return jsonify({"success": True})
+
+
+@bp.route("/teacher/examiner")
+@teacher_required
+def examiner_dashboard():
+    uid = current_user_id()
+    profile = StudentProfileDB(uid)
+    gam = GamificationProfileDB(uid)
+    return render_template("examiner_dashboard.html", profile=profile, gam=gam)
+
+
+@bp.route("/api/reviews/assigned")
+@teacher_required
+def api_reviews_assigned():
+    uid = current_user_id()
+    from database import get_db as _get_db
+    db = _get_db()
+    rows = db.execute(
+        "SELECT * FROM examiner_reviews WHERE examiner_id = ? AND status = 'assigned' "
+        "ORDER BY assigned_at DESC",
+        (uid,),
+    ).fetchall()
+    return jsonify({"reviews": [dict(r) for r in rows]})
+
+
+@bp.route("/reviews")
+@login_required
+def student_reviews_page():
+    uid = current_user_id()
+    profile = StudentProfileDB(uid)
+    gam = GamificationProfileDB(uid)
+    return render_template("my_reviews.html", profile=profile, gam=gam)
 
 
 @bp.route("/api/reviews/<int:review_id>")

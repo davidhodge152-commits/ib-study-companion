@@ -90,3 +90,19 @@ class TutorSession:
 
         response = self.model.generate_content(full_prompt)
         return response.text
+
+    def suggest_follow_ups(self, last_response: str) -> list[str]:
+        """Generate 2-3 follow-up question suggestions based on the last response."""
+        try:
+            prompt = (
+                f"Based on this IB {self.subject} tutor response about {self.topic}:\n\n"
+                f"{last_response}\n\n"
+                "Generate exactly 3 short follow-up questions a student might ask next. "
+                "Each question should be concise (under 60 characters). "
+                "Return ONLY the questions, one per line, no numbering or bullets."
+            )
+            result = self.model.generate_content(prompt)
+            lines = [line.strip() for line in result.text.strip().split("\n") if line.strip()]
+            return lines[:3]
+        except Exception:
+            return []

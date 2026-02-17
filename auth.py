@@ -188,6 +188,55 @@ def register():
     return render_template("register.html")
 
 
+@auth_bp.route("/register/teacher", methods=["GET", "POST"])
+@limiter.limit("3 per hour", methods=["POST"])
+def register_teacher():
+    if current_user.is_authenticated:
+        return redirect(url_for("core.dashboard"))
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm_password", "")
+        school_code = request.form.get("school_code", "").strip()
+
+        if not name or not email or not password or not school_code:
+            return render_template("register_teacher.html", error="All fields are required.")
+
+        if password != confirm:
+            return render_template("register_teacher.html", error="Passwords do not match.")
+
+        pw_error = _validate_password(password)
+        if pw_error:
+            return render_template("register_teacher.html", error=pw_error)
+
+        # Validate school code
+        db = get_db()
+        school = db.execute("SELECT id FROM schools WHERE code = ?", (school_code,)).fetchone()
+        if not school:
+            return render_template("register_teacher.html", error="Invalid school code.")
+
+        existing = User.get_by_email(email)
+        if existing:
+            return render_template("register_teacher.html", error="An account with this email already exists.")
+
+        cur = db.execute(
+            "INSERT INTO users (name, email, password_hash, role, school_id, created_at) VALUES (?, ?, ?, 'teacher', ?, ?)",
+            (name, email, generate_password_hash(password), school["id"], datetime.now().isoformat()),
+        )
+        user_id = cur.lastrowid
+        db.execute("INSERT OR IGNORE INTO gamification (user_id) VALUES (?)", (user_id,))
+        db.commit()
+
+        log_event("register_teacher", user_id, f"email={email} school={school_code}")
+        user = User(user_id, name, email, "teacher")
+        login_user(user, remember=True)
+        return redirect(url_for("teacher.teacher_dashboard"))
+
+    return render_template("register_teacher.html")
+
+
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
 @limiter.limit("3 per hour", methods=["POST"])
 def forgot_password():

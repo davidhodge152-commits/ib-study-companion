@@ -90,6 +90,27 @@
     </div>
 </div>
 
+    <!-- Analytics Charts -->
+    <div class="grid gap-4 md:grid-cols-2">
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
+            <h2 class="text-lg font-bold mb-4">Grade Distribution</h2>
+            <canvas id="grade-dist-chart" height="200"></canvas>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
+            <h2 class="text-lg font-bold mb-4">Command Term Performance</h2>
+            <canvas id="command-term-chart" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Activity Heatmap -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
+        <h2 class="text-lg font-bold mb-4">Activity Heatmap (Last 30 Days)</h2>
+        <div id="activity-heatmap" class="overflow-x-auto">
+            <p class="text-sm text-slate-500">Loading...</p>
+        </div>
+    </div>
+</div>
+
 <!-- Create Assignment Modal -->
 <div id="assignment-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
@@ -106,5 +127,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script type="module" src="{{ url_for('static', filename='js/modules/teacher.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/modules/teacher_analytics.js') }}"></script>
 {% endblock %}

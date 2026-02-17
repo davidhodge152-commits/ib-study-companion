@@ -58,6 +58,72 @@ class TestRegister:
         assert b"already exists" in resp.data
 
 
+class TestTeacherRegister:
+    def test_teacher_register_page_loads(self, client):
+        resp = client.get("/register/teacher")
+        assert resp.status_code == 200
+        assert b"Teacher Registration" in resp.data
+
+    def test_teacher_register_success(self, app, client):
+        with app.app_context():
+            from database import get_db
+            db = get_db()
+            db.execute(
+                "INSERT INTO schools (name, code, created_at) VALUES ('Test School', 'TEACH01', '2026-01-01')"
+            )
+            db.commit()
+
+        resp = client.post("/register/teacher", data={
+            "name": "New Teacher",
+            "email": "newteacher@test.com",
+            "password": "TeacherPass1",
+            "confirm_password": "TeacherPass1",
+            "school_code": "TEACH01",
+        }, follow_redirects=True)
+        assert resp.status_code == 200
+
+        with app.app_context():
+            from database import get_db
+            db = get_db()
+            row = db.execute("SELECT role, school_id FROM users WHERE email='newteacher@test.com'").fetchone()
+            assert row["role"] == "teacher"
+            assert row["school_id"] is not None
+
+    def test_teacher_register_invalid_school_code(self, client):
+        resp = client.post("/register/teacher", data={
+            "name": "Bad Teacher",
+            "email": "bad@test.com",
+            "password": "TeacherPass1",
+            "confirm_password": "TeacherPass1",
+            "school_code": "INVALID",
+        })
+        assert b"Invalid school code" in resp.data
+
+    def test_teacher_register_sets_role(self, app, client):
+        with app.app_context():
+            from database import get_db
+            db = get_db()
+            db.execute(
+                "INSERT INTO schools (name, code, created_at) VALUES ('Another School', 'ROLE01', '2026-01-01')"
+            )
+            db.commit()
+
+        client.post("/register/teacher", data={
+            "name": "Role Teacher",
+            "email": "role@test.com",
+            "password": "RolePass123",
+            "confirm_password": "RolePass123",
+            "school_code": "ROLE01",
+        })
+
+        with app.app_context():
+            from database import get_db
+            db = get_db()
+            row = db.execute("SELECT role FROM users WHERE email='role@test.com'").fetchone()
+            assert row is not None
+            assert row["role"] == "teacher"
+
+
 class TestLogin:
     def test_login_page_loads(self, client):
         resp = client.get("/login")

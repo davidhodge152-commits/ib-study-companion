@@ -845,6 +845,56 @@ MIGRATIONS: list[tuple[int, str]] = [
     (27, """
         ALTER TABLE parent_config ADD COLUMN token_expires_at TEXT NOT NULL DEFAULT '';
     """),
+
+    # Migration 28: Link users to schools
+    (28, """
+        ALTER TABLE users ADD COLUMN school_id INTEGER REFERENCES schools(id);
+    """),
+
+    # Migration 29: Shared flashcard decks
+    (29, """
+        CREATE TABLE IF NOT EXISTS shared_flashcard_decks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            topic TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '',
+            card_count INTEGER NOT NULL DEFAULT 0,
+            cards TEXT NOT NULL DEFAULT '[]',
+            download_count INTEGER NOT NULL DEFAULT 0,
+            rating_sum INTEGER NOT NULL DEFAULT 0,
+            rating_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+
+    # Migration 30: Study buddy preferences
+    (30, """
+        CREATE TABLE IF NOT EXISTS study_buddy_preferences (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            subjects TEXT NOT NULL DEFAULT '[]',
+            availability TEXT NOT NULL DEFAULT '',
+            timezone TEXT NOT NULL DEFAULT '',
+            looking_for TEXT NOT NULL DEFAULT 'study_partner',
+            updated_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+
+    # Migration 31: Admissions deadlines
+    (31, """
+        CREATE TABLE IF NOT EXISTS admissions_deadlines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            university TEXT NOT NULL,
+            program TEXT NOT NULL DEFAULT '',
+            deadline_date TEXT NOT NULL,
+            deadline_type TEXT NOT NULL DEFAULT 'application',
+            status TEXT NOT NULL DEFAULT 'upcoming',
+            notes TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
 ]
 
 

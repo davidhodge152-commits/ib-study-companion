@@ -24,6 +24,15 @@
         </div>
     </div>
 
+    <!-- SOS Alerts -->
+    <div id="sos-alerts-section" class="hidden">
+        <div class="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-5">
+            <h2 class="text-lg font-bold text-red-800 dark:text-red-300 mb-3">SOS Alerts</h2>
+            <p class="text-sm text-red-600 dark:text-red-400 mb-3">Students who may need additional support:</p>
+            <div id="sos-alerts-list" class="space-y-2"></div>
+        </div>
+    </div>
+
     <!-- Classes -->
     <div class="space-y-4">
         <h2 class="text-lg font-bold">Your Classes</h2>
@@ -66,4 +75,5 @@
 
 {% block scripts %}
 <script type="module" src="{{ url_for('static', filename='js/modules/teacher.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/modules/teacher_analytics.js') }}"></script>
 {% endblock %}

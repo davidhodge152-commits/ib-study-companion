@@ -1006,7 +1006,210 @@ export function requestHint() {
     });
 }
 
+// ── Review Calendar ──────────────────────────────────────────────
+
+window.toggleReviewCalendar = async function() {
+    const section = document.getElementById('review-calendar-section');
+    if (!section.classList.contains('hidden')) {
+        section.classList.add('hidden');
+        return;
+    }
+    section.classList.remove('hidden');
+    const grid = document.getElementById('review-calendar-grid');
+    grid.innerHTML = '<p class="col-span-7 text-sm text-slate-400">Loading...</p>';
+
+    try {
+        const res = await api('/api/study/review-calendar');
+        const calendar = res.calendar || {};
+        renderCalendar(grid, calendar);
+    } catch {
+        grid.innerHTML = '<p class="col-span-7 text-sm text-red-500">Failed to load calendar.</p>';
+    }
+};
+
+function renderCalendar(grid, calendar) {
+    const today = new Date();
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let html = dayNames.map(d => `<div class="font-medium text-slate-500 py-1">${d}</div>`).join('');
+
+    // Pad to start of week
+    const startDate = new Date(today);
+    const dayOfWeek = startDate.getDay();
+    html += '<div></div>'.repeat(dayOfWeek);
+
+    for (let i = 0; i < 30; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        const key = d.toISOString().split('T')[0];
+        const items = calendar[key] || [];
+        const count = items.length;
+        const bgClass = count === 0 ? 'bg-slate-100 dark:bg-slate-700'
+            : count <= 2 ? 'bg-indigo-100 dark:bg-indigo-900/40'
+            : count <= 5 ? 'bg-indigo-200 dark:bg-indigo-800/60'
+            : 'bg-indigo-400 dark:bg-indigo-700';
+
+        html += `<div class="p-1 rounded cursor-pointer hover:ring-2 hover:ring-indigo-400 ${bgClass}" onclick="showCalendarDay('${key}', ${JSON.stringify(items).replace(/"/g, '&quot;')})">
+            <div class="text-xs font-medium">${d.getDate()}</div>
+            ${count > 0 ? `<div class="text-[10px] text-indigo-700 dark:text-indigo-300">${count}</div>` : ''}
+        </div>`;
+    }
+    grid.innerHTML = html;
+}
+
+window.showCalendarDay = function(dateStr, items) {
+    const detail = document.getElementById('review-calendar-detail');
+    const dateEl = document.getElementById('calendar-detail-date');
+    const itemsEl = document.getElementById('calendar-detail-items');
+
+    if (!items || items.length === 0) {
+        detail.classList.add('hidden');
+        return;
+    }
+    detail.classList.remove('hidden');
+    dateEl.textContent = `Due: ${dateStr}`;
+    itemsEl.innerHTML = items.map(item => {
+        const icon = item.type === 'flashcard' ? '📇' : '📝';
+        const label = item.type === 'flashcard'
+            ? `${item.subject} — ${item.front}`
+            : `${item.subject}: ${item.topic} (${item.command_term})`;
+        return `<p class="text-xs text-slate-600 dark:text-slate-400">${icon} ${label}</p>`;
+    }).join('');
+};
+
+// ── Weak Topics ─────────────────────────────────────────────────
+
+async function loadWeakTopics() {
+    try {
+        const res = await api('/api/study/weak-topics');
+        const topics = res.weak_topics || [];
+        const sos = res.sos_alerts || [];
+        if (topics.length === 0 && sos.length === 0) return;
+
+        const card = document.getElementById('weak-topics-card');
+        const list = document.getElementById('weak-topics-list');
+        if (!card || !list) return;
+
+        let html = '';
+        for (const t of sos.slice(0, 3)) {
+            html += `<button onclick="quickDrill('${t.subject}', '${t.topic}')"
+                class="px-3 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded-full border border-red-200 dark:border-red-800 hover:bg-red-200 cursor-pointer">
+                🚨 ${t.subject}: ${t.topic} (${Math.round(t.avg_percentage)}%)
+            </button>`;
+        }
+        for (const t of topics.slice(0, 5)) {
+            html += `<button onclick="quickDrill('${t.subject}', '${t.subtopic}')"
+                class="px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs rounded-full border border-amber-200 dark:border-amber-800 hover:bg-amber-200 cursor-pointer">
+                ${t.subject}: ${t.subtopic} (${Math.round(t.avg_percentage)}%)
+            </button>`;
+        }
+        list.innerHTML = html;
+        card.classList.remove('hidden');
+    } catch {
+        // Non-critical — ignore
+    }
+}
+
+window.quickDrill = function(subject, topic) {
+    // Pre-fill subject/topic and start a focused practice session
+    const subjectSelect = document.getElementById('subject-select');
+    const topicSelect = document.getElementById('topic-select');
+    if (subjectSelect) subjectSelect.value = subject;
+    if (topicSelect) {
+        // Add as option if not present
+        const opt = document.createElement('option');
+        opt.value = topic;
+        opt.textContent = topic;
+        topicSelect.appendChild(opt);
+        topicSelect.value = topic;
+    }
+    selectMode('smart');
+};
+
+// ── Exam History ────────────────────────────────────────────────
+
+window.toggleExamHistory = async function() {
+    const section = document.getElementById('exam-history-section');
+    if (!section.classList.contains('hidden')) {
+        section.classList.add('hidden');
+        return;
+    }
+    section.classList.remove('hidden');
+    const list = document.getElementById('exam-history-list');
+    list.innerHTML = '<p class="text-sm text-slate-400">Loading...</p>';
+
+    try {
+        const res = await api('/api/study/exam-history');
+        const sessions = res.sessions || [];
+        if (sessions.length === 0) {
+            list.innerHTML = '<p class="text-sm text-slate-500">No exam simulations completed yet.</p>';
+            return;
+        }
+
+        list.innerHTML = sessions.map(s => `
+            <div class="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-medium">${s.subject} ${s.level} — Paper ${s.paper_number}</h4>
+                    <span class="text-xs px-2 py-0.5 rounded-full ${s.percentage >= 70 ? 'bg-green-100 text-green-700' : s.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}">
+                        ${s.percentage}% (Grade ${s.grade})
+                    </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">${s.earned_marks}/${s.total_marks} marks &middot; ${s.duration_minutes} min &middot; ${s.started_at || ''}</p>
+                ${Object.keys(s.command_term_breakdown).length > 0 ? `
+                    <div class="mt-2 flex flex-wrap gap-1">
+                        ${Object.entries(s.command_term_breakdown).map(([ct, stats]) => {
+                            const pct = stats.total > 0 ? Math.round(stats.earned / stats.total * 100) : 0;
+                            return `<span class="text-[10px] px-1.5 py-0.5 rounded ${pct >= 70 ? 'bg-green-100 text-green-700' : pct >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}">${ct}: ${pct}%</span>`;
+                        }).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+
+        // Render Chart.js chart for latest session if it has command term data
+        const latest = sessions[0];
+        if (latest && Object.keys(latest.command_term_breakdown).length > 0) {
+            renderExamChart(latest.command_term_breakdown);
+        }
+    } catch {
+        list.innerHTML = '<p class="text-sm text-red-500">Failed to load exam history.</p>';
+    }
+};
+
+function renderExamChart(breakdown) {
+    const canvas = document.getElementById('exam-ct-chart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    canvas.classList.remove('hidden');
+    const labels = Object.keys(breakdown);
+    const data = labels.map(ct => {
+        const s = breakdown[ct];
+        return s.total > 0 ? Math.round(s.earned / s.total * 100) : 0;
+    });
+
+    // Destroy previous chart if exists
+    if (canvas._chart) canvas._chart.destroy();
+
+    canvas._chart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Score %',
+                data,
+                backgroundColor: data.map(v => v >= 70 ? '#86efac' : v >= 50 ? '#fde68a' : '#fca5a5'),
+                borderRadius: 4,
+            }],
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, max: 100 } },
+            plugins: { legend: { display: false }, title: { display: true, text: 'Latest Exam — Command Term Performance' } },
+        },
+    });
+}
+
 // ── Auto-init on import ──────────────────────────────────────────
 
 initSubjectTopicSync();
 checkSpeechSupport();
+loadWeakTopics();

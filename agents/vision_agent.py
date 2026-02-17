@@ -178,6 +178,38 @@ class VisionAgent:
             follow_up="Would you like me to show you the correct working step by step?",
         )
 
+    def extract_text(self, image_data: bytes) -> AgentResponse:
+        """Extract text from an image using Gemini Vision (general OCR)."""
+        if self._provider == "none":
+            return AgentResponse(
+                content="",
+                agent=self.AGENT_NAME,
+                confidence=0.0,
+                metadata={"error": "no_provider"},
+            )
+        try:
+            image_part = {"mime_type": "image/jpeg", "data": image_data}
+            response = self._gemini_vision.generate_content(
+                [
+                    "Extract ALL text from this image. Return the text exactly as written, "
+                    "preserving any mathematical notation, formatting, and line breaks. "
+                    "If there are equations, use standard mathematical notation.",
+                    image_part,
+                ]
+            )
+            return AgentResponse(
+                content=response.text.strip(),
+                agent=self.AGENT_NAME,
+                confidence=0.8,
+            )
+        except Exception as e:
+            return AgentResponse(
+                content="",
+                agent=self.AGENT_NAME,
+                confidence=0.0,
+                metadata={"error": str(e)},
+            )
+
     def _extract_steps(self, image_data: bytes) -> list[dict]:
         """Extract handwritten working steps via Gemini Vision."""
         try:

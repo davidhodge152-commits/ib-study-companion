@@ -59,6 +59,7 @@ def api_tutor_message():
 
     store.add_message(conv_id, "user", user_message)
 
+    follow_ups = []
     try:
         from tutor import TutorSession
         ability_store = StudentAbilityStoreDB(uid)
@@ -69,13 +70,17 @@ def api_tutor_message():
             ability_theta=ability.get("theta", 0.0),
         )
         response = tutor.respond(conv["messages"] + [{"role": "user", "content": user_message}])
+        try:
+            follow_ups = tutor.suggest_follow_ups(response)
+        except Exception:
+            pass  # Follow-ups are optional
     except ImportError:
         response = "The AI tutor requires the Gemini API. Please configure your API key."
     except Exception as e:
         response = f"I encountered an issue: {str(e)}"
 
     store.add_message(conv_id, "assistant", response)
-    return jsonify({"success": True, "response": response})
+    return jsonify({"success": True, "response": response, "follow_ups": follow_ups})
 
 
 @bp.route("/api/tutor/history")
@@ -564,6 +569,79 @@ def api_burnout_check():
 
 # ── Admissions Agent ──────────────────────────────────────
 
+@bp.route("/admissions")
+@login_required
+def admissions_page():
+    uid = current_user_id()
+    profile = StudentProfileDB(uid)
+    gam = GamificationProfileDB(uid)
+    return render_template("admissions.html", profile=profile, gam=gam)
+
+
+@bp.route("/api/admissions/deadlines")
+@login_required
+def api_admissions_deadlines():
+    uid = current_user_id()
+    from database import get_db
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM admissions_deadlines WHERE user_id = ? ORDER BY deadline_date ASC",
+        (uid,),
+    ).fetchall()
+    return jsonify({"deadlines": [dict(r) for r in rows]})
+
+
+@bp.route("/api/admissions/deadlines", methods=["POST"])
+@login_required
+def api_admissions_add_deadline():
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    university = data.get("university", "")
+    deadline_date = data.get("deadline_date", "")
+    if not university or not deadline_date:
+        return jsonify({"error": "University and deadline date are required"}), 400
+    from database import get_db
+    from datetime import datetime as dt
+    db = get_db()
+    cur = db.execute(
+        "INSERT INTO admissions_deadlines (user_id, university, program, deadline_date, "
+        "deadline_type, status, notes, created_at) VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)",
+        (uid, university, data.get("program", ""), deadline_date,
+         data.get("deadline_type", "application"), data.get("notes", ""),
+         dt.now().isoformat()),
+    )
+    db.commit()
+    return jsonify({"success": True, "deadline_id": cur.lastrowid})
+
+
+@bp.route("/api/admissions/deadlines/<int:deadline_id>", methods=["PUT"])
+@login_required
+def api_admissions_update_deadline(deadline_id):
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    from database import get_db
+    db = get_db()
+    row = db.execute(
+        "SELECT id FROM admissions_deadlines WHERE id = ? AND user_id = ?",
+        (deadline_id, uid),
+    ).fetchone()
+    if not row:
+        return jsonify({"error": "Not found"}), 404
+
+    updates = []
+    params = []
+    for field in ("status", "notes", "university", "program", "deadline_date", "deadline_type"):
+        if field in data:
+            updates.append(f"{field} = ?")
+            params.append(data[field])
+    if not updates:
+        return jsonify({"error": "No fields to update"}), 400
+    params.append(deadline_id)
+    db.execute(f"UPDATE admissions_deadlines SET {', '.join(updates)} WHERE id = ?", params)
+    db.commit()
+    return jsonify({"success": True})
+
+
 @bp.route("/api/admissions/profile")
 @login_required
 def api_admissions_profile():
@@ -632,3 +710,27 @@ def api_admissions_suggest_universities():
         "suggestions": response.metadata.get("suggestions", {}),
         "content": response.content,
     })
+
+
+@bp.route("/api/tutor/upload-image", methods=["POST"])
+@login_required
+def api_tutor_upload_image():
+    """Accept an image and extract text via OCR for the tutor chat."""
+    if "image" not in request.files:
+        return jsonify({"error": "Image file is required"}), 400
+
+    image_file = request.files["image"]
+    image_data = image_file.read()
+    if not image_data:
+        return jsonify({"error": "Empty image file"}), 400
+
+    try:
+        from agents.vision_agent import VisionAgent
+
+        agent = VisionAgent()
+        result = agent.extract_text(image_data)
+        return jsonify({"text": result.content if hasattr(result, "content") else str(result)})
+    except ImportError:
+        return jsonify({"error": "Vision agent not available. Please configure your API key."}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

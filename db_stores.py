@@ -2081,6 +2081,51 @@ class ClassStoreDB:
                              r["mark_earned"], r["mark_total"], r["timestamp"]])
         return output.getvalue()
 
+    @staticmethod
+    def grade_distribution(class_id: int) -> list[dict]:
+        """Histogram data: grade 1-7 counts per subject for students in a class."""
+        db = get_db()
+        rows = db.execute(
+            "SELECT g.subject_display, g.grade, COUNT(*) as cnt "
+            "FROM grades g JOIN class_members cm ON g.user_id = cm.user_id "
+            "WHERE cm.class_id = ? "
+            "GROUP BY g.subject_display, g.grade "
+            "ORDER BY g.subject_display, g.grade",
+            (class_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def activity_heatmap(class_id: int) -> list[dict]:
+        """Weekly study activity per student for the last 30 days."""
+        db = get_db()
+        cutoff = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        rows = db.execute(
+            "SELECT u.name, al.date, SUM(al.duration_minutes) as minutes "
+            "FROM activity_log al "
+            "JOIN class_members cm ON al.user_id = cm.user_id "
+            "JOIN users u ON al.user_id = u.id "
+            "WHERE cm.class_id = ? AND al.date >= ? "
+            "GROUP BY u.name, al.date "
+            "ORDER BY u.name, al.date",
+            (class_id, cutoff),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def command_term_breakdown(class_id: int) -> list[dict]:
+        """Class-wide command term performance stats."""
+        db = get_db()
+        rows = db.execute(
+            "SELECT g.command_term, AVG(g.percentage) as avg_pct, COUNT(*) as cnt "
+            "FROM grades g JOIN class_members cm ON g.user_id = cm.user_id "
+            "WHERE cm.class_id = ? AND g.command_term != '' "
+            "GROUP BY g.command_term "
+            "ORDER BY avg_pct ASC",
+            (class_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
 
 class AssignmentStoreDB:
     """Manage assignments and submissions."""
@@ -2624,3 +2669,167 @@ class TutorConversationStoreDB:
             (self.user_id, limit),
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+# ── Shared Flashcard Decks ──────────────────────────────────────────────
+
+
+class SharedFlashcardDeckDB:
+    """Manage shared flashcard decks in the community."""
+
+    @staticmethod
+    def share(user_id: int, title: str, subject: str, topic: str = "",
+              description: str = "", cards: list | None = None) -> int:
+        db = get_db()
+        card_list = cards or []
+        cur = db.execute(
+            "INSERT INTO shared_flashcard_decks "
+            "(user_id, title, subject, topic, description, card_count, cards, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (user_id, title, subject, topic, description,
+             len(card_list), json.dumps(card_list), datetime.now().isoformat()),
+        )
+        db.commit()
+        return cur.lastrowid
+
+    @staticmethod
+    def list_decks(subject: str = "", topic: str = "", limit: int = 50) -> list[dict]:
+        db = get_db()
+        query = (
+            "SELECT d.*, u.name as author_name FROM shared_flashcard_decks d "
+            "JOIN users u ON d.user_id = u.id WHERE 1=1"
+        )
+        params: list = []
+        if subject:
+            query += " AND d.subject = ?"
+            params.append(subject)
+        if topic:
+            query += " AND d.topic LIKE ?"
+            params.append(f"%{topic}%")
+        query += " ORDER BY d.created_at DESC LIMIT ?"
+        params.append(limit)
+        rows = db.execute(query, params).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["cards"] = json.loads(d.get("cards", "[]"))
+            avg_rating = d["rating_sum"] / d["rating_count"] if d["rating_count"] > 0 else 0
+            d["avg_rating"] = round(avg_rating, 1)
+            result.append(d)
+        return result
+
+    @staticmethod
+    def get(deck_id: int) -> dict | None:
+        db = get_db()
+        row = db.execute(
+            "SELECT d.*, u.name as author_name FROM shared_flashcard_decks d "
+            "JOIN users u ON d.user_id = u.id WHERE d.id = ?",
+            (deck_id,),
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["cards"] = json.loads(d.get("cards", "[]"))
+        avg_rating = d["rating_sum"] / d["rating_count"] if d["rating_count"] > 0 else 0
+        d["avg_rating"] = round(avg_rating, 1)
+        return d
+
+    @staticmethod
+    def import_deck(deck_id: int, user_id: int) -> int:
+        """Import a shared deck's cards into user's personal flashcards. Returns count imported."""
+        import uuid
+        db = get_db()
+        row = db.execute("SELECT cards, subject, topic FROM shared_flashcard_decks WHERE id = ?", (deck_id,)).fetchone()
+        if not row:
+            return 0
+        cards = json.loads(row["cards"])
+        now = datetime.now().isoformat()
+        count = 0
+        for card in cards:
+            card_id = str(uuid.uuid4())[:8]
+            try:
+                db.execute(
+                    "INSERT INTO flashcards (id, user_id, front, back, subject, topic, source, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, 'shared_import', ?)",
+                    (card_id, user_id, card.get("front", ""), card.get("back", ""),
+                     row["subject"], row["topic"], now),
+                )
+                count += 1
+            except Exception:
+                pass
+        db.execute(
+            "UPDATE shared_flashcard_decks SET download_count = download_count + 1 WHERE id = ?",
+            (deck_id,),
+        )
+        db.commit()
+        return count
+
+
+# ── Study Buddy Preferences ──────────────────────────────────────────────
+
+
+class StudyBuddyDB:
+    """Manage study buddy preferences and matching."""
+
+    @staticmethod
+    def save_preferences(user_id: int, subjects: list, availability: str = "",
+                         timezone: str = "", looking_for: str = "study_partner"):
+        db = get_db()
+        db.execute(
+            "INSERT OR REPLACE INTO study_buddy_preferences "
+            "(user_id, subjects, availability, timezone, looking_for, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, json.dumps(subjects), availability, timezone,
+             looking_for, datetime.now().isoformat()),
+        )
+        db.commit()
+
+    @staticmethod
+    def get_preferences(user_id: int) -> dict | None:
+        db = get_db()
+        row = db.execute(
+            "SELECT * FROM study_buddy_preferences WHERE user_id = ?", (user_id,),
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["subjects"] = json.loads(d.get("subjects", "[]"))
+        return d
+
+    @staticmethod
+    def find_matches(user_id: int, limit: int = 10) -> list[dict]:
+        """Find students with overlapping subjects who are looking for study partners."""
+        db = get_db()
+        prefs = db.execute(
+            "SELECT subjects FROM study_buddy_preferences WHERE user_id = ?", (user_id,),
+        ).fetchone()
+        if not prefs:
+            return []
+        my_subjects = set(json.loads(prefs["subjects"]))
+        if not my_subjects:
+            return []
+
+        rows = db.execute(
+            "SELECT sbp.*, u.name FROM study_buddy_preferences sbp "
+            "JOIN users u ON sbp.user_id = u.id "
+            "WHERE sbp.user_id != ? "
+            "ORDER BY sbp.updated_at DESC LIMIT ?",
+            (user_id, limit * 3),
+        ).fetchall()
+
+        matches = []
+        for r in rows:
+            their_subjects = set(json.loads(r["subjects"]))
+            overlap = my_subjects & their_subjects
+            if overlap:
+                matches.append({
+                    "user_id": r["user_id"],
+                    "name": r["name"],
+                    "common_subjects": list(overlap),
+                    "availability": r["availability"],
+                    "timezone": r["timezone"],
+                    "looking_for": r["looking_for"],
+                })
+            if len(matches) >= limit:
+                break
+        return matches
