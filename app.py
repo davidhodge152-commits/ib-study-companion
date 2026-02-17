@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import os
+from typing import Any
 
-from flask import Flask, request as flask_request
+from flask import Flask, Response, request as flask_request
 
 import database
 from auth import auth_bp, login_manager
@@ -18,7 +19,7 @@ from blueprints import register_blueprints
 from extensions import limiter
 
 
-def create_app(test_config=None):
+def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__)
 
     # Load config
@@ -38,6 +39,7 @@ def create_app(test_config=None):
     try:
         from flask_wtf.csrf import CSRFProtect
         csrf = CSRFProtect(app)
+        app.extensions["csrf"] = csrf
     except ImportError:
         csrf = None
 
@@ -133,7 +135,7 @@ def create_app(test_config=None):
     _manifest_cache: dict = {}
 
     @app.context_processor
-    def asset_helpers():
+    def asset_helpers() -> dict[str, Any]:
         def asset_url(filename: str) -> str:
             """Map source filename to hashed bundle, falling back to source in dev."""
             if not _manifest_cache:
@@ -152,7 +154,7 @@ def create_app(test_config=None):
 
     # Security headers
     @app.after_request
-    def set_security_headers(response):
+    def set_security_headers(response: Response) -> Response:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -171,7 +173,7 @@ def create_app(test_config=None):
 
     # ETag support for JSON API responses
     @app.after_request
-    def set_etag(response):
+    def set_etag(response: Response) -> Response:
         if (
             response.status_code == 200
             and response.content_type

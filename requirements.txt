@@ -26,3 +26,5 @@ rq>=1.16.0
 flask-session>=0.8.0
 # Optional: test doubles for Redis
 fakeredis>=2.21.0
+# Stripe payment processing
+stripe>=8.0.0

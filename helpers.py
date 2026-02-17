@@ -7,9 +7,11 @@ Extracted from app.py to break circular dependencies.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from datetime import datetime, date, timedelta
 from functools import wraps
 from pathlib import Path
+from typing import Any
 
 from flask import abort, redirect, request, url_for
 from flask_login import current_user
@@ -27,10 +29,10 @@ def current_user_id() -> int:
     return 1
 
 
-def login_or_guest(f):
+def login_or_guest(f: Callable) -> Callable:
     """Allow both authenticated users and guest sessions."""
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated(*args: Any, **kwargs: Any) -> Any:
         from flask import session as flask_session
         if current_user.is_authenticated or flask_session.get("guest"):
             return f(*args, **kwargs)
@@ -38,10 +40,10 @@ def login_or_guest(f):
     return decorated
 
 
-def teacher_required(f):
+def teacher_required(f: Callable) -> Callable:
     """Decorator that requires user to have teacher or admin role."""
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated(*args: Any, **kwargs: Any) -> Any:
         if not current_user.is_authenticated:
             return redirect(url_for("auth.login"))
         if getattr(current_user, "role", "student") not in ("teacher", "admin"):
@@ -59,7 +61,7 @@ COMMAND_TERM_THRESHOLDS = {
 }
 
 
-def generate_recommendation(profile, grade_log):
+def generate_recommendation(profile: Any, grade_log: Any) -> dict[str, str]:
     """Deterministic recommendation: biggest gap -> weakest command term -> action."""
     from db_stores import TopicProgressStoreDB
     from subject_config import get_syllabus_topics
@@ -305,7 +307,7 @@ def _last_active_date(activity_log) -> date:
     return date.fromisoformat(max(dates))
 
 
-def generate_pending_notifications(user_id: int):
+def generate_pending_notifications(user_id: int) -> list[Any]:
     """Check all notification triggers and create new notifications if needed."""
     from profile import Notification
     from db_stores import (

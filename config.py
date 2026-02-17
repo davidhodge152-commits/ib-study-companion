@@ -19,7 +19,7 @@ BASE_DIR = Path(__file__).parent
 FEATURE_FLAGS: dict[str, bool] = {
     "oral_practice": True,
     "examiner_reviews": False,
-    "stripe_payments": False,
+    "stripe_payments": True,
 }
 
 
@@ -60,10 +60,14 @@ class BaseConfig:
     MAIL_FROM = os.environ.get("MAIL_FROM", "noreply@example.com")
     BASE_URL = os.environ.get("BASE_URL", "http://localhost:5001")
 
-    # Future integrations (unused for now, documented for reference)
+    # Redis / Sentry
     REDIS_URL = os.environ.get("REDIS_URL", "")
     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+
+    # Stripe payments
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+    STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+    STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
     # Response compression
     COMPRESS_MIMETYPES = [

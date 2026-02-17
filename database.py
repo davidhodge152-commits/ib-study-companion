@@ -970,6 +970,12 @@ MIGRATIONS: list[tuple[int, str]] = [
         CREATE INDEX IF NOT EXISTS idx_credit_tx_user_type ON credit_transactions(user_id, type);
         CREATE INDEX IF NOT EXISTS idx_community_papers_subject ON community_papers(subject, level);
     """),
+
+    # Migration 38: Stripe payment integration columns
+    (38, """
+        ALTER TABLE users ADD COLUMN stripe_customer_id TEXT DEFAULT '';
+        ALTER TABLE user_subscriptions ADD COLUMN stripe_subscription_id TEXT DEFAULT '';
+    """),
 ]
 
 
