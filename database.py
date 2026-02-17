@@ -572,6 +572,248 @@ MIGRATIONS: list[tuple[int, str]] = [
         CREATE INDEX IF NOT EXISTS idx_student_memory_user
             ON student_memory(user_id, memory_type);
     """),
+    # Migration 14: Handwriting analyses (ECF Vision Agent)
+    (14, """
+        CREATE TABLE IF NOT EXISTS handwriting_analyses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            subject TEXT NOT NULL,
+            question TEXT NOT NULL,
+            image_hash TEXT NOT NULL,
+            extracted_steps TEXT NOT NULL DEFAULT '[]',
+            ecf_breakdown TEXT NOT NULL DEFAULT '{}',
+            total_marks INTEGER NOT NULL DEFAULT 0,
+            earned_marks INTEGER NOT NULL DEFAULT 0,
+            ecf_marks INTEGER NOT NULL DEFAULT 0,
+            error_line INTEGER,
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+    # Migration 15: Oral exam sessions
+    (15, """
+        CREATE TABLE IF NOT EXISTS oral_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            subject TEXT NOT NULL,
+            level TEXT NOT NULL DEFAULT 'HL',
+            text_title TEXT NOT NULL DEFAULT '',
+            global_issue TEXT NOT NULL DEFAULT '',
+            phase TEXT NOT NULL DEFAULT 'prepared',
+            started_at TEXT NOT NULL DEFAULT '',
+            completed_at TEXT NOT NULL DEFAULT '',
+            transcript TEXT NOT NULL DEFAULT '[]',
+            examiner_questions TEXT NOT NULL DEFAULT '[]',
+            student_claims TEXT NOT NULL DEFAULT '[]',
+            criterion_scores TEXT NOT NULL DEFAULT '{}',
+            total_score INTEGER NOT NULL DEFAULT 0,
+            feedback TEXT NOT NULL DEFAULT ''
+        );
+    """),
+    # Migration 16: Coursework IDE (sessions, drafts, data analyses)
+    (16, """
+        CREATE TABLE IF NOT EXISTS coursework_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            doc_type TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            current_phase TEXT NOT NULL DEFAULT 'proposal',
+            created_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS coursework_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL REFERENCES coursework_sessions(id) ON DELETE CASCADE,
+            version INTEGER NOT NULL DEFAULT 1,
+            text_content TEXT NOT NULL DEFAULT '',
+            word_count INTEGER NOT NULL DEFAULT 0,
+            criterion_scores TEXT NOT NULL DEFAULT '{}',
+            feedback TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS data_analyses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL REFERENCES coursework_sessions(id) ON DELETE CASCADE,
+            raw_data TEXT NOT NULL DEFAULT '',
+            analysis_result TEXT NOT NULL DEFAULT '',
+            graphs TEXT NOT NULL DEFAULT '[]',
+            statistical_tests TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+    # Migration 17: Executive function (smart study plans, deadlines)
+    (17, """
+        CREATE TABLE IF NOT EXISTS smart_study_plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            generated_at TEXT NOT NULL DEFAULT '',
+            days_ahead INTEGER NOT NULL DEFAULT 7,
+            daily_allocations TEXT NOT NULL DEFAULT '[]',
+            total_study_minutes INTEGER NOT NULL DEFAULT 0,
+            priority_subjects TEXT NOT NULL DEFAULT '[]',
+            burnout_risk TEXT NOT NULL DEFAULT 'low'
+        );
+
+        CREATE TABLE IF NOT EXISTS study_deadlines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            subject TEXT NOT NULL DEFAULT '',
+            deadline_type TEXT NOT NULL DEFAULT 'exam',
+            due_date TEXT NOT NULL,
+            importance TEXT NOT NULL DEFAULT 'medium',
+            completed INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+
+    # Migration 18: Credit/Token Economy
+    (18, """
+        CREATE TABLE IF NOT EXISTS credit_balances (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            balance INTEGER NOT NULL DEFAULT 0,
+            lifetime_purchased INTEGER NOT NULL DEFAULT 0,
+            monthly_allocation INTEGER NOT NULL DEFAULT 0,
+            last_allocation_date TEXT NOT NULL DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS credit_transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            amount INTEGER NOT NULL,
+            type TEXT NOT NULL DEFAULT 'usage',
+            feature TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '',
+            balance_after INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_credit_tx_user ON credit_transactions(user_id, created_at);
+    """),
+
+    # Migration 19: Subscription Tiers & Feature Gating
+    (19, """
+        CREATE TABLE IF NOT EXISTS subscription_plans (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            monthly_credits INTEGER NOT NULL DEFAULT 0,
+            price_monthly INTEGER NOT NULL DEFAULT 0,
+            price_annual INTEGER NOT NULL DEFAULT 0,
+            features TEXT NOT NULL DEFAULT '[]',
+            max_subjects INTEGER NOT NULL DEFAULT 3,
+            is_active INTEGER NOT NULL DEFAULT 1
+        );
+
+        CREATE TABLE IF NOT EXISTS user_subscriptions (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            plan_id TEXT NOT NULL DEFAULT 'free' REFERENCES subscription_plans(id),
+            status TEXT NOT NULL DEFAULT 'active',
+            started_at TEXT NOT NULL DEFAULT '',
+            expires_at TEXT NOT NULL DEFAULT '',
+            cancelled_at TEXT NOT NULL DEFAULT ''
+        );
+
+        INSERT OR IGNORE INTO subscription_plans (id, name, monthly_credits, price_monthly, price_annual, features, max_subjects)
+        VALUES
+            ('free', 'Free', 0, 0, 0, '["text_tutoring","grading","flashcards","study_plan"]', 3),
+            ('explorer', 'Explorer', 200, 999, 9990, '["text_tutoring","grading","flashcards","study_plan","oral_practice","question_gen","data_analysis","vision_agent"]', 6),
+            ('scholar', 'Scholar', 500, 1999, 19990, '["text_tutoring","grading","flashcards","study_plan","oral_practice","question_gen","data_analysis","vision_agent","examiner_review","admissions","batch_grade"]', 99),
+            ('diploma_pass', 'Diploma Pass', 1000, 3999, 39990, '["all"]', 99);
+    """),
+
+    # Migration 20: SOS Detection & Micro-Tutoring Pipeline
+    (20, """
+        CREATE TABLE IF NOT EXISTS sos_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            subject TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            command_term TEXT NOT NULL DEFAULT '',
+            failure_count INTEGER NOT NULL DEFAULT 0,
+            avg_percentage REAL NOT NULL DEFAULT 0.0,
+            status TEXT NOT NULL DEFAULT 'active',
+            context_summary TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT '',
+            resolved_at TEXT NOT NULL DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS tutoring_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            subject TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            error_history TEXT NOT NULL DEFAULT '[]',
+            context_summary TEXT NOT NULL DEFAULT '',
+            mastery_state TEXT NOT NULL DEFAULT '',
+            theta REAL NOT NULL DEFAULT 0.0,
+            status TEXT NOT NULL DEFAULT 'pending',
+            tutor_id INTEGER REFERENCES users(id),
+            credits_charged INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT '',
+            completed_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+
+    # Migration 21: Examiner Review Pipeline
+    (21, """
+        CREATE TABLE IF NOT EXISTS examiner_reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            doc_type TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            submission_text TEXT NOT NULL DEFAULT '',
+            ai_diagnostic TEXT NOT NULL DEFAULT '',
+            ai_predicted_grade TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'submitted',
+            examiner_id INTEGER REFERENCES users(id),
+            examiner_feedback TEXT NOT NULL DEFAULT '',
+            examiner_grade TEXT NOT NULL DEFAULT '',
+            examiner_video_url TEXT NOT NULL DEFAULT '',
+            credits_charged INTEGER NOT NULL DEFAULT 0,
+            submitted_at TEXT NOT NULL DEFAULT '',
+            assigned_at TEXT NOT NULL DEFAULT '',
+            reviewed_at TEXT NOT NULL DEFAULT '',
+            delivered_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+
+    # Migration 22: Teacher Batch Grading
+    (22, """
+        CREATE TABLE IF NOT EXISTS batch_grading_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+            assignment_title TEXT NOT NULL DEFAULT '',
+            subject TEXT NOT NULL,
+            doc_type TEXT NOT NULL DEFAULT 'ia',
+            status TEXT NOT NULL DEFAULT 'pending',
+            total_submissions INTEGER NOT NULL DEFAULT 0,
+            processed_count INTEGER NOT NULL DEFAULT 0,
+            results TEXT NOT NULL DEFAULT '[]',
+            class_summary TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT '',
+            completed_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+
+    # Migration 23: University Admissions Profiles
+    (23, """
+        CREATE TABLE IF NOT EXISTS admissions_profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            predicted_total INTEGER NOT NULL DEFAULT 0,
+            subject_strengths TEXT NOT NULL DEFAULT '[]',
+            extracurricular_summary TEXT NOT NULL DEFAULT '',
+            academic_interests TEXT NOT NULL DEFAULT '',
+            writing_style_summary TEXT NOT NULL DEFAULT '',
+            recommended_universities TEXT NOT NULL DEFAULT '[]',
+            personal_statement_draft TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE(user_id)
+        );
+    """),
 ]
 
 

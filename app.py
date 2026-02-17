@@ -1157,6 +1157,14 @@ Student's exam text:
 
             ct_check = _command_term_alignment(command_term, result.improvements)
 
+            # SOS detection: check if student is struggling
+            if result.percentage < 40 and topic:
+                try:
+                    from sos_detector import SOSDetector
+                    SOSDetector(uid).check_for_sos()
+                except Exception:
+                    pass
+
             return jsonify({
                 "mark_earned": result.mark_earned,
                 "mark_total": result.mark_total,
@@ -3169,6 +3177,370 @@ End with an OVERALL rating (Strong / Adequate / Needs Work) and a SUGGESTED IMPR
             return jsonify({"error": str(e)}), 500
 
     # ══════════════════════════════════════════════════════════════════
+    # ─── DIFFERENTIATOR FEATURES ──────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+
+    # ── Feature 1: ECF & Handwriting Vision ────────────────────────────
+
+    @app.route("/api/ai/analyze-handwriting", methods=["POST"])
+    @login_required
+    def api_analyze_handwriting():
+        """Analyze handwritten work with ECF marking."""
+        uid = current_user_id()
+
+        if "image" not in request.files:
+            return jsonify({"error": "Image file is required"}), 400
+
+        image_file = request.files["image"]
+        image_data = image_file.read()
+        if not image_data:
+            return jsonify({"error": "Empty image file"}), 400
+
+        question = request.form.get("question", "")
+        subject = request.form.get("subject", "Mathematics")
+        marks = int(request.form.get("marks", 4))
+        command_term = request.form.get("command_term", "")
+
+        try:
+            from agents.vision_agent import VisionAgent
+            agent = VisionAgent()
+            result = agent.analyze_handwriting(
+                image_data=image_data,
+                question=question,
+                subject=subject,
+                marks=marks,
+                command_term=command_term,
+                user_id=uid,
+            )
+            return jsonify({
+                "response": result.content,
+                "agent": result.agent,
+                "confidence": result.confidence,
+                "metadata": result.metadata,
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── Feature 2: Oral Exam Roleplay ─────────────────────────────────
+
+    @app.route("/api/oral/start", methods=["POST"])
+    @login_required
+    def api_oral_start():
+        """Start an oral exam practice session."""
+        uid = current_user_id()
+        data = request.get_json(force=True)
+
+        try:
+            from agents.oral_exam_agent import OralExamAgent
+            agent = OralExamAgent(get_engine())
+            result = agent.start_session(
+                subject=data.get("subject", "English A"),
+                text_title=data.get("text_title", ""),
+                text_extract=data.get("text_extract", ""),
+                global_issue=data.get("global_issue", ""),
+                level=data.get("level", "HL"),
+                user_id=uid,
+            )
+            return jsonify({
+                "response": result.content,
+                "session_id": result.metadata.get("session_id"),
+                "session_state": result.metadata.get("session_state"),
+                "phase": result.metadata.get("phase"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/oral/respond", methods=["POST"])
+    @login_required
+    def api_oral_respond():
+        """Submit student transcript and get examiner response."""
+        uid = current_user_id()
+        data = request.get_json(force=True)
+        transcript = data.get("transcript", "")
+        session_state = data.get("session_state", {})
+        session_id = data.get("session_id")
+
+        if not transcript:
+            return jsonify({"error": "Transcript is required"}), 400
+
+        try:
+            from agents.oral_exam_agent import OralExamAgent
+            agent = OralExamAgent(get_engine())
+            result = agent.listen_and_respond(
+                transcript=transcript,
+                session_state=session_state,
+                user_id=uid,
+                session_id=session_id,
+            )
+            return jsonify({
+                "response": result.content,
+                "session_state": result.metadata.get("session_state"),
+                "phase": result.metadata.get("phase"),
+                "claims_count": result.metadata.get("claims_count"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/oral/grade", methods=["POST"])
+    @login_required
+    def api_oral_grade():
+        """Grade a completed oral session."""
+        uid = current_user_id()
+        data = request.get_json(force=True)
+        session_state = data.get("session_state", {})
+        session_id = data.get("session_id")
+
+        try:
+            from agents.oral_exam_agent import OralExamAgent
+            agent = OralExamAgent(get_engine())
+            result = agent.grade_oral(
+                session_state=session_state,
+                user_id=uid,
+                session_id=session_id,
+            )
+            return jsonify({
+                "response": result.content,
+                "criterion_scores": result.metadata.get("criterion_scores"),
+                "total_score": result.metadata.get("total_score"),
+                "total_possible": result.metadata.get("total_possible"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/oral/history")
+    @login_required
+    def api_oral_history():
+        """List past oral practice sessions."""
+        uid = current_user_id()
+        try:
+            from database import get_db
+            db = get_db()
+            rows = db.execute(
+                "SELECT id, subject, level, text_title, global_issue, "
+                "total_score, started_at, completed_at "
+                "FROM oral_sessions WHERE user_id = ? "
+                "ORDER BY started_at DESC LIMIT 20",
+                (uid,),
+            ).fetchall()
+            return jsonify({"sessions": [dict(r) for r in rows]})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── Feature 3: Coursework IDE ─────────────────────────────────────
+
+    @app.route("/api/coursework/check-feasibility", methods=["POST"])
+    @login_required
+    def api_coursework_feasibility():
+        """Check coursework topic feasibility."""
+        uid = current_user_id()
+        data = request.get_json(force=True)
+
+        try:
+            from agents.coursework_ide_agent import CourseworkIDEAgent
+            agent = CourseworkIDEAgent(get_engine())
+            result = agent.check_feasibility(
+                topic_proposal=data.get("topic", ""),
+                subject=data.get("subject", ""),
+                doc_type=data.get("doc_type", "ia"),
+                school_constraints=data.get("school_constraints", ""),
+            )
+            return jsonify({
+                "response": result.content,
+                "feasibility_score": result.metadata.get("feasibility_score"),
+                "verdict": result.metadata.get("verdict"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/coursework/analyze-data", methods=["POST"])
+    @login_required
+    def api_coursework_analyze_data():
+        """Analyze experimental data with statistical tests."""
+        uid = current_user_id()
+        data = request.get_json(force=True)
+
+        try:
+            from agents.coursework_ide_agent import CourseworkIDEAgent
+            agent = CourseworkIDEAgent(get_engine())
+            result = agent.analyze_data(
+                raw_data=data.get("data", ""),
+                subject=data.get("subject", ""),
+                hypothesis=data.get("hypothesis", ""),
+                user_id=uid,
+                session_id=data.get("session_id"),
+            )
+            return jsonify({
+                "response": result.content,
+                "has_computed_results": result.metadata.get("has_computed_results"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/coursework/review-draft", methods=["POST"])
+    @login_required
+    def api_coursework_review_draft():
+        """Review a coursework draft with incremental feedback."""
+        uid = current_user_id()
+        data = request.get_json(force=True)
+
+        try:
+            from agents.coursework_ide_agent import CourseworkIDEAgent
+            agent = CourseworkIDEAgent(get_engine())
+            result = agent.review_draft(
+                text=data.get("text", ""),
+                doc_type=data.get("doc_type", "ia"),
+                subject=data.get("subject", ""),
+                criterion=data.get("criterion", ""),
+                previous_feedback=data.get("previous_feedback"),
+                version=int(data.get("version", 1)),
+                user_id=uid,
+                session_id=data.get("session_id"),
+            )
+            return jsonify({
+                "response": result.content,
+                "word_count": result.metadata.get("word_count"),
+                "version": result.metadata.get("version"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/coursework/sessions/<int:session_id>")
+    @login_required
+    def api_coursework_session(session_id):
+        """Get a coursework session with feedback history."""
+        uid = current_user_id()
+        try:
+            from database import get_db
+            db = get_db()
+            session = db.execute(
+                "SELECT * FROM coursework_sessions WHERE id = ? AND user_id = ?",
+                (session_id, uid),
+            ).fetchone()
+            if not session:
+                return jsonify({"error": "Session not found"}), 404
+
+            drafts = db.execute(
+                "SELECT * FROM coursework_drafts WHERE session_id = ? ORDER BY version",
+                (session_id,),
+            ).fetchall()
+
+            analyses = db.execute(
+                "SELECT * FROM data_analyses WHERE session_id = ? ORDER BY created_at",
+                (session_id,),
+            ).fetchall()
+
+            return jsonify({
+                "session": dict(session),
+                "drafts": [dict(d) for d in drafts],
+                "analyses": [dict(a) for a in analyses],
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── Feature 5: Parametric Question Generation ─────────────────────
+
+    @app.route("/api/questions/generate-parametric", methods=["POST"])
+    @login_required
+    def api_generate_parametric():
+        """Generate verified parametric question variants."""
+        data = request.get_json(force=True)
+
+        try:
+            from agents.question_gen_agent import QuestionGenAgent
+            agent = QuestionGenAgent(get_engine())
+            result = agent.generate_parametric(
+                subject=data.get("subject", "Mathematics"),
+                topic=data.get("topic", ""),
+                source_question=data.get("source_question", ""),
+                variation_type=data.get("variation_type", "numbers"),
+                count=int(data.get("count", 3)),
+                difficulty=data.get("difficulty_level", "medium"),
+            )
+            return jsonify({
+                "response": result.content,
+                "questions": result.metadata.get("questions", []),
+                "total_generated": result.metadata.get("total_generated"),
+                "total_verified": result.metadata.get("total_verified"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── Feature 6: Executive Function & Study Planning ────────────────
+
+    @app.route("/api/executive/daily-briefing")
+    @login_required
+    def api_daily_briefing():
+        """Get today's personalized study briefing."""
+        uid = current_user_id()
+        try:
+            from agents.executive_agent import ExecutiveAgent
+            agent = ExecutiveAgent(get_engine())
+            result = agent.daily_briefing(uid)
+            return jsonify({
+                "response": result.content,
+                "burnout_risk": result.metadata.get("burnout_risk"),
+                "burnout_signals": result.metadata.get("burnout_signals"),
+                "priority_subjects": result.metadata.get("priority_subjects"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/executive/generate-plan", methods=["POST"])
+    @login_required
+    def api_generate_plan():
+        """Generate an optimized study plan."""
+        uid = current_user_id()
+        data = request.get_json(force=True)
+        try:
+            from agents.executive_agent import ExecutiveAgent
+            agent = ExecutiveAgent(get_engine())
+            result = agent.generate_smart_plan(
+                user_id=uid,
+                days_ahead=int(data.get("days_ahead", 7)),
+                daily_minutes=int(data.get("daily_minutes", 180)),
+            )
+            return jsonify({
+                "response": result.content,
+                "days_ahead": result.metadata.get("days_ahead"),
+                "deadlines": result.metadata.get("deadlines"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/executive/reprioritize", methods=["POST"])
+    @login_required
+    def api_reprioritize():
+        """Adjust study plan for changed deadlines."""
+        uid = current_user_id()
+        data = request.get_json(force=True)
+        event = data.get("event", "")
+        if not event:
+            return jsonify({"error": "Event description is required"}), 400
+        try:
+            from agents.executive_agent import ExecutiveAgent
+            agent = ExecutiveAgent(get_engine())
+            result = agent.reprioritize(uid, event)
+            return jsonify({
+                "response": result.content,
+                "event": result.metadata.get("event"),
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/executive/burnout-check")
+    @login_required
+    def api_burnout_check():
+        """Check burnout risk assessment."""
+        uid = current_user_id()
+        try:
+            from agents.executive_agent import ExecutiveAgent
+            agent = ExecutiveAgent()
+            burnout = agent.detect_burnout(uid)
+            return jsonify(burnout)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ══════════════════════════════════════════════════════════════════
     # ─── COMMUNITY ANALYTICS (Step 13) ───────────────────────────────
     # ══════════════════════════════════════════════════════════════════
 
@@ -3197,6 +3569,401 @@ End with an OVERALL rating (Strong / Adequate / Needs Work) and a SUGGESTED IMPR
     # ─── IMAGE UPLOAD / CAMERA (Step 14) ─────────────────────────────
     # ══════════════════════════════════════════════════════════════════
     # Handled by extending existing /api/upload — see ingest.py updates
+
+    # ══════════════════════════════════════════════════════════════════
+    # ─── CREDITS & TOKEN ECONOMY ────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+
+    @app.route("/api/credits/balance")
+    @login_required
+    def api_credits_balance():
+        uid = current_user_id()
+        from credit_store import CreditStoreDB
+        store = CreditStoreDB(uid)
+        return jsonify({
+            "balance": store.balance(),
+            "transactions": store.transaction_history(limit=20),
+        })
+
+    @app.route("/api/credits/purchase", methods=["POST"])
+    @login_required
+    def api_credits_purchase():
+        data = request.get_json()
+        amount = int(data.get("amount", 0))
+        if amount <= 0:
+            return jsonify({"error": "Invalid amount"}), 400
+        uid = current_user_id()
+        from credit_store import CreditStoreDB
+        store = CreditStoreDB(uid)
+        result = store.credit(amount, "purchase", f"Purchased {amount} credits")
+        return jsonify(result)
+
+    # ══════════════════════════════════════════════════════════════════
+    # ─── SUBSCRIPTION TIERS ─────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+
+    @app.route("/api/subscription/current")
+    @login_required
+    def api_subscription_current():
+        uid = current_user_id()
+        from subscription_store import SubscriptionStoreDB
+        store = SubscriptionStoreDB(uid)
+        plan = store.current_plan()
+        limits = store.plan_limits()
+        return jsonify({"plan": plan, "limits": limits})
+
+    @app.route("/api/subscription/upgrade", methods=["POST"])
+    @login_required
+    def api_subscription_upgrade():
+        data = request.get_json()
+        plan_id = data.get("plan_id", "")
+        if not plan_id:
+            return jsonify({"error": "Plan ID required"}), 400
+        uid = current_user_id()
+        from subscription_store import SubscriptionStoreDB
+        store = SubscriptionStoreDB(uid)
+        try:
+            store.upgrade(plan_id)
+            return jsonify({"success": True, "plan": store.current_plan()})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+    # ══════════════════════════════════════════════════════════════════
+    # ─── SOS DETECTION & TUTORING ───────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+
+    @app.route("/api/sos/status")
+    @login_required
+    def api_sos_status():
+        uid = current_user_id()
+        from sos_detector import SOSDetector
+        detector = SOSDetector(uid)
+        return jsonify({"alerts": detector.active_alerts()})
+
+    @app.route("/api/sos/request-session", methods=["POST"])
+    @login_required
+    def api_sos_request_session():
+        data = request.get_json()
+        alert_id = int(data.get("alert_id", 0))
+        if not alert_id:
+            return jsonify({"error": "Alert ID required"}), 400
+        uid = current_user_id()
+        from sos_detector import SOSDetector
+        detector = SOSDetector(uid)
+        result = detector.request_session(alert_id)
+        if not result["success"]:
+            status = 402 if "credits" in result.get("error", "").lower() else 400
+            return jsonify(result), status
+        return jsonify(result)
+
+    @app.route("/api/sos/tutor-context/<int:request_id>")
+    @teacher_required
+    def api_sos_tutor_context(request_id):
+        from sos_detector import SOSDetector
+        req = SOSDetector.get_tutor_request(request_id)
+        if not req:
+            return jsonify({"error": "Request not found"}), 404
+        return jsonify(req)
+
+    @app.route("/api/sos/complete/<int:request_id>", methods=["POST"])
+    @teacher_required
+    def api_sos_complete(request_id):
+        uid = current_user_id()
+        from sos_detector import SOSDetector
+        SOSDetector.complete_session(request_id, uid)
+        return jsonify({"success": True})
+
+    # ══════════════════════════════════════════════════════════════════
+    # ─── EXAMINER REVIEW PIPELINE ──────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+
+    @app.route("/api/reviews/submit", methods=["POST"])
+    @login_required
+    def api_reviews_submit():
+        data = request.get_json()
+        doc_type = data.get("doc_type", "")
+        subject = data.get("subject", "")
+        title = data.get("title", "")
+        text = data.get("text", "")
+        if not all([doc_type, subject, text]):
+            return jsonify({"error": "doc_type, subject, and text are required"}), 400
+        uid = current_user_id()
+        from examiner_pipeline import ExaminerPipeline
+        pipeline = ExaminerPipeline()
+        result = pipeline.submit_for_review(uid, doc_type, subject, title, text)
+        if not result["success"]:
+            return jsonify(result), 402
+        return jsonify(result)
+
+    @app.route("/api/reviews/mine")
+    @login_required
+    def api_reviews_mine():
+        uid = current_user_id()
+        from examiner_pipeline import ExaminerPipeline
+        reviews = ExaminerPipeline.student_reviews(uid)
+        return jsonify({"reviews": reviews})
+
+    @app.route("/api/reviews/queue")
+    @teacher_required
+    def api_reviews_queue():
+        from examiner_pipeline import ExaminerPipeline
+        reviews = ExaminerPipeline.pending_reviews()
+        return jsonify({"reviews": reviews})
+
+    @app.route("/api/reviews/<int:review_id>/assign", methods=["POST"])
+    @teacher_required
+    def api_reviews_assign(review_id):
+        uid = current_user_id()
+        from examiner_pipeline import ExaminerPipeline
+        ExaminerPipeline.assign_to_examiner(review_id, uid)
+        return jsonify({"success": True})
+
+    @app.route("/api/reviews/<int:review_id>/complete", methods=["POST"])
+    @teacher_required
+    def api_reviews_complete(review_id):
+        data = request.get_json()
+        feedback = data.get("feedback", "")
+        grade = data.get("grade", "")
+        video_url = data.get("video_url", "")
+        if not feedback:
+            return jsonify({"error": "Feedback required"}), 400
+        from examiner_pipeline import ExaminerPipeline
+        ExaminerPipeline.submit_examiner_feedback(review_id, feedback, grade, video_url)
+        ExaminerPipeline.deliver_to_student(review_id)
+        return jsonify({"success": True})
+
+    @app.route("/api/reviews/<int:review_id>")
+    @login_required
+    def api_reviews_detail(review_id):
+        uid = current_user_id()
+        from examiner_pipeline import ExaminerPipeline
+        review = ExaminerPipeline.get_review(review_id)
+        if not review:
+            return jsonify({"error": "Review not found"}), 404
+        # Auth gate: student or assigned examiner
+        if review["user_id"] != uid and review.get("examiner_id") != uid:
+            if getattr(current_user, "role", "student") not in ("teacher", "admin"):
+                abort(403)
+        return jsonify(review)
+
+    # ══════════════════════════════════════════════════════════════════
+    # ─── TEACHER BATCH GRADING ──────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+
+    @app.route("/api/teacher/batch-grade", methods=["POST"])
+    @teacher_required
+    def api_teacher_batch_grade():
+        data = request.get_json()
+        class_id = int(data.get("class_id", 0))
+        subject = data.get("subject", "")
+        doc_type = data.get("doc_type", "ia")
+        assignment_title = data.get("assignment_title", "")
+        submissions = data.get("submissions", [])
+        if not class_id or not subject or not submissions:
+            return jsonify({"error": "class_id, subject, and submissions required"}), 400
+
+        uid = current_user_id()
+
+        # Verify teacher owns the class
+        cls = ClassStoreDB.get(class_id)
+        if not cls or cls["teacher_id"] != uid:
+            abort(404)
+
+        # Deduct credits per student
+        from credit_store import CreditStoreDB, FEATURE_COSTS
+        cost_per = FEATURE_COSTS.get("batch_grade_per_student", 20)
+        total_cost = cost_per * len(submissions)
+        store = CreditStoreDB(uid)
+        if not store.has_credits(total_cost):
+            return jsonify({
+                "error": "Insufficient credits",
+                "required": total_cost,
+                "balance": store.balance(),
+            }), 402
+        store.debit(total_cost, "batch_grade_per_student",
+                    f"Batch grade: {len(submissions)} students")
+
+        # Create job record
+        from database import get_db as _get_db
+        db = _get_db()
+        now = datetime.now().isoformat()
+        cur = db.execute(
+            "INSERT INTO batch_grading_jobs "
+            "(teacher_id, class_id, assignment_title, subject, doc_type, "
+            "status, total_submissions, created_at) "
+            "VALUES (?, ?, ?, ?, ?, 'processing', ?, ?)",
+            (uid, class_id, assignment_title, subject, doc_type,
+             len(submissions), now),
+        )
+        job_id = cur.lastrowid
+        db.commit()
+
+        # Process batch
+        try:
+            from agents.batch_grading_agent import BatchGradingAgent
+            agent = BatchGradingAgent()
+            result = agent.process_batch(submissions, subject, doc_type)
+
+            # Update job with results
+            metadata = result.metadata or {}
+            db.execute(
+                "UPDATE batch_grading_jobs SET status = 'completed', "
+                "processed_count = ?, results = ?, class_summary = ?, "
+                "completed_at = ? WHERE id = ?",
+                (metadata.get("processed", 0),
+                 json.dumps(metadata.get("results", [])),
+                 json.dumps(metadata.get("class_summary", {})),
+                 datetime.now().isoformat(), job_id),
+            )
+            db.commit()
+
+            return jsonify({
+                "job_id": job_id,
+                "status": "completed",
+                "results": metadata.get("results", []),
+                "class_summary": metadata.get("class_summary", {}),
+            })
+        except Exception as e:
+            db.execute(
+                "UPDATE batch_grading_jobs SET status = 'failed' WHERE id = ?",
+                (job_id,),
+            )
+            db.commit()
+            return jsonify({"error": str(e), "job_id": job_id}), 500
+
+    @app.route("/api/teacher/batch-grade/<int:job_id>")
+    @teacher_required
+    def api_teacher_batch_grade_status(job_id):
+        uid = current_user_id()
+        from database import get_db as _get_db
+        db = _get_db()
+        row = db.execute(
+            "SELECT * FROM batch_grading_jobs WHERE id = ? AND teacher_id = ?",
+            (job_id, uid),
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Job not found"}), 404
+        result = dict(row)
+        for key in ("results", "class_summary"):
+            try:
+                result[key] = json.loads(result[key])
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return jsonify(result)
+
+    @app.route("/api/teacher/batch-grade/history")
+    @teacher_required
+    def api_teacher_batch_grade_history():
+        uid = current_user_id()
+        from database import get_db as _get_db
+        db = _get_db()
+        rows = db.execute(
+            "SELECT id, class_id, assignment_title, subject, doc_type, status, "
+            "total_submissions, processed_count, created_at, completed_at "
+            "FROM batch_grading_jobs WHERE teacher_id = ? "
+            "ORDER BY created_at DESC",
+            (uid,),
+        ).fetchall()
+        return jsonify({"jobs": [dict(r) for r in rows]})
+
+    # ══════════════════════════════════════════════════════════════════
+    # ─── ENHANCED PARENT PORTAL ─────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+
+    @app.route("/api/parent/traffic-light/<token>")
+    def api_parent_traffic_light(token):
+        parent_config = ParentConfigDB.load_by_token(token)
+        if not parent_config or not parent_config.enabled:
+            return jsonify({"error": "Invalid or disabled parent link"}), 404
+        from parent_analytics import ParentAnalytics
+        analytics = ParentAnalytics(parent_config.user_id)
+        result = analytics.traffic_light()
+        result["sos_highlights"] = analytics.sos_highlights()
+        result["action_items"] = analytics.action_items()
+        return jsonify(result)
+
+    @app.route("/api/parent/digest/<token>")
+    def api_parent_digest(token):
+        parent_config = ParentConfigDB.load_by_token(token)
+        if not parent_config or not parent_config.enabled:
+            return jsonify({"error": "Invalid or disabled parent link"}), 404
+        from parent_analytics import ParentAnalytics
+        analytics = ParentAnalytics(parent_config.user_id)
+        return jsonify(analytics.weekly_digest())
+
+    # ══════════════════════════════════════════════════════════════════
+    # ─── ADMISSIONS PROFILE & AGENT ─────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+
+    @app.route("/api/admissions/profile")
+    @login_required
+    def api_admissions_profile():
+        uid = current_user_id()
+        # Check for existing profile
+        from database import get_db as _get_db
+        db = _get_db()
+        row = db.execute(
+            "SELECT * FROM admissions_profiles WHERE user_id = ?",
+            (uid,),
+        ).fetchone()
+        if row:
+            result = dict(row)
+            for key in ("subject_strengths", "recommended_universities"):
+                try:
+                    result[key] = json.loads(result[key])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            return jsonify(result)
+        # Generate new profile
+        from agents.admissions_agent import AdmissionsAgent
+        agent = AdmissionsAgent()
+        response = agent.generate_profile(uid)
+        return jsonify({
+            "profile": response.metadata.get("profile", {}),
+            "content": response.content,
+        })
+
+    @app.route("/api/admissions/personal-statement", methods=["POST"])
+    @login_required
+    def api_admissions_personal_statement():
+        data = request.get_json()
+        target = data.get("target", "common_app")
+        word_limit = int(data.get("word_limit", 650))
+        uid = current_user_id()
+
+        # Deduct credits
+        from credit_store import CreditStoreDB, FEATURE_COSTS
+        store = CreditStoreDB(uid)
+        cost = FEATURE_COSTS.get("personal_statement", 200)
+        if not store.has_credits(cost):
+            return jsonify({
+                "error": "Insufficient credits",
+                "required": cost,
+                "balance": store.balance(),
+            }), 402
+        store.debit(cost, "personal_statement", f"Personal statement: {target}")
+
+        from agents.admissions_agent import AdmissionsAgent
+        agent = AdmissionsAgent()
+        response = agent.draft_personal_statement(uid, target, word_limit)
+        return jsonify({
+            "statement": response.content,
+            "metadata": response.metadata,
+        })
+
+    @app.route("/api/admissions/suggest-universities", methods=["POST"])
+    @login_required
+    def api_admissions_suggest_universities():
+        data = request.get_json()
+        preferences = data.get("preferences", {})
+        uid = current_user_id()
+        from agents.admissions_agent import AdmissionsAgent
+        agent = AdmissionsAgent()
+        response = agent.suggest_universities(uid, preferences)
+        return jsonify({
+            "suggestions": response.metadata.get("suggestions", {}),
+            "content": response.content,
+        })
 
     # ── Start push notification scheduler (non-blocking) ─────────────
     if not app.config.get("TESTING"):

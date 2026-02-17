@@ -24,6 +24,15 @@ INTENT_LABELS = [
     "find_research",
     "solve_stem",
     "general_chat",
+    # Differentiator intents
+    "analyze_handwriting",
+    "practice_oral",
+    "check_feasibility",
+    "analyze_data",
+    "tok_synthesis",
+    "generate_questions",
+    "get_plan",
+    "admissions",
 ]
 
 CLASSIFICATION_PROMPT = """Classify the student's message into exactly one intent.
@@ -35,6 +44,14 @@ Intents:
 - review_coursework: Student wants feedback on IA/EE/TOK writing
 - find_research: Student wants real-world examples, case studies, or citations
 - solve_stem: Student has a math/physics/chemistry calculation or wants a numerical answer verified
+- analyze_handwriting: Student wants their handwritten work analyzed or checked
+- practice_oral: Student wants to practice an Individual Oral or oral exam
+- check_feasibility: Student wants to check if a coursework topic is feasible
+- analyze_data: Student wants help analyzing experimental data or running statistics
+- tok_synthesis: Student wants help connecting subjects for TOK or finding cross-curricular links
+- generate_questions: Student wants practice questions generated
+- get_plan: Student wants a study plan, daily briefing, or is stressed about studying
+- admissions: Student wants help with university applications, personal statements, or UCAS/Common App
 - general_chat: Anything else (greetings, meta-questions, etc.)
 
 Context: Subject={subject}, Topic={topic}
@@ -76,6 +93,27 @@ class Orchestrator:
             elif name == "research":
                 from agents.research_agent import ResearchAgent
                 self._agents[name] = ResearchAgent()
+            elif name == "vision":
+                from agents.vision_agent import VisionAgent
+                self._agents[name] = VisionAgent()
+            elif name == "oral":
+                from agents.oral_exam_agent import OralExamAgent
+                self._agents[name] = OralExamAgent(self.rag_engine)
+            elif name == "coursework_ide":
+                from agents.coursework_ide_agent import CourseworkIDEAgent
+                self._agents[name] = CourseworkIDEAgent(self.rag_engine)
+            elif name == "tok":
+                from agents.tok_synthesis_agent import TOKSynthesisAgent
+                self._agents[name] = TOKSynthesisAgent(self.rag_engine)
+            elif name == "question_gen":
+                from agents.question_gen_agent import QuestionGenAgent
+                self._agents[name] = QuestionGenAgent(self.rag_engine)
+            elif name == "executive":
+                from agents.executive_agent import ExecutiveAgent
+                self._agents[name] = ExecutiveAgent(self.rag_engine)
+            elif name == "admissions":
+                from agents.admissions_agent import AdmissionsAgent
+                self._agents[name] = AdmissionsAgent(self.rag_engine)
         return self._agents.get(name)
 
     def classify_intent(
@@ -96,10 +134,17 @@ class Orchestrator:
         if any(kw in msg_lower for kw in grade_keywords):
             return "grade_answer"
 
+        # TOK synthesis (check before coursework to avoid overlap)
+        tok_keywords = ["tok essay", "connect subjects", "areas of knowledge",
+                         "ways of knowing", "cross-curricular", "tok connection",
+                         "tok exhibition"]
+        if any(kw in msg_lower for kw in tok_keywords):
+            return "tok_synthesis"
+
         # Coursework review
         cw_keywords = ["review my ia", "review my ee", "review my essay",
                         "feedback on my ia", "feedback on my ee",
-                        "tok essay", "tok exhibition", "internal assessment"]
+                        "internal assessment"]
         if any(kw in msg_lower for kw in cw_keywords):
             return "review_coursework"
 
@@ -119,6 +164,51 @@ class Orchestrator:
         # If context has a question (help with a specific question)
         if context.get("question") and not context.get("answer"):
             return "help_question"
+
+        # Handwriting analysis
+        hw_keywords = ["check my working", "photo of my work", "handwriting",
+                        "my working out", "analyze my working", "check my work"]
+        if any(kw in msg_lower for kw in hw_keywords):
+            return "analyze_handwriting"
+
+        # Oral exam practice
+        oral_keywords = ["oral exam", "io practice", "individual oral",
+                          "oral presentation", "practice oral", "mock oral"]
+        if any(kw in msg_lower for kw in oral_keywords):
+            return "practice_oral"
+
+        # Topic feasibility
+        feasibility_keywords = ["feasibility", "is this a good topic",
+                                 "good ia topic", "good ee topic", "topic idea"]
+        if any(kw in msg_lower for kw in feasibility_keywords):
+            return "check_feasibility"
+
+        # Data analysis
+        data_keywords = ["analyze my data", "run statistics", "statistical test",
+                          "chi-squared", "t-test", "pearson correlation", "analyze data"]
+        if any(kw in msg_lower for kw in data_keywords):
+            return "analyze_data"
+
+        # Question generation
+        qgen_keywords = ["give me questions", "practice questions",
+                          "more questions like this", "generate questions",
+                          "parametric", "question variants"]
+        if any(kw in msg_lower for kw in qgen_keywords):
+            return "generate_questions"
+
+        # Admissions / university applications
+        admissions_keywords = ["personal statement", "university application",
+                                "ucas", "common app", "college admissions",
+                                "university recommendation", "admissions profile"]
+        if any(kw in msg_lower for kw in admissions_keywords):
+            return "admissions"
+
+        # Study plan / executive function
+        plan_keywords = ["study plan", "what should i study", "daily plan",
+                          "i'm stressed", "burnout", "reprioritize",
+                          "daily briefing", "weekly plan"]
+        if any(kw in msg_lower for kw in plan_keywords):
+            return "get_plan"
 
         # Explain concept
         explain_keywords = ["explain", "what is", "what are", "how does",
@@ -176,6 +266,22 @@ class Orchestrator:
             response = self._route_coursework(message, context)
         elif intent == "find_research":
             response = self._route_research(message, context)
+        elif intent == "analyze_handwriting":
+            response = self._route_vision(message, context)
+        elif intent == "practice_oral":
+            response = self._route_oral(message, context)
+        elif intent == "check_feasibility":
+            response = self._route_feasibility(message, context)
+        elif intent == "analyze_data":
+            response = self._route_data_analysis(message, context)
+        elif intent == "tok_synthesis":
+            response = self._route_tok(message, context)
+        elif intent == "generate_questions":
+            response = self._route_question_gen(message, context)
+        elif intent == "get_plan":
+            response = self._route_executive(message, context)
+        elif intent == "admissions":
+            response = self._route_admissions(message, context)
         else:
             response = self._route_tutor(message, context, messages)
 
@@ -316,6 +422,175 @@ class Orchestrator:
             count=int(context.get("count", 3)),
             doc_type=context.get("doc_type", ""),
         )
+
+    def _route_vision(self, message: str, context: dict) -> AgentResponse:
+        agent = self._get_agent("vision")
+        if not agent:
+            return AgentResponse(
+                content="Vision agent unavailable.",
+                agent="vision_agent",
+                confidence=0.0,
+            )
+        image_data = context.get("image_data", b"")
+        if not image_data:
+            return AgentResponse(
+                content="Please upload a photo of your handwritten work so I can analyze it.",
+                agent="vision_agent",
+                confidence=0.5,
+            )
+        return agent.analyze_handwriting(
+            image_data=image_data,
+            question=context.get("question", message),
+            subject=context.get("subject", "Mathematics"),
+            marks=int(context.get("marks", 4)),
+            command_term=context.get("command_term", ""),
+            user_id=self.user_id,
+        )
+
+    def _route_oral(self, message: str, context: dict) -> AgentResponse:
+        agent = self._get_agent("oral")
+        if not agent:
+            return AgentResponse(
+                content="Oral exam agent unavailable.",
+                agent="oral_exam_agent",
+                confidence=0.0,
+            )
+        # Check if there's an active session
+        session_state = context.get("session_state")
+        if session_state:
+            return agent.listen_and_respond(
+                transcript=message,
+                session_state=session_state,
+                user_id=self.user_id,
+                session_id=context.get("session_id"),
+            )
+        # Start new session
+        return agent.start_session(
+            subject=context.get("subject", "English A"),
+            text_title=context.get("text_title", ""),
+            text_extract=context.get("text_extract", ""),
+            global_issue=context.get("global_issue", ""),
+            level=context.get("level", "HL"),
+            user_id=self.user_id,
+        )
+
+    def _route_feasibility(self, message: str, context: dict) -> AgentResponse:
+        agent = self._get_agent("coursework_ide")
+        if not agent:
+            return AgentResponse(
+                content="Coursework IDE agent unavailable.",
+                agent="coursework_ide_agent",
+                confidence=0.0,
+            )
+        return agent.check_feasibility(
+            topic_proposal=context.get("text", message),
+            subject=context.get("subject", ""),
+            doc_type=context.get("doc_type", "ia"),
+            school_constraints=context.get("school_constraints", ""),
+        )
+
+    def _route_data_analysis(self, message: str, context: dict) -> AgentResponse:
+        agent = self._get_agent("coursework_ide")
+        if not agent:
+            return AgentResponse(
+                content="Coursework IDE agent unavailable.",
+                agent="coursework_ide_agent",
+                confidence=0.0,
+            )
+        return agent.analyze_data(
+            raw_data=context.get("data", message),
+            subject=context.get("subject", ""),
+            hypothesis=context.get("hypothesis", ""),
+            user_id=self.user_id,
+            session_id=context.get("session_id"),
+        )
+
+    def _route_tok(self, message: str, context: dict) -> AgentResponse:
+        agent = self._get_agent("tok")
+        if not agent:
+            return AgentResponse(
+                content="TOK synthesis agent unavailable.",
+                agent="tok_synthesis_agent",
+                confidence=0.0,
+            )
+        # Build student subjects from profile
+        student_subjects = context.get("subjects", [])
+        if not student_subjects:
+            try:
+                from db_stores import StudentProfileDB
+                profile = StudentProfileDB(self.user_id)
+                student_subjects = [
+                    {"name": s.name, "level": s.level} for s in profile.subjects
+                ]
+            except Exception:
+                pass
+
+        return agent.synthesize(
+            message=message,
+            student_subjects=student_subjects,
+            tok_prompt=context.get("tok_prompt", ""),
+            user_id=self.user_id,
+        )
+
+    def _route_question_gen(self, message: str, context: dict) -> AgentResponse:
+        agent = self._get_agent("question_gen")
+        if not agent:
+            return AgentResponse(
+                content="Question generation agent unavailable.",
+                agent="question_gen_agent",
+                confidence=0.0,
+            )
+        return agent.generate_parametric(
+            subject=context.get("subject", "Mathematics"),
+            topic=context.get("topic", ""),
+            source_question=context.get("question", message),
+            variation_type=context.get("variation_type", "numbers"),
+            count=int(context.get("count", 3)),
+            difficulty=context.get("difficulty", "medium"),
+        )
+
+    def _route_executive(self, message: str, context: dict) -> AgentResponse:
+        agent = self._get_agent("executive")
+        if not agent:
+            return AgentResponse(
+                content="Executive agent unavailable.",
+                agent="executive_agent",
+                confidence=0.0,
+            )
+        # Determine which executive function is needed
+        msg_lower = message.lower()
+        if any(kw in msg_lower for kw in ("reprioritize", "deadline moved", "changed")):
+            return agent.reprioritize(self.user_id, message)
+        elif any(kw in msg_lower for kw in ("study plan", "weekly plan", "generate plan")):
+            return agent.generate_smart_plan(
+                self.user_id,
+                days_ahead=int(context.get("days_ahead", 7)),
+            )
+        else:
+            return agent.daily_briefing(self.user_id)
+
+    def _route_admissions(self, message: str, context: dict) -> AgentResponse:
+        agent = self._get_agent("admissions")
+        if not agent:
+            return AgentResponse(
+                content="Admissions agent unavailable.",
+                agent="admissions_agent",
+                confidence=0.0,
+            )
+        msg_lower = message.lower()
+        if any(kw in msg_lower for kw in ("personal statement", "draft")):
+            return agent.draft_personal_statement(
+                self.user_id,
+                target=context.get("target", "common_app"),
+                word_limit=int(context.get("word_limit", 650)),
+            )
+        elif any(kw in msg_lower for kw in ("suggest", "recommend", "university")):
+            return agent.suggest_universities(
+                self.user_id,
+                preferences=context.get("preferences"),
+            )
+        else:
+            return agent.generate_profile(self.user_id)
 
     def build_context(self) -> dict:
         """Build full student context for agent prompts."""
