@@ -199,8 +199,8 @@ class TestTeacherDashboard:
         with app.app_context():
             db = get_db()
             db.execute(
-                "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, created_at) "
-                "VALUES (10, 'Teacher', 'teacher@test.com', ?, 'teacher', '')",
+                "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, created_at, email_verified) "
+                "VALUES (10, 'Teacher', 'teacher@test.com', ?, 'teacher', '', 1)",
                 (generate_password_hash("teachpass"),),
             )
             db.execute("INSERT OR IGNORE INTO gamification (user_id) VALUES (10)")
@@ -387,8 +387,8 @@ class TestTeacherAnalytics:
         with app.app_context():
             db = get_db()
             db.execute(
-                "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, created_at) "
-                "VALUES (10, 'Teacher', 'teacher@test.com', ?, 'teacher', '')",
+                "INSERT OR IGNORE INTO users (id, name, email, password_hash, role, created_at, email_verified) "
+                "VALUES (10, 'Teacher', 'teacher@test.com', ?, 'teacher', '', 1)",
                 (generate_password_hash("teachpass"),),
             )
             db.execute("INSERT OR IGNORE INTO gamification (user_id) VALUES (10)")

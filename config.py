@@ -26,6 +26,7 @@ FEATURE_FLAGS: dict[str, bool] = {
 class BaseConfig:
     # Core Flask
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-key-change-in-production")
+    # Database: SQLite (default) or PostgreSQL (set DATABASE_URL=postgresql://...)
     DATABASE = os.environ.get("DATABASE_URL", str(BASE_DIR / "ib_study.db"))
     WTF_CSRF_ENABLED = True
 
@@ -68,6 +69,10 @@ class BaseConfig:
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
     STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
     STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
+    # Google OAuth
+    GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+    GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
 
     # Response compression
     COMPRESS_MIMETYPES = [

@@ -58,8 +58,8 @@ def app(tmp_path):
         # Seed test user
         db = get_db()
         db.execute(
-            "INSERT INTO users (id, name, email, password_hash, exam_session, target_total_points, created_at) "
-            "VALUES (1, 'Test Student', 'test@example.com', ?, 'May 2026', 38, ?)",
+            "INSERT INTO users (id, name, email, password_hash, exam_session, target_total_points, created_at, email_verified) "
+            "VALUES (1, 'Test Student', 'test@example.com', ?, 'May 2026', 38, ?, 1)",
             ("pbkdf2:sha256:600000$test$hash", datetime.now().isoformat()),
         )
         db.execute("INSERT INTO user_subjects (user_id, name, level, target_grade) VALUES (1, 'Biology', 'HL', 6)")
@@ -114,8 +114,8 @@ def teacher_client(app):
         )
         # Create teacher user
         db.execute(
-            "INSERT INTO users (id, name, email, password_hash, role, school_id, created_at) "
-            "VALUES (2, 'Test Teacher', 'teacher@test.com', ?, 'teacher', 1, '2026-01-01')",
+            "INSERT INTO users (id, name, email, password_hash, role, school_id, created_at, email_verified) "
+            "VALUES (2, 'Test Teacher', 'teacher@test.com', ?, 'teacher', 1, '2026-01-01', 1)",
             (generate_password_hash("TeacherPass1"),),
         )
         db.execute("INSERT OR IGNORE INTO gamification (user_id) VALUES (2)")

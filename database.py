@@ -976,14 +976,43 @@ MIGRATIONS: list[tuple[int, str]] = [
         ALTER TABLE users ADD COLUMN stripe_customer_id TEXT DEFAULT '';
         ALTER TABLE user_subscriptions ADD COLUMN stripe_subscription_id TEXT DEFAULT '';
     """),
+
+    # Migration 39: Email verification + OAuth columns
+    (39, """
+        ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE users ADD COLUMN email_verification_token TEXT NOT NULL DEFAULT '';
+        ALTER TABLE users ADD COLUMN oauth_provider TEXT NOT NULL DEFAULT '';
+        ALTER TABLE users ADD COLUMN oauth_id TEXT NOT NULL DEFAULT '';
+    """),
 ]
 
 
-def get_db() -> sqlite3.Connection:
-    """Return a DB connection from Flask g, creating if needed."""
+def _is_postgres() -> bool:
+    """Check if the configured database is PostgreSQL."""
+    from pg_compat import is_postgres_url
+    db_url = current_app.config.get("DATABASE", "")
+    return is_postgres_url(db_url)
+
+
+def get_db():
+    """Return a DB connection from Flask g, creating if needed.
+
+    Supports both SQLite (default) and PostgreSQL (when DATABASE starts
+    with postgresql:// or postgres://).
+    """
     if "db" not in g:
-        db_path = current_app.config.get("DATABASE", str(Path(__file__).parent / "ib_study.db"))
-        g.db = sqlite3.connect(db_path)
+        db_url = current_app.config.get("DATABASE", str(Path(__file__).parent / "ib_study.db"))
+
+        try:
+            from pg_compat import is_postgres_url, connect_pg
+            if is_postgres_url(db_url):
+                g.db = connect_pg(db_url)
+                return g.db
+        except ImportError:
+            pass
+
+        # Default: SQLite
+        g.db = sqlite3.connect(db_url)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA journal_mode=WAL")
         g.db.execute("PRAGMA foreign_keys=ON")
@@ -1010,14 +1039,23 @@ def run_migrations() -> None:
     Uses file-based locking to prevent race conditions when multiple
     Gunicorn workers start simultaneously.
     """
-    db_path = current_app.config.get("DATABASE", str(Path(__file__).parent / "ib_study.db"))
-    lock_path = Path(db_path).with_suffix(".migration.lock")
+    db_url = current_app.config.get("DATABASE", str(Path(__file__).parent / "ib_study.db"))
+    lock_file = None
 
+    # File-based locking only for SQLite (PostgreSQL has its own locking)
     try:
-        lock_file = open(lock_path, "w")
-        fcntl.flock(lock_file, fcntl.LOCK_EX)
-    except OSError:
-        lock_file = None  # Proceed without lock on platforms that don't support it
+        from pg_compat import is_postgres_url
+        use_pg = is_postgres_url(db_url)
+    except ImportError:
+        use_pg = False
+
+    if not use_pg:
+        lock_path = Path(db_url).with_suffix(".migration.lock")
+        try:
+            lock_file = open(lock_path, "w")
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+        except OSError:
+            lock_file = None
 
     try:
         db = get_db()
@@ -1029,8 +1067,9 @@ def run_migrations() -> None:
             if version not in applied:
                 try:
                     db.executescript(sql)
-                except sqlite3.OperationalError as e:
-                    if "duplicate column" not in str(e):
+                except (sqlite3.OperationalError, Exception) as e:
+                    err_msg = str(e).lower()
+                    if "duplicate column" not in err_msg and "already exists" not in err_msg:
                         raise
                 db.execute(
                     "INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",

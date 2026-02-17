@@ -131,6 +131,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     # Register all application blueprints
     register_blueprints(app)
 
+    # Google OAuth (optional)
+    try:
+        from oauth import oauth_bp, init_oauth
+        init_oauth(app)
+        app.register_blueprint(oauth_bp)
+    except ImportError:
+        pass
+
     # Asset URL context processor (JS bundling support)
     _manifest_cache: dict = {}
 
@@ -151,6 +159,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 return f"/static/dist/{hashed}"
             return f"/static/js/{filename}"
         return {"asset_url": asset_url}
+
+    @app.context_processor
+    def oauth_helpers() -> dict[str, Any]:
+        try:
+            from oauth import is_oauth_available
+            return {"google_oauth_available": is_oauth_available()}
+        except ImportError:
+            return {"google_oauth_available": False}
 
     # Security headers
     @app.after_request

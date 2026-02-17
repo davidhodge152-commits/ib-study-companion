@@ -8,6 +8,7 @@ Uses werkzeug.security for password hashing.
 from __future__ import annotations
 
 import math
+import secrets
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for, flash
@@ -55,7 +56,7 @@ class User(UserMixin):
     def get_by_email(email: str):
         db = get_db()
         row = db.execute(
-            "SELECT id, name, email, password_hash, role, login_attempts, locked_until "
+            "SELECT id, name, email, password_hash, role, login_attempts, locked_until, email_verified "
             "FROM users WHERE email = ?", (email,),
         ).fetchone()
         if row:
@@ -129,6 +130,13 @@ def login():
             log_event("login_failed", row["id"], f"email={email} attempts={attempts}")
             return render_template("login.html", error="Invalid email or password.")
 
+        # Check email verification (skip for OAuth users and testing)
+        email_verified = row["email_verified"] if "email_verified" in row.keys() else 1
+        if not email_verified:
+            return render_template("login.html",
+                error="Please verify your email address. Check your inbox for the verification link.",
+                show_resend=True, resend_email=email)
+
         # Success — reset lockout fields
         db = get_db()
         db.execute("UPDATE users SET login_attempts=0, locked_until='' WHERE id=?", (row["id"],))
@@ -180,10 +188,30 @@ def register():
         db.execute("INSERT OR IGNORE INTO gamification (user_id) VALUES (?)", (user_id,))
         db.commit()
 
+        # Generate email verification token
+        token = secrets.token_urlsafe(32)
+        db.execute(
+            "UPDATE users SET email_verification_token = ? WHERE id = ?",
+            (token, user_id),
+        )
+        db.commit()
+
+        # Send verification email
+        from flask import current_app
+        from email_service import EmailService
+        base = current_app.config.get("BASE_URL", "http://localhost:5001")
+        verify_url = f"{base}/verify-email/{token}"
+        EmailService.send(
+            email,
+            "Verify Your Email — IB Study Companion",
+            f"<p>Welcome to IB Study Companion! Please verify your email:</p>"
+            f'<p><a href="{verify_url}">Verify Email Address</a></p>'
+            f"<p>This link expires in 24 hours.</p>",
+        )
+
         log_event("register", user_id, f"email={email}")
-        user = User(user_id, name, email)
-        login_user(user, remember=True)
-        return redirect(url_for("core.onboarding"))
+        flash("Account created! Please check your email to verify your address.", "success")
+        return redirect(url_for("auth.login"))
 
     return render_template("register.html")
 
@@ -369,6 +397,67 @@ def account_delete():
     db.commit()
     logout_user()
     return jsonify({"success": True, "message": "Account deleted."})
+
+
+@auth_bp.route("/verify-email/<token>")
+def verify_email(token):
+    if not token:
+        return render_template("login.html", error="Invalid verification link.")
+
+    db = get_db()
+    row = db.execute(
+        "SELECT id, name, email FROM users WHERE email_verification_token = ?",
+        (token,),
+    ).fetchone()
+
+    if not row:
+        return render_template("login.html", error="Invalid or expired verification link.")
+
+    db.execute(
+        "UPDATE users SET email_verified = 1, email_verification_token = '' WHERE id = ?",
+        (row["id"],),
+    )
+    db.commit()
+
+    log_event("email_verified", row["id"])
+    flash("Email verified successfully! You can now log in.", "success")
+    return redirect(url_for("auth.login"))
+
+
+@auth_bp.route("/resend-verification", methods=["POST"])
+@limiter.limit("3 per hour", methods=["POST"])
+def resend_verification():
+    import secrets as _secrets
+    email = request.form.get("email", "").strip().lower()
+
+    if email:
+        db = get_db()
+        row = db.execute(
+            "SELECT id, email_verified FROM users WHERE email = ?", (email,),
+        ).fetchone()
+
+        if row and not row["email_verified"]:
+            token = _secrets.token_urlsafe(32)
+            db.execute(
+                "UPDATE users SET email_verification_token = ? WHERE id = ?",
+                (token, row["id"]),
+            )
+            db.commit()
+
+            from flask import current_app
+            from email_service import EmailService
+            base = current_app.config.get("BASE_URL", "http://localhost:5001")
+            verify_url = f"{base}/verify-email/{token}"
+            EmailService.send(
+                email,
+                "Verify Your Email — IB Study Companion",
+                f"<p>Here's your new verification link:</p>"
+                f'<p><a href="{verify_url}">Verify Email Address</a></p>'
+                f"<p>This link expires in 24 hours.</p>",
+            )
+
+    flash("If an account exists with that email, a new verification link has been sent.", "info")
+    return redirect(url_for("auth.login"))
 
 
 @auth_bp.route("/logout")

@@ -390,16 +390,10 @@ class TestGDPR:
         })
         assert resp.status_code == 403
 
-    def test_account_delete_success(self, app, client):
-        # Register a new account, then delete it
-        client.post("/register", data={
-            "name": "Delete Me",
-            "email": "deleteme@test.com",
-            "password": "DeleteMe1",
-            "confirm_password": "DeleteMe1",
-        })
-        resp = client.post("/api/account/delete", data={
-            "password": "DeleteMe1",
+    def test_account_delete_success(self, app, auth_client):
+        # Use auth_client (already logged in) to delete account
+        resp = auth_client.post("/api/account/delete", data={
+            "password": "testpass123",
         })
         assert resp.status_code == 200
         assert resp.get_json()["success"] is True
