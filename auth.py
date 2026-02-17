@@ -60,7 +60,7 @@ def load_user(user_id):
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("core.dashboard"))
 
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
@@ -77,7 +77,7 @@ def login():
         user = User(row["id"], row["name"], row["email"], role)
         login_user(user, remember=True)
         next_page = request.args.get("next")
-        return redirect(next_page or url_for("dashboard"))
+        return redirect(next_page or url_for("core.dashboard"))
 
     return render_template("login.html")
 
@@ -85,7 +85,7 @@ def login():
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("core.dashboard"))
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -119,7 +119,7 @@ def register():
 
         user = User(user_id, name, email)
         login_user(user, remember=True)
-        return redirect(url_for("onboarding"))
+        return redirect(url_for("core.onboarding"))
 
     return render_template("register.html")
 

@@ -83,7 +83,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-sm text-slate-400 dark:text-slate-500">No tasks for today. <a href="{{ url_for('planner_page') }}" class="text-indigo-600 hover:underline">Generate a study plan</a></p>
+        <p class="text-sm text-slate-400 dark:text-slate-500">No tasks for today. <a href="{{ url_for('planner.planner_page') }}" class="text-indigo-600 hover:underline">Generate a study plan</a></p>
         {% endif %}
     </div>
 
@@ -91,26 +91,26 @@
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
         <h3 class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Quick Actions</h3>
         <div class="grid grid-cols-2 gap-2">
-            <a href="{{ url_for('study') }}" class="flex items-center gap-2 px-4 py-3 bg-indigo-50 dark:bg-indigo-950 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded-lg transition-colors">
+            <a href="{{ url_for('study.study') }}" class="flex items-center gap-2 px-4 py-3 bg-indigo-50 dark:bg-indigo-950 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                 <span class="text-sm font-medium text-indigo-700 dark:text-indigo-300">Start Practice</span>
             </a>
             {% if flashcard_due > 0 %}
-            <a href="{{ url_for('flashcards_page') }}" class="flex items-center gap-2 px-4 py-3 bg-violet-50 dark:bg-violet-950 hover:bg-violet-100 dark:hover:bg-violet-900 rounded-lg transition-colors">
+            <a href="{{ url_for('flashcards.flashcards_page') }}" class="flex items-center gap-2 px-4 py-3 bg-violet-50 dark:bg-violet-950 hover:bg-violet-100 dark:hover:bg-violet-900 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 <span class="text-sm font-medium text-violet-700 dark:text-violet-300">Review {{ flashcard_due }} Cards</span>
             </a>
             {% else %}
-            <a href="{{ url_for('flashcards_page') }}" class="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors">
+            <a href="{{ url_for('flashcards.flashcards_page') }}" class="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Flashcards</span>
             </a>
             {% endif %}
-            <a href="{{ url_for('lifecycle_page') }}" class="flex items-center gap-2 px-4 py-3 bg-teal-50 dark:bg-teal-950 hover:bg-teal-100 dark:hover:bg-teal-900 rounded-lg transition-colors">
+            <a href="{{ url_for('lifecycle.lifecycle_page') }}" class="flex items-center gap-2 px-4 py-3 bg-teal-50 dark:bg-teal-950 hover:bg-teal-100 dark:hover:bg-teal-900 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                 <span class="text-sm font-medium text-teal-700 dark:text-teal-300">EE/IA/TOK</span>
             </a>
-            <a href="{{ url_for('insights') }}" class="flex items-center gap-2 px-4 py-3 bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 dark:hover:bg-sky-900 rounded-lg transition-colors">
+            <a href="{{ url_for('insights.insights') }}" class="flex items-center gap-2 px-4 py-3 bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 dark:hover:bg-sky-900 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span class="text-sm font-medium text-sky-700 dark:text-sky-300">View Insights</span>
             </a>
@@ -225,7 +225,7 @@
         <h3 class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Today's Focus</h3>
         {% if recommendation.subject %}
         <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-3">{{ recommendation.reason }}</p>
-        <a href="{{ url_for('study') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+        <a href="{{ url_for('study.study') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
             Start Smart Practice
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
         </a>

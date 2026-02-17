@@ -1,10 +1,11 @@
 .env
+.venv/
 __pycache__/
 *.pyc
+.git/
 data/
 chroma_db/
 session_data/
-.venv/
 *.db
 *.sqlite3
 .pytest_cache/

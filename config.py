@@ -1,30 +1,80 @@
 """
 Application configuration — environment-aware settings.
+
+All environment variables are documented here. See .env.example for a template.
 """
 
 from __future__ import annotations
 
 import os
+import warnings
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
 
 
+# ---------------------------------------------------------------------------
+# Feature flags — simple dict, no external service
+# ---------------------------------------------------------------------------
+FEATURE_FLAGS: dict[str, bool] = {
+    "oral_practice": True,
+    "examiner_reviews": False,
+    "stripe_payments": False,
+}
+
+
 class BaseConfig:
+    # Core Flask
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-key-change-in-production")
     DATABASE = os.environ.get("DATABASE_URL", str(BASE_DIR / "ib_study.db"))
+    WTF_CSRF_ENABLED = True
+
+    # AI provider keys
     GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-    WTF_CSRF_ENABLED = True
+
+    # Web push (VAPID)
+    VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+    VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+    VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com")
+
+    # Logging
+    LOG_FORMAT = os.environ.get("LOG_FORMAT", "text")  # "json" or "text"
+    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+
+    # Future integrations (unused for now, documented for reference)
+    REDIS_URL = os.environ.get("REDIS_URL", "")
+    SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+    STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+
+    FEATURE_FLAGS = FEATURE_FLAGS
 
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
+    LOG_FORMAT = os.environ.get("LOG_FORMAT", "text")
 
 
 class ProductionConfig(BaseConfig):
     DEBUG = False
+    LOG_FORMAT = os.environ.get("LOG_FORMAT", "json")
+
+    @classmethod
+    def validate(cls):
+        """Fail fast on missing or insecure configuration in production."""
+        errors: list[str] = []
+
+        if cls.SECRET_KEY in ("dev-key-change-in-production", ""):
+            errors.append("SECRET_KEY must be set to a secure value in production.")
+
+        if not cls.GOOGLE_API_KEY:
+            warnings.warn("GOOGLE_API_KEY is not set — AI features will be unavailable.")
+
+        if errors:
+            raise RuntimeError(
+                "Production configuration errors:\n" + "\n".join(f"  - {e}" for e in errors)
+            )
 
 
 class TestingConfig(BaseConfig):
