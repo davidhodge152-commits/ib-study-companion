@@ -291,8 +291,10 @@ class VisionAgent:
         )
 
         try:
-            response = self._gemini_model.generate_content(prompt)
-            raw = response.text.strip()
+            from ai_resilience import resilient_llm_call
+
+            raw, _ = resilient_llm_call("gemini", "gemini-2.0-flash", prompt)
+            raw = raw.strip()
             return self._parse_ecf_response(raw, marks)
         except Exception:
             return {

@@ -164,27 +164,9 @@ def send_study_reminders(app) -> int:
 
 
 def init_scheduler(app):
-    """Start a background scheduler for push notifications.
+    """Legacy entry point — scheduling moved to scheduler.py.
 
-    Uses APScheduler if available, otherwise logs that scheduling is disabled.
-    The job runs every 4 hours, sending study reminders to subscribed users.
+    Kept for backwards compatibility. Use scheduler.init_scheduler instead.
     """
-    try:
-        from apscheduler.schedulers.background import BackgroundScheduler
-    except ImportError:
-        app.logger.info("APScheduler not installed — push scheduling disabled. "
-                        "Install apscheduler to enable timed notifications.")
-        return None
-
-    scheduler = BackgroundScheduler(daemon=True)
-    scheduler.add_job(
-        func=send_study_reminders,
-        args=[app],
-        trigger="interval",
-        hours=4,
-        id="study_reminders",
-        replace_existing=True,
-    )
-    scheduler.start()
-    app.logger.info("Push notification scheduler started (every 4 hours)")
-    return scheduler
+    from scheduler import init_scheduler as _init
+    return _init(app)

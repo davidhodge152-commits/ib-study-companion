@@ -187,6 +187,16 @@ def api_teacher_export_csv(class_id):
     )
 
 
+@bp.route("/api/admin/analytics-export")
+@teacher_required
+def api_admin_analytics_export():
+    """Export anonymized platform analytics (teacher/admin only)."""
+    from data_pipeline import export_anonymized_analytics
+    from flask import current_app
+    data = export_anonymized_analytics(current_app._get_current_object())
+    return jsonify(data)
+
+
 # ── Student class/assignment endpoints ──────────────────────
 
 @bp.route("/api/classes/join", methods=["POST"])

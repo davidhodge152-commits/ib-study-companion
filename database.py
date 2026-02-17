@@ -895,6 +895,71 @@ MIGRATIONS: list[tuple[int, str]] = [
             created_at TEXT NOT NULL DEFAULT ''
         );
     """),
+
+    # Migration 32: AI feedback
+    (32, """
+        CREATE TABLE IF NOT EXISTS ai_feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            interaction_id INTEGER REFERENCES agent_interactions(id),
+            agent TEXT NOT NULL,
+            feedback_type TEXT NOT NULL,
+            comment TEXT NOT NULL DEFAULT '',
+            context TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+
+    # Migration 33: Cost tracking columns on agent_interactions
+    (33, """
+        ALTER TABLE agent_interactions ADD COLUMN provider TEXT NOT NULL DEFAULT '';
+        ALTER TABLE agent_interactions ADD COLUMN model TEXT NOT NULL DEFAULT '';
+        ALTER TABLE agent_interactions ADD COLUMN input_tokens_est INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE agent_interactions ADD COLUMN output_tokens_est INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE agent_interactions ADD COLUMN cost_estimate_usd REAL NOT NULL DEFAULT 0.0;
+        ALTER TABLE agent_interactions ADD COLUMN cache_hit INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE agent_interactions ADD COLUMN prompt_variant TEXT NOT NULL DEFAULT '';
+    """),
+
+    # Migration 34: RAG citations
+    (34, """
+        CREATE TABLE IF NOT EXISTS rag_citations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            interaction_id INTEGER REFERENCES agent_interactions(id),
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            chunk_source TEXT NOT NULL,
+            chunk_doc_type TEXT NOT NULL,
+            chunk_subject TEXT NOT NULL,
+            chunk_text_hash TEXT NOT NULL,
+            relevance_score REAL NOT NULL DEFAULT 0.0,
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+
+    # Migration 35: Shared summaries
+    (35, """
+        CREATE TABLE IF NOT EXISTS shared_summaries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT UNIQUE NOT NULL,
+            data TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT '',
+            expires_at TEXT NOT NULL DEFAULT ''
+        );
+    """),
+
+    # Migration 36: Daily aggregates
+    (36, """
+        CREATE TABLE IF NOT EXISTS daily_aggregates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            metric TEXT NOT NULL,
+            value REAL NOT NULL DEFAULT 0.0,
+            breakdown TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT '',
+            UNIQUE(date, metric)
+        );
+    """),
 ]
 
 

@@ -502,17 +502,9 @@ class ExecutiveAgent:
             pass
 
     def _call_llm(self, prompt: str, system: str = "") -> str:
-        """Call the configured LLM provider."""
-        if self._provider == "claude":
-            kwargs = {
-                "model": "claude-sonnet-4-5-20250929",
-                "max_tokens": 2048,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-            if system:
-                kwargs["system"] = system
-            response = self._claude_client.messages.create(**kwargs)
-            return response.content[0].text
-        else:
-            full_prompt = f"{system}\n\n{prompt}" if system else prompt
-            return self._gemini_model.generate_content(full_prompt).text
+        """Call the configured LLM provider with resilience."""
+        from ai_resilience import resilient_llm_call
+
+        model = "claude-sonnet-4-5-20250929" if self._provider == "claude" else "gemini-2.0-flash"
+        text, _ = resilient_llm_call(self._provider, model, prompt, system=system)
+        return text

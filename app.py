@@ -109,10 +109,10 @@ def create_app(test_config=None):
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
-    # Start push notification scheduler (non-blocking)
+    # Start centralized scheduler (push reminders, analytics, cache cleanup)
     if not app.config.get("TESTING"):
         try:
-            from push import init_scheduler
+            from scheduler import init_scheduler
             init_scheduler(app)
         except Exception:
             pass

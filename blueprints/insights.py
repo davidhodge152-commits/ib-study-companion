@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import secrets
+from datetime import datetime, timedelta
+
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
 
@@ -210,3 +213,108 @@ def api_topics(subject):
             "hl_only": t.hl_only,
         })
     return jsonify({"topics": result})
+
+
+# ── Predictive Analytics Endpoints ──────────────────────────
+
+
+@bp.route("/api/insights/predictions")
+@login_required
+def api_predictions():
+    """Predicted grades per subject + total IB score."""
+    try:
+        uid = current_user_id()
+        from predictive_analytics import PredictiveGradeModel
+        model = PredictiveGradeModel()
+        result = model.predict_total_ib_score(uid)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/insights/study-patterns")
+@login_required
+def api_study_patterns():
+    """Study pattern analysis for current user."""
+    try:
+        uid = current_user_id()
+        from predictive_analytics import PredictiveGradeModel
+        model = PredictiveGradeModel()
+        result = model.study_pattern_analysis(uid)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/insights/peer-ranking/<subject>")
+@login_required
+def api_peer_ranking(subject):
+    """Peer percentile ranking for a subject."""
+    try:
+        uid = current_user_id()
+        from community_analytics import peer_percentile
+        result = peer_percentile(uid, subject)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/insights/share", methods=["POST"])
+@login_required
+def api_share_summary():
+    """Generate a shareable summary token."""
+    try:
+        uid = current_user_id()
+        from predictive_analytics import PredictiveGradeModel
+        from database import get_db
+        import json
+
+        model = PredictiveGradeModel()
+        predictions = model.predict_total_ib_score(uid)
+        patterns = model.study_pattern_analysis(uid)
+
+        profile = StudentProfileDB.load(uid)
+        name = profile.name if profile else "Student"
+
+        data = {
+            "name": name,
+            "predictions": predictions,
+            "patterns": patterns,
+            "generated_at": datetime.now().isoformat(),
+        }
+
+        token = secrets.token_urlsafe(16)
+        expires_at = (datetime.now() + timedelta(days=7)).isoformat()
+
+        db = get_db()
+        db.execute(
+            "INSERT INTO shared_summaries (user_id, token, data, created_at, expires_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (uid, token, json.dumps(data), datetime.now().isoformat(), expires_at),
+        )
+        db.commit()
+
+        return jsonify({"token": token, "expires_at": expires_at})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/share/<token>")
+def view_shared_summary(token):
+    """Public shareable summary page (no auth required)."""
+    import json
+    from database import get_db
+
+    db = get_db()
+    row = db.execute(
+        "SELECT * FROM shared_summaries WHERE token = ?", (token,)
+    ).fetchone()
+
+    if not row:
+        return render_template("shared_summary.html", error="Summary not found"), 404
+
+    if row["expires_at"] and row["expires_at"] < datetime.now().isoformat():
+        return render_template("shared_summary.html", error="This summary has expired"), 410
+
+    data = json.loads(row["data"])
+    return render_template("shared_summary.html", data=data, error=None)

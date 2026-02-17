@@ -35,6 +35,8 @@ class RetrievedChunk:
     subject: str
     level: str
     distance: float
+    keyword_score: float = 0.0
+    relevance_score: float = 0.0
 
 
 @dataclass
@@ -155,6 +157,100 @@ class RAGEngine:
                 )
             )
         return chunks
+
+    # ── Hybrid search ─────────────────────────────────────────────
+
+    def hybrid_query(
+        self,
+        query_text: str,
+        n_results: int = 5,
+        subject: Optional[str] = None,
+        doc_type: Optional[str] = None,
+        level: Optional[str] = None,
+        alpha: float = 0.7,
+    ) -> list[RetrievedChunk]:
+        """Hybrid search combining vector similarity and keyword matching.
+
+        Args:
+            alpha: Weight for vector score (1-alpha for keyword score).
+        """
+        # Over-fetch via vector search
+        vector_chunks = self.query(
+            query_text, n_results=n_results * 2,
+            subject=subject, doc_type=doc_type, level=level,
+        )
+
+        if not vector_chunks:
+            return []
+
+        # Tokenize query for keyword matching
+        query_tokens = set(query_text.lower().split())
+
+        for chunk in vector_chunks:
+            # Compute keyword score
+            chunk_tokens = set(chunk.text.lower().split())
+            matching = query_tokens & chunk_tokens
+            chunk.keyword_score = (
+                len(matching) / len(query_tokens) if query_tokens else 0.0
+            )
+            # Combine scores
+            vector_score = max(0, 1 - chunk.distance)
+            chunk.relevance_score = (
+                alpha * vector_score + (1 - alpha) * chunk.keyword_score
+            )
+
+        # Sort by combined score and return top n
+        vector_chunks.sort(key=lambda c: c.relevance_score, reverse=True)
+        return vector_chunks[:n_results]
+
+    def rerank(
+        self,
+        query: str,
+        chunks: list[RetrievedChunk],
+        top_k: int = 5,
+    ) -> list[RetrievedChunk]:
+        """LLM-based re-ranking of retrieved chunks.
+
+        Prompts the LLM to rate each chunk's relevance 1-5, then re-sorts.
+        Only called when explicitly requested (not default path).
+        """
+        if not chunks:
+            return []
+
+        chunk_descriptions = "\n".join(
+            f"[{i}] {c.text[:200]}..." for i, c in enumerate(chunks)
+        )
+        prompt = (
+            f"Query: {query}\n\n"
+            f"Rate each chunk's relevance to the query on a scale of 1-5:\n\n"
+            f"{chunk_descriptions}\n\n"
+            "Respond with ONLY the scores as a comma-separated list of integers, "
+            "one per chunk. Example: 5,3,4,1,2"
+        )
+
+        try:
+            from ai_resilience import resilient_llm_call
+
+            text, _ = resilient_llm_call("gemini", "gemini-2.0-flash", prompt)
+            scores = []
+            for s in text.strip().split(","):
+                try:
+                    scores.append(int(s.strip()))
+                except ValueError:
+                    scores.append(3)  # default to middle score
+
+            # Pad or truncate scores to match chunks
+            while len(scores) < len(chunks):
+                scores.append(3)
+
+            for i, chunk in enumerate(chunks):
+                chunk.relevance_score = float(scores[i]) / 5.0
+
+            chunks.sort(key=lambda c: c.relevance_score, reverse=True)
+        except Exception:
+            pass  # Return chunks in original order on failure
+
+        return chunks[:top_k]
 
     # ── Examiner report retrieval ─────────────────────────────────
 
@@ -369,8 +465,9 @@ TOPIC: [specific sub-topic]
 MODEL_ANSWER: [a concise model answer that would earn full marks — use bullet points for clarity]
 ---"""
 
-        response = self.model.generate_content(prompt)
-        text = response.text
+        from ai_resilience import resilient_llm_call
+
+        text, _ = resilient_llm_call("gemini", "gemini-2.0-flash", prompt)
 
         questions: list[GeneratedQuestion] = []
         blocks = text.split("---")
@@ -441,8 +538,9 @@ If you cannot find exact boundaries, provide your best estimate based on
 historical trends and clearly state it is an estimate."""
 
         try:
-            response = self.model.generate_content(prompt)
-            raw = response.text
+            from ai_resilience import resilient_llm_call as _rlc
+
+            raw, _ = _rlc("gemini", "gemini-2.0-flash", prompt)
         except Exception as e:
             return GradeBoundary(
                 subject=subject,
@@ -479,10 +577,11 @@ historical trends and clearly state it is an estimate."""
     # ── Generic Gemini call ────────────────────────────────────────
 
     def ask(self, prompt: str, system: str = "") -> str:
-        """Simple wrapper for ad-hoc Gemini calls."""
-        full = f"{system}\n\n{prompt}" if system else prompt
-        response = self.model.generate_content(full)
-        return response.text
+        """Simple wrapper for ad-hoc Gemini calls with resilience."""
+        from ai_resilience import resilient_llm_call
+
+        text, _ = resilient_llm_call("gemini", "gemini-2.0-flash", prompt, system=system)
+        return text
 
 
 def _extract_field(block: str, field: str) -> str:

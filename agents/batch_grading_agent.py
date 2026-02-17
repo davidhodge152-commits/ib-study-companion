@@ -124,19 +124,12 @@ class BatchGradingAgent:
         )
 
         try:
-            if self._provider == "claude":
-                resp = self._claude_client.messages.create(
-                    model="claude-sonnet-4-20250514",
-                    max_tokens=1000,
-                    system=BATCH_SYSTEM_PROMPT,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                raw = resp.content[0].text
-            else:
-                resp = self._gemini_model.generate_content(
-                    f"{BATCH_SYSTEM_PROMPT}\n\n{prompt}",
-                )
-                raw = resp.text
+            from ai_resilience import resilient_llm_call
+
+            model = "claude-sonnet-4-20250514" if self._provider == "claude" else "gemini-2.0-flash"
+            raw, _ = resilient_llm_call(
+                self._provider, model, prompt, system=BATCH_SYSTEM_PROMPT,
+            )
 
             # Parse JSON response
             json_match = re.search(r'\{[\s\S]*\}', raw)

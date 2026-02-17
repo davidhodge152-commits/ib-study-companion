@@ -147,25 +147,15 @@ class STEMSolverAgent:
 
     def _generate_code(self, question: str, subject: str) -> str | None:
         """Use LLM to generate Python code that solves the problem."""
+        from ai_resilience import resilient_llm_call
+
         prompt = f"Subject: {subject}\nProblem: {question}\n\nWrite Python code to solve this."
 
         try:
-            if self._provider == "openai":
-                response = self._openai_client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": STEM_SYSTEM},
-                        {"role": "user", "content": prompt},
-                    ],
-                    max_tokens=512,
-                    temperature=0.1,
-                )
-                raw = response.choices[0].message.content
-            else:
-                raw = self._gemini_model.generate_content(
-                    f"{STEM_SYSTEM}\n\n{prompt}"
-                ).text
-
+            model = "gpt-4o" if self._provider == "openai" else "gemini-2.0-flash"
+            raw, _ = resilient_llm_call(
+                self._provider, model, prompt, system=STEM_SYSTEM,
+            )
             return self._extract_code(raw)
         except Exception:
             return None
@@ -225,6 +215,8 @@ class STEMSolverAgent:
         subject: str,
     ) -> str:
         """Generate Socratic guidance comparing student's answer to computed answer."""
+        from ai_resilience import resilient_llm_call
+
         system = GUIDANCE_SYSTEM.format(
             subject=subject,
             correct_answer=correct_answer,
@@ -233,20 +225,11 @@ class STEMSolverAgent:
         prompt = f"Question: {question}\n\nHelp the student understand this problem."
 
         try:
-            if self._provider == "openai":
-                response = self._openai_client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": prompt},
-                    ],
-                    max_tokens=512,
-                )
-                return response.choices[0].message.content
-            else:
-                return self._gemini_model.generate_content(
-                    f"{system}\n\n{prompt}"
-                ).text
+            model = "gpt-4o" if self._provider == "openai" else "gemini-2.0-flash"
+            text, _ = resilient_llm_call(
+                self._provider, model, prompt, system=system,
+            )
+            return text
         except Exception:
             if student_answer:
                 return (
@@ -260,6 +243,8 @@ class STEMSolverAgent:
         self, question: str, student_work: str, subject: str
     ) -> AgentResponse:
         """Fallback when code generation or execution fails."""
+        from ai_resilience import resilient_llm_call
+
         prompt = (
             f"Subject: {subject}\n"
             f"Question: {question}\n"
@@ -268,15 +253,8 @@ class STEMSolverAgent:
         )
 
         try:
-            if self._provider == "openai":
-                response = self._openai_client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=512,
-                )
-                text = response.choices[0].message.content
-            else:
-                text = self._gemini_model.generate_content(prompt).text
+            model = "gpt-4o" if self._provider == "openai" else "gemini-2.0-flash"
+            text, _ = resilient_llm_call(self._provider, model, prompt)
 
             return AgentResponse(
                 content=text,

@@ -2054,31 +2054,71 @@ class ClassStoreDB:
 
     @staticmethod
     def export_class_csv(class_id: int) -> str:
-        """Generate CSV string of class progress data for export."""
+        """Generate CSV string of class progress data for export.
+
+        Includes per-student summary rows with predicted grades, target grades,
+        gaps, questions attempted, average percentage, and last active date.
+        """
         import csv
         import io
         db = get_db()
         cls = db.execute("SELECT name, subject FROM classes WHERE id = ?", (class_id,)).fetchone()
-        rows = db.execute(
-            "SELECT u.name as student_name, g.subject_display, g.topic, "
-            "g.command_term, g.grade, g.percentage, g.mark_earned, g.mark_total, "
-            "g.timestamp "
-            "FROM grades g "
-            "JOIN class_members cm ON g.user_id = cm.user_id "
-            "JOIN users u ON g.user_id = u.id "
+
+        # Get member list with targets
+        members = db.execute(
+            "SELECT u.id as user_id, u.name as student_name, "
+            "us.name as subject, us.target_grade "
+            "FROM class_members cm "
+            "JOIN users u ON cm.user_id = u.id "
+            "LEFT JOIN user_subjects us ON u.id = us.user_id "
             "WHERE cm.class_id = ? "
-            "ORDER BY u.name, g.timestamp",
+            "ORDER BY u.name",
             (class_id,),
         ).fetchall()
 
+        # Build per-student, per-subject summary
+        from predictive_analytics import PredictiveGradeModel
+        model = PredictiveGradeModel()
+
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["Student", "Subject", "Topic", "Command Term",
-                         "Grade", "Percentage", "Mark Earned", "Mark Total", "Date"])
-        for r in rows:
-            writer.writerow([r["student_name"], r["subject_display"], r["topic"],
-                             r["command_term"], r["grade"], r["percentage"],
-                             r["mark_earned"], r["mark_total"], r["timestamp"]])
+        writer.writerow([
+            "Student", "Subject", "Predicted Grade", "Target Grade", "Gap",
+            "Questions Attempted", "Avg Percentage", "Last Active",
+        ])
+
+        seen = set()
+        for m in members:
+            uid = m["user_id"]
+            subj = m["subject"] or (cls["subject"] if cls else "")
+            key = (uid, subj)
+            if key in seen or not subj:
+                continue
+            seen.add(key)
+
+            # Predicted grade
+            pred = model.predict_subject_grade(uid, subj)
+            predicted_grade = pred["predicted_grade"] if pred else ""
+
+            target = m["target_grade"] or ""
+            gap = ""
+            if pred and target:
+                gap = round(target - pred["predicted_grade"], 1)
+
+            # Questions attempted and avg percentage
+            stats = db.execute(
+                "SELECT COUNT(*) as cnt, AVG(percentage) as avg_pct, MAX(timestamp) as last_ts "
+                "FROM grades WHERE user_id = ? AND subject_display = ?",
+                (uid, subj),
+            ).fetchone()
+
+            writer.writerow([
+                m["student_name"], subj, predicted_grade, target, gap,
+                stats["cnt"] if stats else 0,
+                round(stats["avg_pct"], 1) if stats and stats["avg_pct"] else 0,
+                stats["last_ts"] if stats and stats["last_ts"] else "",
+            ])
+
         return output.getvalue()
 
     @staticmethod
@@ -2833,3 +2873,161 @@ class StudyBuddyDB:
             if len(matches) >= limit:
                 break
         return matches
+
+
+# ── Agent Interaction Store ─────────────────────────────────
+
+
+class AgentInteractionStoreDB:
+    """DB-backed store for agent interaction logging with cost tracking."""
+
+    @staticmethod
+    def log(
+        user_id: int,
+        intent: str,
+        agent: str,
+        confidence: float,
+        input_summary: str,
+        response_summary: str,
+        latency_ms: int,
+        provider: str = "",
+        model: str = "",
+        input_tokens_est: int = 0,
+        output_tokens_est: int = 0,
+        cost_estimate_usd: float = 0.0,
+        cache_hit: bool = False,
+        prompt_variant: str = "",
+    ) -> int | None:
+        """Log an agent interaction. Returns the interaction id."""
+        try:
+            db = get_db()
+            cur = db.execute(
+                "INSERT INTO agent_interactions "
+                "(user_id, intent, agent, confidence, input_summary, "
+                "response_summary, latency_ms, created_at, "
+                "provider, model, input_tokens_est, output_tokens_est, "
+                "cost_estimate_usd, cache_hit, prompt_variant) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    user_id, intent, agent, confidence,
+                    input_summary[:200], response_summary[:200],
+                    latency_ms, datetime.now().isoformat(),
+                    provider, model, input_tokens_est, output_tokens_est,
+                    cost_estimate_usd, 1 if cache_hit else 0, prompt_variant,
+                ),
+            )
+            db.commit()
+            return cur.lastrowid
+        except Exception:
+            return None
+
+    @staticmethod
+    def recent(limit: int = 50) -> list[dict]:
+        db = get_db()
+        rows = db.execute(
+            "SELECT * FROM agent_interactions ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def by_agent(agent: str, limit: int = 50) -> list[dict]:
+        db = get_db()
+        rows = db.execute(
+            "SELECT * FROM agent_interactions WHERE agent = ? "
+            "ORDER BY created_at DESC LIMIT ?",
+            (agent, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def cost_summary(days: int = 30) -> dict:
+        """Aggregate cost data by agent, model, and day."""
+        db = get_db()
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        rows = db.execute(
+            "SELECT agent, model, "
+            "DATE(created_at) as day, "
+            "SUM(cost_estimate_usd) as total_cost, "
+            "SUM(input_tokens_est + output_tokens_est) as total_tokens, "
+            "COUNT(*) as call_count "
+            "FROM agent_interactions WHERE created_at >= ? "
+            "GROUP BY agent, model, day ORDER BY day DESC",
+            (cutoff,),
+        ).fetchall()
+        return {
+            "by_day": [dict(r) for r in rows],
+            "total_cost": sum(r["total_cost"] or 0 for r in rows),
+            "total_calls": sum(r["call_count"] for r in rows),
+        }
+
+    @staticmethod
+    def feedback_stats(agent: str | None = None) -> dict:
+        """Get feedback statistics, optionally filtered by agent."""
+        db = get_db()
+        if agent:
+            rows = db.execute(
+                "SELECT feedback_type, COUNT(*) as cnt "
+                "FROM ai_feedback WHERE agent = ? GROUP BY feedback_type",
+                (agent,),
+            ).fetchall()
+        else:
+            rows = db.execute(
+                "SELECT agent, feedback_type, COUNT(*) as cnt "
+                "FROM ai_feedback GROUP BY agent, feedback_type",
+            ).fetchall()
+        return {"stats": [dict(r) for r in rows]}
+
+
+# ── RAG Citation Store ──────────────────────────────────────
+
+
+class RAGCitationStoreDB:
+    """DB-backed store for RAG citation tracking."""
+
+    @staticmethod
+    def record(interaction_id: int, user_id: int, chunks: list) -> None:
+        """Bulk insert citation records for an interaction."""
+        import hashlib
+        db = get_db()
+        now = datetime.now().isoformat()
+        for chunk in chunks:
+            text_hash = hashlib.sha256(
+                chunk.text.encode() if hasattr(chunk, "text") else str(chunk).encode()
+            ).hexdigest()[:16]
+            db.execute(
+                "INSERT INTO rag_citations "
+                "(interaction_id, user_id, chunk_source, chunk_doc_type, "
+                "chunk_subject, chunk_text_hash, relevance_score, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    interaction_id, user_id,
+                    getattr(chunk, "source", ""),
+                    getattr(chunk, "doc_type", ""),
+                    getattr(chunk, "subject", ""),
+                    text_hash,
+                    getattr(chunk, "relevance_score", 0.0),
+                    now,
+                ),
+            )
+        db.commit()
+
+    @staticmethod
+    def get_for_interaction(interaction_id: int) -> list[dict]:
+        db = get_db()
+        rows = db.execute(
+            "SELECT * FROM rag_citations WHERE interaction_id = ?",
+            (interaction_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def source_usage_stats() -> list[dict]:
+        """Which documents are most cited."""
+        db = get_db()
+        rows = db.execute(
+            "SELECT chunk_source, chunk_subject, COUNT(*) as citation_count "
+            "FROM rag_citations GROUP BY chunk_source, chunk_subject "
+            "ORDER BY citation_count DESC LIMIT 50",
+        ).fetchall()
+        return [dict(r) for r in rows]

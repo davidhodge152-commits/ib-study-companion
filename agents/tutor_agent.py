@@ -144,16 +144,14 @@ class TutorAgent:
             misconception_context=misconception_context,
         )
 
-        if self._provider == "claude":
-            response_text = self._call_claude(system, messages)
-        elif self._provider == "gemini":
-            response_text = self._call_gemini(system, messages)
-        else:
+        if self._provider not in ("claude", "gemini"):
             return AgentResponse(
                 content="The AI tutor requires an API key (Anthropic or Google).",
                 agent=self.AGENT_NAME,
                 confidence=0.0,
             )
+
+        response_text = self._call_llm(system, messages)
 
         return AgentResponse(
             content=response_text,
@@ -162,28 +160,26 @@ class TutorAgent:
             metadata={"provider": self._provider},
         )
 
-    def _call_claude(self, system: str, messages: list[dict]) -> str:
-        """Call Claude API for tutoring."""
-        claude_messages = []
-        for msg in messages:
-            role = "user" if msg["role"] == "user" else "assistant"
-            claude_messages.append({"role": role, "content": msg["content"]})
+    def _call_llm(self, system: str, messages: list[dict]) -> str:
+        """Call the configured LLM provider with resilience."""
+        from ai_resilience import resilient_llm_call
 
-        response = self._claude_client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=1024,
-            system=system,
-            messages=claude_messages,
-        )
-        return response.content[0].text
-
-    def _call_gemini(self, system: str, messages: list[dict]) -> str:
-        """Fall back to Gemini for tutoring."""
-        conversation = [system + "\n\n"]
-        for msg in messages:
-            role = "Student" if msg["role"] == "user" else "Tutor"
-            conversation.append(f"{role}: {msg['content']}")
-        conversation.append("Tutor:")
-
-        response = self._gemini_model.generate_content("\n\n".join(conversation))
-        return response.text
+        if self._provider == "claude":
+            claude_messages = []
+            for msg in messages:
+                role = "user" if msg["role"] == "user" else "assistant"
+                claude_messages.append({"role": role, "content": msg["content"]})
+            text, _ = resilient_llm_call(
+                "claude", "claude-sonnet-4-5-20250929", "",
+                system=system, messages=claude_messages,
+            )
+            return text
+        else:
+            conversation = [system + "\n\n"]
+            for msg in messages:
+                role = "Student" if msg["role"] == "user" else "Tutor"
+                conversation.append(f"{role}: {msg['content']}")
+            conversation.append("Tutor:")
+            prompt = "\n\n".join(conversation)
+            text, _ = resilient_llm_call("gemini", "gemini-2.0-flash", prompt)
+            return text

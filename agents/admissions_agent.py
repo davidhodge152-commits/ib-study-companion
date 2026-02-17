@@ -222,16 +222,10 @@ class AdmissionsAgent:
         )
 
         try:
-            if self._provider == "claude":
-                resp = self._claude_client.messages.create(
-                    model="claude-sonnet-4-20250514",
-                    max_tokens=2000,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                raw = resp.content[0].text
-            else:
-                resp = self._gemini_model.generate_content(prompt)
-                raw = resp.text
+            from ai_resilience import resilient_llm_call
+
+            model = "claude-sonnet-4-20250514" if self._provider == "claude" else "gemini-2.0-flash"
+            raw, _ = resilient_llm_call(self._provider, model, prompt)
 
             # Try to parse JSON from response
             import re
@@ -307,16 +301,10 @@ class AdmissionsAgent:
         )
 
         try:
-            if self._provider == "claude":
-                resp = self._claude_client.messages.create(
-                    model="claude-sonnet-4-20250514",
-                    max_tokens=2000,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                raw = resp.content[0].text
-            else:
-                resp = self._gemini_model.generate_content(prompt)
-                raw = resp.text
+            from ai_resilience import resilient_llm_call
+
+            model = "claude-sonnet-4-20250514" if self._provider == "claude" else "gemini-2.0-flash"
+            raw, _ = resilient_llm_call(self._provider, model, prompt)
 
             # Save draft to profile
             try:
@@ -367,16 +355,10 @@ class AdmissionsAgent:
         )
 
         try:
-            if self._provider == "claude":
-                resp = self._claude_client.messages.create(
-                    model="claude-sonnet-4-20250514",
-                    max_tokens=2000,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                raw = resp.content[0].text
-            else:
-                resp = self._gemini_model.generate_content(prompt)
-                raw = resp.text
+            from ai_resilience import resilient_llm_call
+
+            model = "claude-sonnet-4-20250514" if self._provider == "claude" else "gemini-2.0-flash"
+            raw, _ = resilient_llm_call(self._provider, model, prompt)
 
             # Parse JSON
             import re

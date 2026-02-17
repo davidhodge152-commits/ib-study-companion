@@ -734,3 +734,39 @@ def api_tutor_upload_image():
         return jsonify({"error": "Vision agent not available. Please configure your API key."}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── AI Feedback ──────────────────────────────────────────
+
+@bp.route("/api/ai/feedback", methods=["POST"])
+@login_required
+def api_ai_feedback():
+    """Record thumbs-up/thumbs-down feedback on an AI response."""
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    agent = data.get("agent", "")
+    feedback_type = data.get("feedback_type", "")
+    if feedback_type not in ("thumbs_up", "thumbs_down"):
+        return jsonify({"error": "feedback_type must be 'thumbs_up' or 'thumbs_down'"}), 400
+    if not agent:
+        return jsonify({"error": "agent is required"}), 400
+
+    from database import get_db
+    from datetime import datetime as dt
+
+    db = get_db()
+    db.execute(
+        "INSERT INTO ai_feedback (user_id, interaction_id, agent, feedback_type, "
+        "comment, context, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            uid,
+            data.get("interaction_id"),
+            agent,
+            feedback_type,
+            data.get("comment", ""),
+            json.dumps(data.get("context", {})),
+            dt.now().isoformat(),
+        ),
+    )
+    db.commit()
+    return jsonify({"success": True})

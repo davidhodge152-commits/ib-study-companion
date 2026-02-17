@@ -14,3 +14,5 @@ class AgentResponse:
     confidence: float  # 0-1 confidence
     metadata: dict = field(default_factory=dict)  # Agent-specific data
     follow_up: str | None = None  # Suggested follow-up question
+    validated: bool = True
+    validation_warnings: list[str] = field(default_factory=list)

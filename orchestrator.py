@@ -226,17 +226,17 @@ class Orchestrator:
             return "general_chat"
 
         try:
-            import google.generativeai as genai
+            from ai_resilience import resilient_llm_call
 
-            genai.configure(api_key=google_key)
-            model = genai.GenerativeModel("gemini-2.0-flash")
             prompt = CLASSIFICATION_PROMPT.format(
                 subject=subject or "General",
                 topic=topic or "General",
                 message=message,
             )
-            response = model.generate_content(prompt)
-            intent = response.text.strip().lower().replace('"', "").replace("'", "")
+            text, _ = resilient_llm_call(
+                "gemini", "gemini-2.0-flash", prompt, cache_ttl=300,
+            )
+            intent = text.strip().lower().replace('"', "").replace("'", "")
 
             if intent in INTENT_LABELS:
                 return intent
@@ -617,27 +617,27 @@ class Orchestrator:
         input_summary: str,
         latency_ms: int,
     ) -> None:
-        """Log agent interaction to database."""
+        """Log agent interaction to database with cost tracking."""
         try:
-            from database import get_db
+            from db_stores import AgentInteractionStoreDB
 
-            db = get_db()
-            db.execute(
-                "INSERT INTO agent_interactions "
-                "(user_id, intent, agent, confidence, input_summary, "
-                "response_summary, latency_ms, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    self.user_id,
-                    intent,
-                    response.agent,
-                    response.confidence,
-                    input_summary[:200],
-                    response.content[:200],
-                    latency_ms,
-                    datetime.now().isoformat(),
-                ),
+            # Extract cost metadata if available
+            meta = response.metadata or {}
+            AgentInteractionStoreDB.log(
+                user_id=self.user_id,
+                intent=intent,
+                agent=response.agent,
+                confidence=response.confidence,
+                input_summary=input_summary,
+                response_summary=response.content[:200],
+                latency_ms=latency_ms,
+                provider=meta.get("provider", ""),
+                model=meta.get("model", ""),
+                input_tokens_est=meta.get("input_tokens_est", 0),
+                output_tokens_est=meta.get("output_tokens_est", 0),
+                cost_estimate_usd=meta.get("cost_estimate_usd", 0.0),
+                cache_hit=meta.get("cache_hit", False),
+                prompt_variant=meta.get("prompt_variant", ""),
             )
-            db.commit()
         except Exception:
             pass  # Logging is best-effort

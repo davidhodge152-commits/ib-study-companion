@@ -85,9 +85,11 @@ Search for recent, relevant, and verifiable examples that an IB student could ci
 Prioritize examples from the last 5 years when possible."""
 
         try:
-            response = self._model.generate_content(prompt)
+            from ai_resilience import resilient_llm_call
+
+            response_text, _ = resilient_llm_call("gemini", "gemini-2.0-flash", prompt)
             return AgentResponse(
-                content=response.text,
+                content=response_text,
                 agent=self.AGENT_NAME,
                 confidence=0.75,
                 metadata={

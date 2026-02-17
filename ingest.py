@@ -254,6 +254,20 @@ def detect_paper_number(filename: str, text_sample: str) -> int:
     return 0
 
 
+def validate_chunk(text: str) -> tuple[bool, str]:
+    """Validate a text chunk for quality. Returns (is_valid, reason)."""
+    if len(text) < 50:
+        return False, f"too short ({len(text)} chars, min 50)"
+    if len(text) > 4000:
+        return False, f"too long ({len(text)} chars, max 4000)"
+    alpha_chars = sum(1 for c in text if c.isalpha())
+    total_chars = len(text)
+    alpha_ratio = alpha_chars / total_chars if total_chars > 0 else 0
+    if alpha_ratio < 0.3:
+        return False, f"low alpha ratio ({alpha_ratio:.2f}, min 0.3)"
+    return True, ""
+
+
 def chunk_text(text: str, max_tokens: int = 800) -> list[str]:
     """
     Split text into chunks, preferring section boundaries.
@@ -391,7 +405,18 @@ def ingest(reset: bool = False) -> None:
         year = detect_year(pdf.name, text)
         session = detect_session(pdf.name, text)
         paper_number = detect_paper_number(pdf.name, text)
-        chunks = chunk_text(text)
+        raw_chunks = chunk_text(text)
+        # Filter out invalid chunks
+        chunks = []
+        rejected = 0
+        for c in raw_chunks:
+            valid, reason = validate_chunk(c)
+            if valid:
+                chunks.append(c)
+            else:
+                rejected += 1
+        if rejected:
+            print(f"  ({rejected} chunks rejected) ", end="", flush=True)
 
         ids = [f"{prefix}_c{i:04d}" for i in range(len(chunks))]
         metadatas = [

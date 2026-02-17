@@ -190,12 +190,33 @@ STUDENT ANSWER:
 
 Grade this answer according to your protocol. The question is worth {marks} marks."""
 
-        raw = self.model.generate_content(
-            f"{IB_EXAMINER_SYSTEM}\n\n{prompt}"
-        ).text
+        from ai_resilience import resilient_llm_call
+
+        raw, _ = resilient_llm_call(
+            "gemini", "gemini-2.0-flash", prompt, system=IB_EXAMINER_SYSTEM,
+        )
 
         # Parse structured response
         parsed = self._parse(raw, marks)
+
+        # Validate parsed output
+        valid, warnings = self._validate_parse(parsed, marks)
+        if not valid:
+            # Retry once with format reminder
+            retry_prompt = (
+                prompt + "\n\nIMPORTANT FORMAT REMINDER: mark_earned must be <= "
+                f"{marks}, grade must be 1-7, percentage must be 0-100, "
+                "and you must provide at least some strengths or improvements."
+            )
+            try:
+                raw, _ = resilient_llm_call(
+                    "gemini", "gemini-2.0-flash", retry_prompt,
+                    system=IB_EXAMINER_SYSTEM,
+                )
+                parsed = self._parse(raw, marks)
+                valid, warnings = self._validate_parse(parsed, marks)
+            except Exception:
+                pass
 
         # Update adaptive theta
         if user_id:
@@ -220,6 +241,8 @@ Grade this answer according to your protocol. The question is worth {marks} mark
             confidence=0.85,
             metadata=parsed,
             follow_up="Would you like me to explain any of the mark scheme criteria?",
+            validated=valid,
+            validation_warnings=warnings,
         )
 
     def _parse(self, raw: str, total_marks: int) -> dict:
@@ -291,3 +314,19 @@ Grade this answer according to your protocol. The question is worth {marks} mark
             "full_commentary": full_commentary.strip(),
             "model_answer": model_answer.strip(),
         }
+
+    @staticmethod
+    def _validate_parse(parsed: dict, marks: int) -> tuple[bool, list[str]]:
+        """Validate parsed grading output. Returns (is_valid, warnings)."""
+        warnings: list[str] = []
+
+        if parsed["mark_earned"] > marks:
+            warnings.append(f"mark_earned ({parsed['mark_earned']}) > mark_total ({marks})")
+        if not 1 <= parsed["grade"] <= 7:
+            warnings.append(f"grade ({parsed['grade']}) outside 1-7 range")
+        if not 0 <= parsed["percentage"] <= 100:
+            warnings.append(f"percentage ({parsed['percentage']}) outside 0-100 range")
+        if not parsed["strengths"] and not parsed["improvements"]:
+            warnings.append("no strengths or improvements provided")
+
+        return (len(warnings) == 0, warnings)
