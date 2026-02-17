@@ -42,7 +42,18 @@ export function loadInsights() {
                 `;
             }
         })
-        .catch(err => console.error('Insights load error:', err));
+        .catch(err => {
+            const container = document.getElementById('insights-cards');
+            if (container) {
+                container.innerHTML = `
+                    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center col-span-3" role="alert">
+                        <p class="text-red-700 dark:text-red-400 font-medium text-sm">Failed to load insights. Please try again.</p>
+                        <button onclick="loadInsights()" class="mt-3 px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+                            Try Again
+                        </button>
+                    </div>`;
+            }
+        });
 }
 
 function renderTextInsights(insights) {
@@ -198,6 +209,10 @@ function renderTrendChart(data) {
                 }
             }
         });
+        const descEl = document.getElementById('trend-chart-desc');
+        if (descEl && data.trend) {
+            descEl.textContent = `Grade trend: ${data.trend.map((v, i) => `Answer ${i+1}: ${v}%`).join(', ')}`;
+        }
     } else {
         const chartEl = document.getElementById('trend-chart');
         if (chartEl) chartEl.style.display = 'none';
@@ -236,6 +251,11 @@ function renderDistChart(data) {
                 }
             }
         });
+        const descEl = document.getElementById('dist-chart-desc');
+        if (descEl && data.grade_distribution) {
+            const entries = Object.entries(data.grade_distribution).map(([g, c]) => `Grade ${g}: ${c}`).join(', ');
+            descEl.textContent = `Grade distribution: ${entries}`;
+        }
     } else {
         const chartEl = document.getElementById('dist-chart');
         if (chartEl) chartEl.style.display = 'none';

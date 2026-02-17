@@ -37,13 +37,13 @@
 </div>
 
 <!-- Review Mode -->
-<div id="fc-review-mode" class="hidden">
+<div id="fc-review-mode" class="hidden" aria-live="polite">
     <!-- Progress -->
     <div class="flex items-center gap-3 mb-4">
-        <div class="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+        <div class="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-2" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
             <div id="fc-progress-bar" class="h-2 rounded-full bg-indigo-500 transition-all" style="width: 0%"></div>
         </div>
-        <span id="fc-progress-text" class="text-sm text-slate-500 dark:text-slate-400">0/0</span>
+        <span id="fc-progress-text" class="text-sm text-slate-500 dark:text-slate-400" role="status">0/0</span>
     </div>
 
     <!-- Flashcard -->
@@ -66,7 +66,7 @@
     <!-- Rating Buttons (Anki-style) -->
     <div id="fc-rating" class="hidden">
         <p class="text-sm text-slate-500 dark:text-slate-400 text-center mb-3">How well did you know this?</p>
-        <div class="grid grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button onclick="rateCard(1)" class="py-3 rounded-xl text-sm font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors border border-red-200 dark:border-red-800">
                 Again
                 <span class="block text-xs font-normal text-red-500 dark:text-red-500 mt-0.5">&lt;1 min</span>
@@ -131,9 +131,9 @@
 </div>
 
 <!-- Create Flashcard Modal -->
-<div id="fc-create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+<div id="fc-create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="fc-create-modal-title">
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 w-full max-w-lg mx-4">
-        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Create Flashcard</h2>
+        <h2 id="fc-create-modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Create Flashcard</h2>
         <div class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Subject</label>
@@ -163,7 +163,7 @@
             <button onclick="createFlashcard()" class="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-lg text-sm transition-colors">
                 Create Card
             </button>
-            <button onclick="hideCreateFlashcard()" class="px-6 py-2.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-sm transition-colors">
+            <button onclick="hideCreateFlashcard()" class="px-6 py-2.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-sm transition-colors" aria-label="Close">
                 Cancel
             </button>
         </div>
@@ -184,6 +184,63 @@ let fcCurrentMode = 'due';
 
 // Load flashcards on page load
 document.addEventListener('DOMContentLoaded', () => loadFlashcards('due'));
+
+// Keyboard shortcuts for flashcard review
+document.addEventListener('keydown', (e) => {
+    const reviewMode = document.getElementById('fc-review-mode');
+    if (!reviewMode || reviewMode.classList.contains('hidden')) return;
+
+    if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        flipCard();
+    } else if (fcFlipped && e.key >= '1' && e.key <= '4') {
+        e.preventDefault();
+        rateCard(parseInt(e.key));
+    }
+});
+
+// Swipe gestures for flashcard review
+let touchStartX = 0;
+let touchStartY = 0;
+const fcCardEl = document.getElementById('fc-card');
+
+if (fcCardEl) {
+    fcCardEl.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    fcCardEl.addEventListener('touchmove', (e) => {
+        if (!fcFlipped) return;
+        const dx = e.changedTouches[0].screenX - touchStartX;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(e.changedTouches[0].screenY - touchStartY);
+        if (absDx > absDy && absDx > 20) {
+            fcCardEl.style.transform = `rotateY(180deg) translateX(${dx * 0.5}px)`;
+            fcCardEl.style.opacity = Math.max(0.5, 1 - absDx / 300);
+            if (dx < 0) {
+                fcCardEl.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.3)';
+            } else {
+                fcCardEl.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.3)';
+            }
+        }
+    }, { passive: true });
+
+    fcCardEl.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].screenX - touchStartX;
+        fcCardEl.style.transform = fcFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)';
+        fcCardEl.style.opacity = '1';
+        fcCardEl.style.boxShadow = '';
+
+        if (fcFlipped && Math.abs(dx) > 80) {
+            if (dx < 0) {
+                rateCard(1); // Swipe left = Again
+            } else {
+                rateCard(3); // Swipe right = Good
+            }
+        }
+    }, { passive: true });
+}
 
 function loadFlashcards(mode) {
     fcCurrentMode = mode;
@@ -259,8 +316,8 @@ function renderCardList() {
                         <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">${escapeHtml(card.subject)}</span>
                         ${dueBadge}${sourceBadge}
                     </div>
-                    <button onclick="deleteFlashcard('${card.id}')" class="text-slate-400 hover:text-red-500 transition-colors p-1" title="Delete card">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <button onclick="deleteFlashcard('${card.id}')" class="text-slate-400 hover:text-red-500 transition-colors p-1" title="Delete card" aria-label="Delete flashcard">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                 </div>
                 <p class="text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">${escapeHtml(card.front)}</p>
@@ -316,6 +373,7 @@ function showFlashcard() {
     // Update progress
     const pct = Math.round((fcIndex / fcCards.length) * 100);
     document.getElementById('fc-progress-bar').style.width = pct + '%';
+    document.getElementById('fc-progress-bar').parentElement.setAttribute('aria-valuenow', pct);
     document.getElementById('fc-progress-text').textContent = `${fcIndex + 1}/${fcCards.length}`;
 
     // Hide rating until flipped

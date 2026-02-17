@@ -12,29 +12,50 @@
     </div>
 
     <!-- My Groups -->
-    <div id="groups-list" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div class="text-center text-slate-500 py-12 col-span-full">Loading groups...</div>
+    <div id="groups-list" aria-live="polite" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="text-center py-12 col-span-full">
+            <div role="status"><span class="sr-only">Loading groups...</span><div class="skeleton rounded h-4 w-full mb-2"></div><div class="skeleton rounded h-4 w-3/4"></div></div>
+        </div>
+    </div>
+
+    <!-- Empty state CTA (shown by JS when no groups) -->
+    <div id="groups-empty" class="hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
+            <svg class="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">No study groups yet</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4 max-w-md mx-auto">Create a group to study with friends or join an existing one with an invite code.</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="showCreateModal()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    Create a Group
+                </button>
+                <button onclick="showJoinModal()" class="px-5 py-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-sm font-medium rounded-lg transition-colors">
+                    Join a Group
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Group Detail Panel -->
     <div id="group-detail" class="hidden bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm space-y-4">
         <div class="flex items-center justify-between">
             <h2 id="group-name" class="text-xl font-bold"></h2>
-            <button onclick="closeGroupDetail()" class="text-slate-400 hover:text-slate-600">&times;</button>
+            <button onclick="closeGroupDetail()" aria-label="Close group detail" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 min-w-[44px] min-h-[44px] flex items-center justify-center">&times;</button>
         </div>
-        <p class="text-sm text-slate-500">Invite code: <code id="group-invite" class="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded"></code></p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Invite code: <code id="group-invite" class="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded"></code></p>
 
         <div class="grid gap-4 md:grid-cols-2">
             <!-- Members -->
             <div>
                 <h3 class="font-semibold mb-2">Members</h3>
-                <div id="group-members" class="space-y-1"></div>
+                <div id="group-members" aria-live="polite" class="space-y-1"></div>
             </div>
             <!-- Challenges -->
             <div>
                 <h3 class="font-semibold mb-2">Challenges</h3>
                 <button onclick="showChallengeModal()" class="mb-2 text-sm text-indigo-600 hover:underline">+ New Challenge</button>
-                <div id="group-challenges" class="space-y-2"></div>
+                <div id="group-challenges" aria-live="polite" class="space-y-2"></div>
             </div>
         </div>
     </div>
@@ -43,8 +64,8 @@
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
         <h2 class="text-lg font-bold mb-4">Find Study Buddy</h2>
         <div id="buddy-setup" class="space-y-3 mb-4">
-            <input id="buddy-subjects" placeholder="Your subjects (comma separated)" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
-            <select id="buddy-availability" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
+            <input id="buddy-subjects" placeholder="Your subjects (comma separated)" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
+            <select id="buddy-availability" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
                 <option value="weekdays">Weekdays</option>
                 <option value="weekends">Weekends</option>
                 <option value="evenings">Evenings</option>
@@ -54,13 +75,13 @@
                 <button onclick="saveBuddyPrefs()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Save & Find Matches</button>
             </div>
         </div>
-        <div id="buddy-matches" class="space-y-2"></div>
+        <div id="buddy-matches" aria-live="polite" class="space-y-2"></div>
     </div>
 
     <!-- Leaderboard -->
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
         <h2 class="text-lg font-bold mb-4">Global Leaderboard</h2>
-        <div id="leaderboard" class="space-y-2"></div>
+        <div id="leaderboard" aria-live="polite" class="space-y-2"></div>
     </div>
 </div>
 
@@ -68,8 +89,8 @@
 <div id="create-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
         <h3 class="text-lg font-bold">Create Study Group</h3>
-        <input id="new-group-name" placeholder="Group name" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
-        <input id="new-group-subject" placeholder="Subject (optional)" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="new-group-name" placeholder="Group name" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="new-group-subject" placeholder="Subject (optional)" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
         <div class="flex gap-2 justify-end">
             <button onclick="hideModal('create-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
             <button onclick="createGroup()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Create</button>
@@ -81,7 +102,7 @@
 <div id="join-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
         <h3 class="text-lg font-bold">Join Study Group</h3>
-        <input id="join-code" placeholder="Enter invite code" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="join-code" placeholder="Enter invite code" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
         <div class="flex gap-2 justify-end">
             <button onclick="hideModal('join-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
             <button onclick="joinGroup()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Join</button>
@@ -93,8 +114,8 @@
 <div id="challenge-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
         <h3 class="text-lg font-bold">Create Challenge</h3>
-        <input id="challenge-title" placeholder="Challenge title" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
-        <input id="challenge-subject" placeholder="Subject" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="challenge-title" placeholder="Challenge title" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="challenge-subject" placeholder="Subject" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
         <div class="flex gap-2 justify-end">
             <button onclick="hideModal('challenge-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
             <button onclick="createChallenge()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Create</button>
@@ -118,14 +139,14 @@ async function saveBuddyPrefs() {
     const data = await res.json();
     const container = document.getElementById('buddy-matches');
     if (!data.matches || data.matches.length === 0) {
-        container.innerHTML = '<p class="text-sm text-slate-500">No matches found yet. Check back later!</p>';
+        container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">No matches found yet. Check back later!</p>';
         return;
     }
     container.innerHTML = data.matches.map(m => `
         <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
             <div>
-                <p class="font-medium text-sm">${m.name}</p>
-                <p class="text-xs text-slate-500">Common: ${m.common_subjects.join(', ')} &middot; ${m.availability || 'Flexible'}</p>
+                <p class="font-medium text-sm dark:text-slate-200">${m.name}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Common: ${m.common_subjects.join(', ')} &middot; ${m.availability || 'Flexible'}</p>
             </div>
             <button onclick="connectBuddy(${m.user_id})" class="px-3 py-1 bg-indigo-600 text-white text-xs rounded-lg">Connect</button>
         </div>

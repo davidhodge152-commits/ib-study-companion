@@ -4,21 +4,21 @@
 {% block content %}
 <div class="space-y-6">
     <div class="flex items-center gap-3">
-        <a href="/teacher/dashboard" class="text-slate-400 hover:text-slate-600">&larr;</a>
+        <a href="/teacher/dashboard" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">&larr;</a>
         <div>
             <h1 class="text-2xl font-bold">{{ cls.name }}</h1>
-            <p class="text-sm text-slate-500">{{ cls.subject }} {{ cls.level }} &middot; Join code: <code class="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{{ cls.join_code }}</code></p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ cls.subject }} {{ cls.level }} &middot; Join code: <code class="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{{ cls.join_code }}</code></p>
         </div>
     </div>
 
     <!-- Class Stats -->
     <div class="grid gap-4 sm:grid-cols-3">
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
-            <p class="text-sm text-slate-500">Students</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Students</p>
             <p class="text-2xl font-bold">{{ members|length }}</p>
         </div>
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
-            <p class="text-sm text-slate-500">Class Average</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Class Average</p>
             {% if avg_grades %}
             <p class="text-2xl font-bold">{{ avg_grades.values()|map(attribute='avg_pct')|list|first|default(0) }}%</p>
             {% else %}
@@ -26,7 +26,7 @@
             {% endif %}
         </div>
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
-            <p class="text-sm text-slate-500">Assignments</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Assignments</p>
             <p class="text-2xl font-bold">{{ assignments|length }}</p>
         </div>
     </div>
@@ -40,18 +40,18 @@
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="text-left text-slate-500 border-b dark:border-slate-700">
+                    <tr class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                         <th class="pb-2 font-medium">Student</th>
                         <th class="pb-2 font-medium">Questions</th>
                         <th class="pb-2 font-medium">Avg Score</th>
                         <th class="pb-2 font-medium">Last Active</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y dark:divide-slate-700">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                     {% for s in progress %}
                     <tr>
-                        <td class="py-3 font-medium">{{ s.name }}</td>
-                        <td class="py-3">{{ s.total_grades }}</td>
+                        <td class="py-3 font-medium dark:text-slate-200">{{ s.name }}</td>
+                        <td class="py-3 dark:text-slate-300">{{ s.total_grades }}</td>
                         <td class="py-3">
                             {% if s.avg_pct %}
                             <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium
@@ -62,10 +62,10 @@
                             </span>
                             {% else %}<span class="text-slate-400">-</span>{% endif %}
                         </td>
-                        <td class="py-3 text-slate-500">{{ s.last_active or '-' }}</td>
+                        <td class="py-3 text-slate-500 dark:text-slate-400">{{ s.last_active or '-' }}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4" class="py-6 text-center text-slate-500">No students yet</td></tr>
+                    <tr><td colspan="4" class="py-6 text-center text-slate-500 dark:text-slate-400">No students yet</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -79,12 +79,12 @@
             {% for a in assignments %}
             <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
                 <div>
-                    <h3 class="font-medium">{{ a.title }}</h3>
-                    <p class="text-xs text-slate-500">Due: {{ a.due_date or 'No deadline' }} &middot; {{ a.submission_count }} submissions</p>
+                    <h3 class="font-medium dark:text-slate-200">{{ a.title }}</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Due: {{ a.due_date or 'No deadline' }} &middot; {{ a.submission_count }} submissions</p>
                 </div>
             </div>
             {% else %}
-            <p class="text-slate-500 text-center py-4">No assignments yet</p>
+            <p class="text-slate-500 dark:text-slate-400 text-center py-4">No assignments yet</p>
             {% endfor %}
         </div>
     </div>
@@ -105,8 +105,8 @@
     <!-- Activity Heatmap -->
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
         <h2 class="text-lg font-bold mb-4">Activity Heatmap (Last 30 Days)</h2>
-        <div id="activity-heatmap" class="overflow-x-auto">
-            <p class="text-sm text-slate-500">Loading...</p>
+        <div id="activity-heatmap" aria-live="polite" class="overflow-x-auto">
+            <div role="status"><span class="sr-only">Loading...</span><div class="skeleton rounded h-4 w-full mb-2"></div><div class="skeleton rounded h-4 w-3/4"></div></div>
         </div>
     </div>
 </div>
@@ -115,9 +115,9 @@
 <div id="assignment-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
         <h3 class="text-lg font-bold">Create Assignment</h3>
-        <input id="assign-title" placeholder="Assignment title" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
-        <textarea id="assign-desc" placeholder="Description" rows="3" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"></textarea>
-        <input id="assign-due" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="assign-title" placeholder="Assignment title" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <textarea id="assign-desc" placeholder="Description" rows="3" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600"></textarea>
+        <input id="assign-due" type="date" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
         <div class="flex gap-2 justify-end">
             <button onclick="hideModal('assignment-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
             <button onclick="createAssignment()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Create</button>

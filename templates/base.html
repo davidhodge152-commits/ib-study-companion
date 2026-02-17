@@ -8,18 +8,120 @@
     <script>
         tailwind.config = {
             darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81', 950: '#1e1b4b' },
+                        surface: { light: '#ffffff', dark: '#1e293b' },
+                        success: { 50: '#f0fdf4', 500: '#22c55e', 700: '#15803d' },
+                        warning: { 50: '#fffbeb', 500: '#f59e0b', 700: '#b45309' },
+                        danger: { 50: '#fef2f2', 500: '#ef4444', 700: '#b91c1c' },
+                        info: { 50: '#eff6ff', 500: '#3b82f6', 700: '#1d4ed8' },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        dyslexic: ['OpenDyslexic', 'Inter', 'system-ui', 'sans-serif'],
+                    },
+                    fontSize: {
+                        'display': ['2.25rem', { lineHeight: '2.5rem', fontWeight: '700' }],
+                        'headline': ['1.5rem', { lineHeight: '2rem', fontWeight: '700' }],
+                        'title': ['1.125rem', { lineHeight: '1.75rem', fontWeight: '600' }],
+                        'body': ['0.875rem', { lineHeight: '1.25rem', fontWeight: '400' }],
+                        'caption': ['0.75rem', { lineHeight: '1rem', fontWeight: '500' }],
+                        'overline': ['0.6875rem', { lineHeight: '1rem', fontWeight: '600' }],
+                    },
+                    spacing: {
+                        '4.5': '1.125rem',
+                        '18': '4.5rem',
+                    },
+                    animation: {
+                        'skeleton': 'skeleton 1.5s ease-in-out infinite',
+                        'slide-up': 'slide-up 0.3s ease-out',
+                        'slide-down': 'slide-down 0.3s ease-out',
+                        'fade-in': 'fade-in 0.2s ease-out',
+                        'scale-in': 'scale-in 0.2s ease-out',
+                        'shake': 'shake 0.5s ease-in-out',
+                        'swipe-left': 'swipe-left 0.3s ease-out forwards',
+                        'swipe-right': 'swipe-right 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        skeleton: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
+                        'slide-up': { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        'slide-down': { '0%': { opacity: '0', transform: 'translateY(-10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        'scale-in': { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+                        shake: { '0%, 100%': { transform: 'translateX(0)' }, '25%': { transform: 'translateX(-4px)' }, '75%': { transform: 'translateX(4px)' } },
+                        'swipe-left': { '0%': { opacity: '1', transform: 'translateX(0)' }, '100%': { opacity: '0', transform: 'translateX(-100%)' } },
+                        'swipe-right': { '0%': { opacity: '1', transform: 'translateX(0)' }, '100%': { opacity: '0', transform: 'translateX(100%)' } },
+                    },
+                },
+            },
         }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/opendyslexic" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
+        .font-dyslexic body, .font-dyslexic input, .font-dyslexic textarea, .font-dyslexic select, .font-dyslexic button { font-family: 'OpenDyslexic', 'Inter', system-ui, sans-serif; }
         @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         .pulse-red { animation: pulse-red 1s ease-in-out infinite; }
         @keyframes pulse-orange { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.1); } }
         .streak-active { animation: pulse-orange 2s ease-in-out infinite; }
+
+        /* CSS Custom Properties */
+        :root {
+            --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-modal: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --transition-fast: 150ms;
+            --transition-normal: 200ms;
+            --transition-slow: 300ms;
+            --touch-min: 44px;
+        }
+
+        /* Skeleton loading animation */
+        .skeleton {
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton 1.5s ease-in-out infinite;
+        }
+        .dark .skeleton {
+            background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
+            background-size: 200% 100%;
+        }
+
+        /* Focus-visible outline for all interactive elements */
+        *:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+        }
+
+        /* Reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Coarse pointer (touch devices): enforce WCAG touch targets */
+        @media (pointer: coarse) {
+            button, a, input, select, textarea, [role="button"] {
+                min-height: var(--touch-min);
+            }
+        }
+
+        /* Safe area for notched phones */
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+        /* Screen reader only utility */
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
+        .sr-only-focusable:focus { position: static; width: auto; height: auto; padding: inherit; margin: inherit; overflow: visible; clip: auto; white-space: normal; }
+
         /* Mobile sidebar overlay */
         .sidebar-overlay { display: none; }
         .sidebar-overlay.active { display: block; }
@@ -48,8 +150,8 @@
         {% if show_sidebar is not defined or show_sidebar %}
 
         <!-- Mobile hamburger -->
-        <button onclick="toggleMobileSidebar()" class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-900 dark:bg-slate-800 text-white rounded-lg shadow-lg">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <button onclick="toggleMobileSidebar()" id="mobile-menu-btn" class="lg:hidden fixed top-4 left-4 z-50 p-2.5 bg-slate-900 dark:bg-slate-800 text-white rounded-lg shadow-lg min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sidebar">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
 
         <!-- Mobile overlay -->
@@ -101,22 +203,22 @@
                 </div>
                 {% endif %}
             </div>
-            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto" role="navigation" aria-label="Main navigation">
                 <a href="{{ url_for('core.dashboard') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/dashboard' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/dashboard' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                     {{ _('Command Center') }}
                 </a>
                 <a href="{{ url_for('study.study') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/study' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/study' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                     {{ _('Study') }}
                 </a>
                 <a href="{{ url_for('flashcards.flashcards_page') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/flashcards' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/flashcards' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     {{ _('Flashcards') }}
                     {% if flashcard_due is defined and flashcard_due > 0 %}
@@ -125,31 +227,31 @@
                 </a>
                 <a href="{{ url_for('upload.upload') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/upload' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/upload' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
                     {{ _('Upload') }}
                 </a>
                 <a href="{{ url_for('upload.documents') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/documents' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/documents' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     {{ _('Documents') }}
                 </a>
                 <a href="{{ url_for('insights.insights') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/insights' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/insights' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                     {{ _('Insights') }}
                 </a>
                 <a href="{{ url_for('lifecycle.lifecycle_page') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path.startswith('/lifecycle') %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path.startswith('/lifecycle') %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                     {{ _('IB Lifecycle') }}
                 </a>
                 <a href="{{ url_for('planner.planner_page') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/planner' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/planner' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     {{ _('Study Plan') }}
                 </a>
@@ -159,25 +261,25 @@
                 </div>
                 <a href="{{ url_for('social.groups_page') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/groups' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/groups' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                     {{ _('Study Groups') }}
                 </a>
                 <a href="{{ url_for('social.community_page') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/community' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/community' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     {{ _('Community Papers') }}
                 </a>
                 <a href="{{ url_for('ai.tutor_page') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/tutor' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/tutor' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
                     {{ _('AI Tutor') }}
                 </a>
                 <a href="{{ url_for('social.community_analytics_page') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/community-analytics' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/community-analytics' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
                     {{ _('Analytics') }}
                 </a>
@@ -187,31 +289,33 @@
                 </div>
                 <a href="{{ url_for('parent.parent_settings') }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                          {% if request.path == '/settings/parent' %}bg-indigo-600 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                          {% if request.path == '/settings/parent' %}bg-indigo-600 text-white" aria-current="page{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     {{ _('Parent Sharing') }}
                 </a>
             </nav>
             <div class="p-4 border-t border-slate-700 flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <a href="{{ url_for('core.onboarding') }}" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                    <a href="{{ url_for('core.onboarding') }}" class="text-xs text-slate-500 hover:text-slate-300 transition-colors min-h-[44px] px-3 py-2 flex items-center">
                         Edit Profile
                     </a>
                     {% if current_user and current_user.is_authenticated %}
-                    <a href="{{ url_for('auth.logout') }}" class="text-xs text-slate-500 hover:text-red-400 transition-colors">
+                    <a href="{{ url_for('auth.logout') }}" class="text-xs text-slate-500 hover:text-red-400 transition-colors min-h-[44px] px-3 py-2 flex items-center">
                         {{ _('Logout') }}
                     </a>
                     {% endif %}
                 </div>
                 <div class="flex items-center gap-1">
+                    <!-- Dyslexia font toggle -->
+                    <button onclick="toggleDyslexicFont()" class="p-2.5 rounded-lg text-slate-500 hover:text-slate-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center text-xs font-bold" aria-label="Toggle dyslexia-friendly font" title="Dyslexia-friendly font">Aa</button>
                     <!-- Notification bell -->
-                    <button onclick="toggleNotificationPanel()" class="relative p-1.5 rounded-lg text-slate-500 hover:text-slate-300 transition-colors" id="notif-bell" title="Notifications">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <button onclick="toggleNotificationPanel()" class="relative p-2.5 rounded-lg text-slate-500 hover:text-slate-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" id="notif-bell" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                         <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">0</span>
                     </button>
                     <!-- Dark mode toggle -->
-                    <button onclick="toggleDarkMode()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 transition-colors" title="Toggle dark mode">
-                        <svg id="dark-mode-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                    <button onclick="toggleDarkMode()" class="p-2.5 rounded-lg text-slate-500 hover:text-slate-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle dark mode" title="Toggle dark mode">
+                        <svg id="dark-mode-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                     </button>
                 </div>
             </div>
@@ -229,7 +333,7 @@
         </aside>
 
         <!-- Main content -->
-        <main class="main-content flex-1 lg:ml-64 overflow-y-auto">
+        <main id="main-content" role="main" class="main-content flex-1 lg:ml-64 overflow-y-auto pb-20 lg:pb-0">
             {% if session.get('guest') and not current_user.is_authenticated %}
             <div class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-center text-sm py-2.5 px-4">
                 You're using guest mode ({{ session.get('guest_questions', 0) }}/3 questions used).
@@ -242,22 +346,26 @@
         </main>
 
         <!-- Mobile bottom nav -->
-        <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 z-20 flex justify-around py-2 px-1">
-            <a href="{{ url_for('core.dashboard') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 {% if request.path == '/dashboard' %}text-indigo-600{% else %}text-slate-500{% endif %}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 z-20 flex justify-around py-1 px-1 safe-area-bottom" role="navigation" aria-label="Mobile navigation">
+            <a href="{{ url_for('core.dashboard') }}" class="flex flex-col items-center justify-center gap-0.5 min-h-[56px] min-w-[56px] px-2 py-1 relative {% if request.path == '/dashboard' %}text-indigo-600 dark:text-indigo-400{% else %}text-slate-500{% endif %}" {% if request.path == '/dashboard' %}aria-current="page"{% endif %}>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                 <span class="text-[10px] font-medium">Home</span>
+                {% if request.path == '/dashboard' %}<span class="absolute bottom-1 w-5 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full"></span>{% endif %}
             </a>
-            <a href="{{ url_for('study.study') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 {% if request.path == '/study' %}text-indigo-600{% else %}text-slate-500{% endif %}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            <a href="{{ url_for('study.study') }}" class="flex flex-col items-center justify-center gap-0.5 min-h-[56px] min-w-[56px] px-2 py-1 relative {% if request.path == '/study' %}text-indigo-600 dark:text-indigo-400{% else %}text-slate-500{% endif %}" {% if request.path == '/study' %}aria-current="page"{% endif %}>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                 <span class="text-[10px] font-medium">Study</span>
+                {% if request.path == '/study' %}<span class="absolute bottom-1 w-5 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full"></span>{% endif %}
             </a>
-            <a href="{{ url_for('flashcards.flashcards_page') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 {% if request.path == '/flashcards' %}text-indigo-600{% else %}text-slate-500{% endif %}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            <a href="{{ url_for('flashcards.flashcards_page') }}" class="flex flex-col items-center justify-center gap-0.5 min-h-[56px] min-w-[56px] px-2 py-1 relative {% if request.path == '/flashcards' %}text-indigo-600 dark:text-indigo-400{% else %}text-slate-500{% endif %}" {% if request.path == '/flashcards' %}aria-current="page"{% endif %}>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 <span class="text-[10px] font-medium">Cards</span>
+                {% if request.path == '/flashcards' %}<span class="absolute bottom-1 w-5 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full"></span>{% endif %}
             </a>
-            <a href="{{ url_for('insights.insights') }}" class="flex flex-col items-center gap-0.5 px-2 py-1 {% if request.path == '/insights' %}text-indigo-600{% else %}text-slate-500{% endif %}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <a href="{{ url_for('insights.insights') }}" class="flex flex-col items-center justify-center gap-0.5 min-h-[56px] min-w-[56px] px-2 py-1 relative {% if request.path == '/insights' %}text-indigo-600 dark:text-indigo-400{% else %}text-slate-500{% endif %}" {% if request.path == '/insights' %}aria-current="page"{% endif %}>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span class="text-[10px] font-medium">Insights</span>
+                {% if request.path == '/insights' %}<span class="absolute bottom-1 w-5 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full"></span>{% endif %}
             </a>
         </nav>
 
@@ -269,7 +377,7 @@
         {% endif %}
     </div>
     <!-- Offline indicator -->
-    <div id="offline-banner" class="hidden fixed top-0 left-0 right-0 z-[60] bg-amber-500 text-amber-950 text-center text-sm font-medium py-1.5">
+    <div id="offline-banner" class="hidden fixed top-0 left-0 right-0 z-[60] bg-amber-500 text-amber-950 text-center text-sm font-medium py-1.5" role="alert">
         You're offline — some features are unavailable
     </div>
 

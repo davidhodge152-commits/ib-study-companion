@@ -11,7 +11,7 @@
             <h2 class="text-lg font-bold">Your Admissions Profile</h2>
             <button onclick="generateProfile()" id="gen-profile-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">Generate Profile</button>
         </div>
-        <div id="profile-summary" class="text-sm text-slate-600 dark:text-slate-400">
+        <div id="profile-summary" aria-live="polite" class="text-sm text-slate-600 dark:text-slate-400">
             <p>Click "Generate Profile" to create your admissions profile based on your academic data.</p>
         </div>
     </div>
@@ -20,13 +20,13 @@
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
         <h2 class="text-lg font-bold mb-4">Personal Statement</h2>
         <div class="space-y-3">
-            <select id="ps-target" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
+            <select id="ps-target" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
                 <option value="common_app">Common App (650 words)</option>
                 <option value="ucas">UCAS (4000 chars)</option>
                 <option value="coalition">Coalition App</option>
             </select>
             <button onclick="generateStatement()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">Draft Personal Statement</button>
-            <div id="ps-result" class="hidden bg-slate-50 dark:bg-slate-700 rounded-lg p-4 text-sm whitespace-pre-line"></div>
+            <div id="ps-result" aria-live="polite" class="hidden bg-slate-50 dark:bg-slate-700 rounded-lg p-4 text-sm whitespace-pre-line"></div>
         </div>
     </div>
 
@@ -34,7 +34,7 @@
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
         <h2 class="text-lg font-bold mb-4">University Suggestions</h2>
         <button onclick="suggestUniversities()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 mb-3">Get Suggestions</button>
-        <div id="uni-suggestions" class="space-y-2"></div>
+        <div id="uni-suggestions" aria-live="polite" class="space-y-2"></div>
     </div>
 
     <!-- Deadline Tracker -->
@@ -44,23 +44,23 @@
             <button onclick="showDeadlineForm()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">+ Add Deadline</button>
         </div>
         <div id="deadline-form" class="hidden space-y-3 mb-4 p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
-            <input id="dl-university" placeholder="University" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm">
-            <input id="dl-program" placeholder="Program (optional)" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm">
-            <input id="dl-date" type="date" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm">
-            <select id="dl-type" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm">
+            <input id="dl-university" placeholder="University" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm">
+            <input id="dl-program" placeholder="Program (optional)" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm">
+            <input id="dl-date" type="date" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm">
+            <select id="dl-type" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm">
                 <option value="application">Application</option>
                 <option value="early_decision">Early Decision</option>
                 <option value="regular">Regular Decision</option>
                 <option value="scholarship">Scholarship</option>
             </select>
-            <textarea id="dl-notes" placeholder="Notes" rows="2" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm"></textarea>
+            <textarea id="dl-notes" placeholder="Notes" rows="2" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-600 dark:border-slate-500 text-sm"></textarea>
             <div class="flex gap-2">
                 <button onclick="addDeadline()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Save</button>
                 <button onclick="document.getElementById('deadline-form').classList.add('hidden')" class="px-4 py-2 bg-slate-200 dark:bg-slate-600 rounded-lg text-sm">Cancel</button>
             </div>
         </div>
-        <div id="deadlines-list" class="space-y-2">
-            <p class="text-sm text-slate-500">Loading deadlines...</p>
+        <div id="deadlines-list" aria-live="polite" class="space-y-2">
+            <p class="text-sm text-slate-500 dark:text-slate-400">Loading deadlines...</p>
         </div>
     </div>
 </div>

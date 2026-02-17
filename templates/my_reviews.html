@@ -5,8 +5,8 @@
 <div class="space-y-6">
     <h1 class="text-2xl font-bold">My Submitted Reviews</h1>
 
-    <div id="reviews-list" class="space-y-4">
-        <p class="text-sm text-slate-500">Loading your submissions...</p>
+    <div id="reviews-list" aria-live="polite" class="space-y-4">
+        <div role="status"><span class="sr-only">Loading...</span><div class="skeleton rounded h-4 w-full mb-2"></div><div class="skeleton rounded h-4 w-3/4"></div></div>
     </div>
 </div>
 {% endblock %}
@@ -25,22 +25,22 @@ async function loadMyReviews() {
     const data = await res.json();
     const el = document.getElementById('reviews-list');
     if (!data.reviews || data.reviews.length === 0) {
-        el.innerHTML = '<p class="text-sm text-slate-500">No submissions yet. Submit work for examiner review from the study page.</p>';
+        el.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">No submissions yet. Submit work for examiner review from the study page.</p>';
         return;
     }
     el.innerHTML = data.reviews.map(r => `
-        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
             <div class="flex items-center justify-between mb-2">
-                <h3 class="font-semibold">${r.title || r.doc_type}</h3>
+                <h3 class="font-semibold dark:text-slate-200">${r.title || r.doc_type}</h3>
                 <span class="text-xs px-2 py-0.5 rounded-full ${STATUS_BADGES[r.status] || STATUS_BADGES.submitted}">${r.status}</span>
             </div>
-            <p class="text-sm text-slate-500">${r.subject} &middot; ${r.doc_type} &middot; Submitted: ${r.submitted_at || '-'}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">${r.subject} &middot; ${r.doc_type} &middot; Submitted: ${r.submitted_at || '-'}</p>
             ${r.status === 'delivered' && r.examiner_feedback ? `
                 <div class="mt-3 bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
                     <h4 class="text-sm font-semibold text-green-800 dark:text-green-300 mb-1">Examiner Feedback</h4>
                     <p class="text-sm text-green-700 dark:text-green-400 whitespace-pre-line">${r.examiner_feedback}</p>
-                    ${r.examiner_grade ? `<p class="text-sm font-medium mt-2">Grade: ${r.examiner_grade}</p>` : ''}
-                    ${r.examiner_video_url ? `<a href="${r.examiner_video_url}" target="_blank" class="text-sm text-indigo-600 hover:underline mt-1 inline-block">Watch video feedback</a>` : ''}
+                    ${r.examiner_grade ? `<p class="text-sm font-medium mt-2 dark:text-slate-300">Grade: ${r.examiner_grade}</p>` : ''}
+                    ${r.examiner_video_url ? `<a href="${r.examiner_video_url}" target="_blank" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mt-1 inline-block">Watch video feedback</a>` : ''}
                 </div>
             ` : ''}
         </div>

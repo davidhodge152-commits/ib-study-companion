@@ -11,25 +11,25 @@
     <!-- Stats Cards -->
     <div class="grid gap-4 sm:grid-cols-3">
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
-            <p class="text-sm text-slate-500">Classes</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Classes</p>
             <p class="text-2xl font-bold">{{ classes|length }}</p>
         </div>
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
-            <p class="text-sm text-slate-500">Total Students</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Total Students</p>
             <p id="total-students" class="text-2xl font-bold">{{ classes|sum(attribute='member_count') }}</p>
         </div>
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm">
-            <p class="text-sm text-slate-500">Active Assignments</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Active Assignments</p>
             <p id="active-assignments" class="text-2xl font-bold">-</p>
         </div>
     </div>
 
     <!-- SOS Alerts -->
     <div id="sos-alerts-section" class="hidden">
-        <div class="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-5">
+        <div class="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-5" role="alert">
             <h2 class="text-lg font-bold text-red-800 dark:text-red-300 mb-3">SOS Alerts</h2>
             <p class="text-sm text-red-600 dark:text-red-400 mb-3">Students who may need additional support:</p>
-            <div id="sos-alerts-list" class="space-y-2"></div>
+            <div id="sos-alerts-list" aria-live="polite" class="space-y-2"></div>
         </div>
     </div>
 
@@ -37,11 +37,11 @@
     <div class="space-y-4">
         <h2 class="text-lg font-bold">Your Classes</h2>
         {% for cls in classes %}
-        <a href="/teacher/classes/{{ cls.id }}" class="block bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        <a href="/teacher/classes/{{ cls.id }}" class="block bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="font-semibold">{{ cls.name }}</h3>
-                    <p class="text-sm text-slate-500">{{ cls.subject }} {{ cls.level }} &middot; {{ cls.member_count }} students</p>
+                    <h3 class="font-semibold dark:text-slate-200">{{ cls.name }}</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ cls.subject }} {{ cls.level }} &middot; {{ cls.member_count }} students</p>
                 </div>
                 <div class="text-right">
                     <p class="text-xs text-slate-400">Join code</p>
@@ -50,7 +50,7 @@
             </div>
         </a>
         {% else %}
-        <p class="text-slate-500 text-center py-8">No classes yet. Create one to get started.</p>
+        <p class="text-slate-500 dark:text-slate-400 text-center py-8">No classes yet. Create one to get started.</p>
         {% endfor %}
     </div>
 </div>
@@ -59,9 +59,9 @@
 <div id="create-class-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
         <h3 class="text-lg font-bold">Create Class</h3>
-        <input id="class-name" placeholder="Class name" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
-        <input id="class-subject" placeholder="Subject" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
-        <select id="class-level" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="class-name" placeholder="Class name" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="class-subject" placeholder="Subject" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <select id="class-level" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
             <option value="HL">HL</option>
             <option value="SL">SL</option>
         </select>

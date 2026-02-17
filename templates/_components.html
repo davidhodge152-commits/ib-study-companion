@@ -1,0 +1,172 @@
+{# ── Reusable Component Macros ─────────────────────────────────────── #}
+{# Usage: {% from "_components.html" import btn, card, skeleton, modal, badge, empty_state, error_state, progress %} #}
+
+{# ── Button ─────────────────────────────────────────────────────────── #}
+{% macro btn(text, variant='primary', size='md', icon='', href='', onclick='', type='button', id='', disabled=false, class='') %}
+{% set variant_classes = {
+    'primary': 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 active:scale-[0.98]',
+    'secondary': 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600',
+    'ghost': 'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border-transparent',
+    'danger': 'bg-red-600 hover:bg-red-700 text-white border-red-600 active:scale-[0.98]',
+    'success': 'bg-green-600 hover:bg-green-700 text-white border-green-600 active:scale-[0.98]',
+} %}
+{% set size_classes = {
+    'sm': 'px-3 py-1.5 text-xs min-h-[36px]',
+    'md': 'px-4 py-2.5 text-sm min-h-[44px]',
+    'lg': 'px-6 py-3 text-base min-h-[48px]',
+} %}
+{% set base = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2' %}
+{% set disabled_class = 'opacity-50 cursor-not-allowed pointer-events-none' if disabled else '' %}
+{% if href %}
+<a href="{{ href }}" {% if id %}id="{{ id }}"{% endif %}
+   class="{{ base }} {{ variant_classes[variant] }} {{ size_classes[size] }} {{ disabled_class }} {{ class }}">
+    {% if icon %}{{ icon }}{% endif %}{{ text }}
+</a>
+{% else %}
+<button type="{{ type }}" {% if id %}id="{{ id }}"{% endif %}
+        {% if onclick %}onclick="{{ onclick }}"{% endif %}
+        {% if disabled %}disabled{% endif %}
+        class="{{ base }} {{ variant_classes[variant] }} {{ size_classes[size] }} {{ disabled_class }} {{ class }}">
+    {% if icon %}{{ icon }}{% endif %}{{ text }}
+</button>
+{% endif %}
+{% endmacro %}
+
+{# ── Card ───────────────────────────────────────────────────────────── #}
+{% macro card(title='', class='', id='') %}
+<div {% if id %}id="{{ id }}"{% endif %}
+     class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 {{ class }}"
+     role="region" {% if title %}aria-label="{{ title }}"{% endif %}>
+    {% if title %}
+    <h3 class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{{ title }}</h3>
+    {% endif %}
+    {{ caller() }}
+</div>
+{% endmacro %}
+
+{# ── Skeleton ───────────────────────────────────────────────────────── #}
+{% macro skeleton(type='text', lines=3, class='') %}
+<div role="status" aria-label="Loading" class="{{ class }}">
+    <span class="sr-only">Loading...</span>
+    {% if type == 'text' %}
+    <div class="space-y-3">
+        {% for i in range(lines) %}
+        <div class="skeleton rounded h-4 {% if loop.last %}w-2/3{% else %}w-full{% endif %}"></div>
+        {% endfor %}
+    </div>
+    {% elif type == 'card' %}
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <div class="skeleton rounded h-4 w-1/3 mb-4"></div>
+        <div class="space-y-3">
+            <div class="skeleton rounded h-4 w-full"></div>
+            <div class="skeleton rounded h-4 w-full"></div>
+            <div class="skeleton rounded h-4 w-2/3"></div>
+        </div>
+        <div class="flex gap-3 mt-4">
+            <div class="skeleton rounded h-8 w-20"></div>
+            <div class="skeleton rounded h-8 w-16"></div>
+        </div>
+    </div>
+    {% elif type == 'chart' %}
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <div class="skeleton rounded h-4 w-1/4 mb-4"></div>
+        <div class="flex items-end gap-2 h-40">
+            <div class="skeleton rounded flex-1 h-3/5"></div>
+            <div class="skeleton rounded flex-1 h-4/5"></div>
+            <div class="skeleton rounded flex-1 h-2/5"></div>
+            <div class="skeleton rounded flex-1 h-full"></div>
+            <div class="skeleton rounded flex-1 h-3/4"></div>
+            <div class="skeleton rounded flex-1 h-1/2"></div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# ── Modal ──────────────────────────────────────────────────────────── #}
+{% macro modal(id, title, size='md') %}
+{% set size_classes = {
+    'sm': 'max-w-sm',
+    'md': 'max-w-lg',
+    'lg': 'max-w-2xl',
+    'xl': 'max-w-4xl',
+} %}
+<div id="{{ id }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="{{ id }}-title">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 w-full {{ size_classes[size] }} mx-4 animate-scale-in">
+        <div class="flex items-center justify-between mb-4">
+            <h2 id="{{ id }}-title" class="text-lg font-bold text-slate-800 dark:text-slate-200">{{ title }}</h2>
+            <button onclick="closeModal('{{ id }}')" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close dialog">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        {{ caller() }}
+    </div>
+</div>
+{% endmacro %}
+
+{# ── Badge ──────────────────────────────────────────────────────────── #}
+{% macro badge(text, variant='default', class='') %}
+{% set variant_classes = {
+    'default': 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400',
+    'primary': 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300',
+    'success': 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
+    'warning': 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300',
+    'danger': 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300',
+    'info': 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',
+} %}
+<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ variant_classes[variant] }} {{ class }}">{{ text }}</span>
+{% endmacro %}
+
+{# ── Empty State ────────────────────────────────────────────────────── #}
+{% macro empty_state(icon='', title='', description='', cta_text='', cta_href='', cta_onclick='') %}
+<div class="text-center py-12">
+    {% if icon %}<div class="text-5xl mb-4">{{ icon }}</div>{% endif %}
+    {% if title %}<h2 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">{{ title }}</h2>{% endif %}
+    {% if description %}<p class="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-md mx-auto">{{ description }}</p>{% endif %}
+    {% if cta_text %}
+        {% if cta_href %}
+        <a href="{{ cta_href }}" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors min-h-[44px]">{{ cta_text }}</a>
+        {% elif cta_onclick %}
+        <button onclick="{{ cta_onclick }}" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors min-h-[44px]">{{ cta_text }}</button>
+        {% endif %}
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# ── Error State ────────────────────────────────────────────────────── #}
+{% macro error_state(message='Something went wrong', retry_onclick='', id='') %}
+<div {% if id %}id="{{ id }}"{% endif %} class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center" role="alert">
+    <div class="flex items-center justify-center gap-2 mb-2">
+        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <p class="text-red-700 dark:text-red-400 font-medium text-sm">{{ message }}</p>
+    </div>
+    {% if retry_onclick %}
+    <button onclick="{{ retry_onclick }}" class="mt-3 px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors min-h-[44px]">
+        Try Again
+    </button>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# ── Progress Bar ───────────────────────────────────────────────────── #}
+{% macro progress(value=0, max=100, label='', color='indigo', class='') %}
+{% set pct = ((value / max * 100) | int) if max > 0 else 0 %}
+{% set color_classes = {
+    'indigo': 'bg-indigo-500',
+    'green': 'bg-green-500',
+    'amber': 'bg-amber-500',
+    'red': 'bg-red-500',
+    'sky': 'bg-sky-500',
+} %}
+<div class="{{ class }}" role="progressbar" aria-valuenow="{{ value }}" aria-valuemin="0" aria-valuemax="{{ max }}" aria-label="{{ label or 'Progress' }}">
+    {% if label %}
+    <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+        <span>{{ label }}</span>
+        <span>{{ pct }}%</span>
+    </div>
+    {% endif %}
+    <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+        <div class="h-2 rounded-full {{ color_classes[color] }} transition-all" style="width: {{ pct }}%"></div>
+    </div>
+</div>
+{% endmacro %}

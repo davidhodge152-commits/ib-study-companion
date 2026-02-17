@@ -8,6 +8,9 @@
 // Core utilities
 import { escapeHtml, showToast, copyToClipboard, toggleDarkMode, toggleMobileSidebar, COMMAND_TERM_DEFINITIONS } from './modules/utils.js';
 
+// Accessibility
+import { openModal, closeModal, announce, toggleDyslexicFont } from './modules/a11y.js';
+
 // API client (side-effect: sets up centralized fetch)
 import { api } from './modules/api.js';
 
@@ -105,3 +108,9 @@ window.dismissInstallBanner = dismissInstallBanner;
 window.shareQuestion = shareQuestion;
 window.exportSessionQuestions = exportSessionQuestions;
 window.importQuestions = importQuestions;
+
+// Accessibility
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.announce = announce;
+window.toggleDyslexicFont = toggleDyslexicFont;

@@ -8,15 +8,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>body { font-family: 'Inter', sans-serif; }</style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 dark:bg-slate-900 min-h-screen">
     <div class="max-w-2xl mx-auto py-12 px-4">
         {% if error %}
-        <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
-            <h1 class="text-2xl font-bold text-gray-800 mb-4">IB Study Companion</h1>
-            <p class="text-gray-500">{{ error }}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-8 text-center">
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-slate-200 mb-4">IB Study Companion</h1>
+            <p class="text-gray-500 dark:text-slate-400">{{ error }}</p>
         </div>
         {% else %}
-        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
                 <h1 class="text-2xl font-bold text-white">{{ data.name }}'s IB Predictions</h1>
                 <p class="text-blue-100 text-sm mt-1">Generated {{ data.generated_at[:10] }}</p>
@@ -25,24 +25,24 @@
             <div class="p-8">
                 {% if data.predictions.predicted_total %}
                 <div class="text-center mb-8">
-                    <p class="text-sm text-gray-500 uppercase tracking-wide">Predicted Total</p>
+                    <p class="text-sm text-gray-500 dark:text-slate-400 uppercase tracking-wide">Predicted Total</p>
                     <p class="text-5xl font-bold text-indigo-600 mt-1">{{ data.predictions.predicted_total }}</p>
                     <p class="text-gray-400 text-sm mt-1">out of 45</p>
                 </div>
                 {% endif %}
 
                 {% if data.predictions.subject_predictions %}
-                <h2 class="text-lg font-semibold text-gray-800 mb-3">Subject Predictions</h2>
+                <h2 class="text-lg font-semibold text-gray-800 dark:text-slate-200 mb-3">Subject Predictions</h2>
                 <div class="space-y-2 mb-8">
                     {% for subj, pred in data.predictions.subject_predictions.items() %}
-                    <div class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                        <span class="text-gray-700 font-medium">{{ subj }}</span>
+                    <div class="flex items-center justify-between bg-gray-50 dark:bg-slate-700 rounded-lg px-4 py-3">
+                        <span class="text-gray-700 dark:text-slate-300 font-medium">{{ subj }}</span>
                         <div class="flex items-center gap-3">
-                            <span class="text-2xl font-bold text-gray-900">{{ pred.predicted_grade }}</span>
+                            <span class="text-2xl font-bold text-gray-900 dark:text-slate-100">{{ pred.predicted_grade }}</span>
                             <span class="text-xs px-2 py-1 rounded-full
-                                {% if pred.trajectory == 'improving' %}bg-green-100 text-green-700
-                                {% elif pred.trajectory == 'declining' %}bg-red-100 text-red-700
-                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {% if pred.trajectory == 'improving' %}bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300
+                                {% elif pred.trajectory == 'declining' %}bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300
+                                {% else %}bg-gray-100 text-gray-600 dark:bg-slate-600 dark:text-slate-400{% endif %}">
                                 {{ pred.trajectory }}
                             </span>
                         </div>
@@ -52,31 +52,31 @@
                 {% endif %}
 
                 {% if data.patterns %}
-                <h2 class="text-lg font-semibold text-gray-800 mb-3">Study Patterns</h2>
+                <h2 class="text-lg font-semibold text-gray-800 dark:text-slate-200 mb-3">Study Patterns</h2>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-gray-50 rounded-lg p-4 text-center">
-                        <p class="text-sm text-gray-500">Total Sessions</p>
-                        <p class="text-xl font-bold text-gray-900">{{ data.patterns.total_sessions }}</p>
+                    <div class="bg-gray-50 dark:bg-slate-700 rounded-lg p-4 text-center">
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Total Sessions</p>
+                        <p class="text-xl font-bold text-gray-900 dark:text-slate-100">{{ data.patterns.total_sessions }}</p>
                     </div>
-                    <div class="bg-gray-50 rounded-lg p-4 text-center">
-                        <p class="text-sm text-gray-500">Consistency</p>
-                        <p class="text-xl font-bold text-gray-900">{{ (data.patterns.consistency_score * 100)|round }}%</p>
+                    <div class="bg-gray-50 dark:bg-slate-700 rounded-lg p-4 text-center">
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Consistency</p>
+                        <p class="text-xl font-bold text-gray-900 dark:text-slate-100">{{ (data.patterns.consistency_score * 100)|round }}%</p>
                     </div>
                     {% if data.patterns.best_day %}
-                    <div class="bg-gray-50 rounded-lg p-4 text-center">
-                        <p class="text-sm text-gray-500">Best Day</p>
-                        <p class="text-xl font-bold text-gray-900">{{ data.patterns.best_day }}</p>
+                    <div class="bg-gray-50 dark:bg-slate-700 rounded-lg p-4 text-center">
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Best Day</p>
+                        <p class="text-xl font-bold text-gray-900 dark:text-slate-100">{{ data.patterns.best_day }}</p>
                     </div>
                     {% endif %}
-                    <div class="bg-gray-50 rounded-lg p-4 text-center">
-                        <p class="text-sm text-gray-500">Total Questions</p>
-                        <p class="text-xl font-bold text-gray-900">{{ data.patterns.total_questions }}</p>
+                    <div class="bg-gray-50 dark:bg-slate-700 rounded-lg p-4 text-center">
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Total Questions</p>
+                        <p class="text-xl font-bold text-gray-900 dark:text-slate-100">{{ data.patterns.total_questions }}</p>
                     </div>
                 </div>
                 {% endif %}
             </div>
 
-            <div class="bg-gray-50 px-8 py-4 text-center text-sm text-gray-400">
+            <div class="bg-gray-50 dark:bg-slate-700 px-8 py-4 text-center text-sm text-gray-400 dark:text-slate-500">
                 Powered by IB Study Companion
             </div>
         </div>

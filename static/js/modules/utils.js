@@ -112,20 +112,44 @@ export function escapeHtml(text) {
     return div.innerHTML;
 }
 
-export function showToast(message) {
+export function showToast(message, options = {}) {
+    const { variant = 'default', duration = 2500, action = null } = typeof options === 'object' ? options : {};
+
     const existing = document.getElementById('app-toast');
     if (existing) existing.remove();
 
+    const variantClasses = {
+        default: 'bg-slate-800 dark:bg-slate-700 text-white',
+        success: 'bg-green-600 text-white',
+        warning: 'bg-amber-500 text-white',
+        danger: 'bg-red-600 text-white',
+    };
+
     const toast = document.createElement('div');
     toast.id = 'app-toast';
-    toast.className = 'fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-[70] transition-opacity';
-    toast.textContent = message;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.className = `fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 ${variantClasses[variant] || variantClasses.default} text-sm px-4 py-2.5 rounded-lg shadow-lg z-[70] animate-slide-up flex items-center gap-3`;
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = message;
+    toast.appendChild(textSpan);
+
+    if (action && action.text && action.onclick) {
+        const btn = document.createElement('button');
+        btn.textContent = action.text;
+        btn.className = 'font-semibold underline hover:no-underline';
+        btn.onclick = action.onclick;
+        toast.appendChild(btn);
+    }
+
     document.body.appendChild(toast);
 
     setTimeout(() => {
         toast.style.opacity = '0';
+        toast.style.transition = 'opacity 300ms';
         setTimeout(() => toast.remove(), 300);
-    }, 2500);
+    }, duration);
 }
 
 export function copyToClipboard(text) {
@@ -163,6 +187,7 @@ export function toggleDarkMode() {
 export function toggleMobileSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
+    const menuBtn = document.getElementById('mobile-menu-btn');
     if (!sidebar) return;
 
     const isOpen = sidebar.classList.contains('open');
@@ -170,9 +195,11 @@ export function toggleMobileSidebar() {
         sidebar.classList.remove('open');
         if (overlay) overlay.classList.remove('active');
         document.body.style.overflow = '';
+        if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
     } else {
         sidebar.classList.add('open');
         if (overlay) overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
+        if (menuBtn) menuBtn.setAttribute('aria-expanded', 'true');
     }
 }

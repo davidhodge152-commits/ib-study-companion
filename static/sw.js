@@ -1,7 +1,10 @@
-const CACHE_NAME = 'ib-study-v1';
+const CACHE_NAME = 'ib-study-v2';
+const FLASHCARD_CACHE = 'ib-flashcards-v1';
 
 const STATIC_ASSETS = [
   '/static/app.js',
+  '/static/js/app.js',
+  '/static/js/modules/a11y.js',
   '/static/manifest.json',
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png',
@@ -27,10 +30,11 @@ self.addEventListener('install', (event) => {
 
 // Activate: clean old caches
 self.addEventListener('activate', (event) => {
+  const keepCaches = [CACHE_NAME, FLASHCARD_CACHE];
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.filter((key) => !keepCaches.includes(key)).map((key) => caches.delete(key))
       );
     })
   );
@@ -184,3 +188,39 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// Background sync: flush queued flashcard reviews when back online
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'flashcard-review-sync') {
+    event.waitUntil(syncFlashcardReviews());
+  }
+});
+
+async function syncFlashcardReviews() {
+  const cache = await caches.open(FLASHCARD_CACHE);
+  const queueReq = new Request('/_offline_queue/flashcard-reviews');
+  const queueRes = await cache.match(queueReq);
+  if (!queueRes) return;
+
+  const reviews = await queueRes.json();
+  const remaining = [];
+
+  for (const review of reviews) {
+    try {
+      const res = await fetch('/api/flashcards/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(review),
+      });
+      if (!res.ok) remaining.push(review);
+    } catch {
+      remaining.push(review);
+    }
+  }
+
+  if (remaining.length > 0) {
+    await cache.put(queueReq, new Response(JSON.stringify(remaining)));
+  } else {
+    await cache.delete(queueReq);
+  }
+}

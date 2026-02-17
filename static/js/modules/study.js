@@ -41,7 +41,15 @@ const STUDY_SECTIONS = [
 export function showSection(id) {
     STUDY_SECTIONS.forEach(s => {
         const el = document.getElementById(s);
-        if (el) el.classList.toggle('hidden', s !== id);
+        if (!el) return;
+        if (s !== id) {
+            el.classList.add('hidden');
+            el.classList.remove('animate-fade-in');
+        } else {
+            el.classList.remove('hidden');
+            el.classList.add('animate-fade-in');
+            el.addEventListener('animationend', () => el.classList.remove('animate-fade-in'), { once: true });
+        }
     });
 }
 

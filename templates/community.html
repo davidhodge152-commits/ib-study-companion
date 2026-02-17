@@ -9,30 +9,30 @@
     </div>
 
     <!-- Tabs -->
-    <div class="flex gap-2 border-b dark:border-slate-700 mb-4">
-        <button onclick="switchTab('papers')" id="tab-papers" class="px-4 py-2 text-sm font-medium border-b-2 border-indigo-600 text-indigo-600">Papers</button>
-        <button onclick="switchTab('flashcards')" id="tab-flashcards" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">Shared Flashcards</button>
+    <div class="flex gap-2 border-b border-slate-200 dark:border-slate-700 mb-4" role="tablist">
+        <button onclick="switchTab('papers')" id="tab-papers" role="tab" aria-selected="true" class="px-4 py-2 text-sm font-medium border-b-2 border-indigo-600 text-indigo-600">Papers</button>
+        <button onclick="switchTab('flashcards')" id="tab-flashcards" role="tab" aria-selected="false" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">Shared Flashcards</button>
     </div>
 
     <!-- Shared Flashcards Section -->
-    <div id="flashcards-section" class="hidden space-y-4">
+    <div id="flashcards-section" class="hidden space-y-4" role="tabpanel">
         <div class="flex gap-3 flex-wrap">
-            <input id="fc-filter-subject" placeholder="Filter by subject" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
+            <input id="fc-filter-subject" placeholder="Filter by subject" class="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
             <button onclick="loadSharedFlashcards()" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm">Search</button>
         </div>
-        <div id="shared-flashcards-grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <p class="text-slate-500 text-center py-8 col-span-full">Search for shared flashcard decks above</p>
+        <div id="shared-flashcards-grid" aria-live="polite" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <p class="text-slate-500 dark:text-slate-400 text-center py-8 col-span-full">Search for shared flashcard decks above</p>
         </div>
     </div>
 
     <!-- Papers Section -->
-    <div id="papers-section">
+    <div id="papers-section" role="tabpanel">
     <!-- Filters -->
     <div class="flex gap-3 flex-wrap">
-        <select id="filter-subject" onchange="loadPapers()" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
+        <select id="filter-subject" onchange="loadPapers()" class="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
             <option value="">All Subjects</option>
         </select>
-        <select id="filter-level" onchange="loadPapers()" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
+        <select id="filter-level" onchange="loadPapers()" class="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600 text-sm">
             <option value="">All Levels</option>
             <option value="HL">HL</option>
             <option value="SL">SL</option>
@@ -40,8 +40,24 @@
     </div>
 
     <!-- Paper Grid -->
-    <div id="papers-grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div class="text-center text-slate-500 py-12 col-span-full">Loading papers...</div>
+    <div id="papers-grid" aria-live="polite" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="text-center text-slate-500 dark:text-slate-400 py-12 col-span-full">
+            <div role="status"><span class="sr-only">Loading papers...</span><div class="skeleton rounded h-4 w-full mb-2"></div><div class="skeleton rounded h-4 w-3/4"></div></div>
+        </div>
+    </div>
+
+    <!-- Empty state CTA (shown by JS when no papers) -->
+    <div id="papers-empty" class="hidden col-span-full">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
+            <svg class="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">No papers yet</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4 max-w-md mx-auto">Be the first to contribute! Upload a past paper to help the community.</p>
+            <button onclick="showUploadModal()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                Upload a Paper
+            </button>
+        </div>
     </div>
     </div><!-- /papers-section -->
 </div>
@@ -50,16 +66,17 @@
 <div id="upload-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
         <h3 class="text-lg font-bold">Upload Past Paper</h3>
-        <input id="paper-title" placeholder="Paper title" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
-        <input id="paper-subject" placeholder="Subject" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="paper-title" placeholder="Paper title" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
+        <input id="paper-subject" placeholder="Subject" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
         <div class="grid grid-cols-2 gap-2">
-            <select id="paper-level" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+            <select id="paper-level" class="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
                 <option value="HL">HL</option>
                 <option value="SL">SL</option>
             </select>
-            <input id="paper-year" type="number" placeholder="Year" class="px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+            <input id="paper-year" type="number" placeholder="Year" class="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600">
         </div>
-        <textarea id="paper-questions" rows="4" placeholder="Paste questions (one per line)" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"></textarea>
+        <textarea id="paper-questions" rows="4" placeholder="Paste questions (one per line)" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-700 dark:border-slate-600"></textarea>
+        <div id="upload-error" class="hidden text-sm text-red-600 dark:text-red-400" role="alert"></div>
         <div class="flex gap-2 justify-end">
             <button onclick="hideModal('upload-modal')" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">Cancel</button>
             <button onclick="uploadPaper()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Upload</button>
@@ -77,9 +94,11 @@ function switchTab(tab) {
     document.getElementById('tab-papers').classList.toggle('border-indigo-600', tab === 'papers');
     document.getElementById('tab-papers').classList.toggle('text-indigo-600', tab === 'papers');
     document.getElementById('tab-papers').classList.toggle('border-transparent', tab !== 'papers');
+    document.getElementById('tab-papers').setAttribute('aria-selected', tab === 'papers');
     document.getElementById('tab-flashcards').classList.toggle('border-indigo-600', tab === 'flashcards');
     document.getElementById('tab-flashcards').classList.toggle('text-indigo-600', tab === 'flashcards');
     document.getElementById('tab-flashcards').classList.toggle('border-transparent', tab !== 'flashcards');
+    document.getElementById('tab-flashcards').setAttribute('aria-selected', tab === 'flashcards');
 }
 async function loadSharedFlashcards() {
     const subject = document.getElementById('fc-filter-subject').value;
@@ -87,13 +106,13 @@ async function loadSharedFlashcards() {
     const data = await res.json();
     const grid = document.getElementById('shared-flashcards-grid');
     if (!data.decks || data.decks.length === 0) {
-        grid.innerHTML = '<p class="text-slate-500 text-center py-8 col-span-full">No shared decks found</p>';
+        grid.innerHTML = '<p class="text-slate-500 dark:text-slate-400 text-center py-8 col-span-full">No shared decks found</p>';
         return;
     }
     grid.innerHTML = data.decks.map(d => `
         <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
-            <h3 class="font-semibold">${d.title}</h3>
-            <p class="text-sm text-slate-500">${d.subject} &middot; ${d.card_count} cards &middot; by ${d.author_name}</p>
+            <h3 class="font-semibold dark:text-slate-200">${d.title}</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400">${d.subject} &middot; ${d.card_count} cards &middot; by ${d.author_name}</p>
             <p class="text-xs text-slate-400 mt-1">${d.description || ''}</p>
             <div class="flex items-center justify-between mt-3">
                 <span class="text-xs text-slate-400">${d.download_count} imports</span>

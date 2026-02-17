@@ -3,58 +3,59 @@
 
 {% block content %}
 <div class="mb-8">
-    <h1 class="text-2xl font-bold text-slate-800">Documents</h1>
-    <p class="text-slate-500 text-sm mt-1">Manage your ingested knowledge base.</p>
+    <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-200">Documents</h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage your ingested knowledge base.</p>
 </div>
 
 <!-- Stats -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Chunks</p>
-        <p class="text-2xl font-bold text-slate-800 mt-1">{{ stats.count }}</p>
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Total Chunks</p>
+        <p class="text-2xl font-bold text-slate-800 dark:text-slate-200 mt-1">{{ stats.count }}</p>
     </div>
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Subjects</p>
-        <p class="text-2xl font-bold text-slate-800 mt-1">{{ stats.subjects | length }}</p>
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Subjects</p>
+        <p class="text-2xl font-bold text-slate-800 dark:text-slate-200 mt-1">{{ stats.subjects | length }}</p>
         <p class="text-xs text-slate-400 mt-1">{{ stats.subjects | join(', ') | replace('_', ' ') | title }}</p>
     </div>
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Document Types</p>
-        <p class="text-2xl font-bold text-slate-800 mt-1">{{ stats.doc_types | length }}</p>
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Document Types</p>
+        <p class="text-2xl font-bold text-slate-800 dark:text-slate-200 mt-1">{{ stats.doc_types | length }}</p>
         <p class="text-xs text-slate-400 mt-1">{{ stats.doc_types | join(', ') | replace('_', ' ') | title }}</p>
     </div>
 </div>
 
 {% if uploads %}
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+<div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
-        <thead class="bg-slate-50 border-b border-slate-200">
+        <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-700">
             <tr>
-                <th class="text-left px-5 py-3 font-medium text-slate-600">File</th>
-                <th class="text-left px-5 py-3 font-medium text-slate-600">Type</th>
-                <th class="text-left px-5 py-3 font-medium text-slate-600">Subject</th>
-                <th class="text-left px-5 py-3 font-medium text-slate-600">Level</th>
-                <th class="text-center px-5 py-3 font-medium text-slate-600">Chunks</th>
-                <th class="text-right px-5 py-3 font-medium text-slate-600">Uploaded</th>
-                <th class="text-right px-5 py-3 font-medium text-slate-600">Actions</th>
+                <th class="text-left px-5 py-3 font-medium text-slate-600 dark:text-slate-400">File</th>
+                <th class="text-left px-5 py-3 font-medium text-slate-600 dark:text-slate-400">Type</th>
+                <th class="text-left px-5 py-3 font-medium text-slate-600 dark:text-slate-400">Subject</th>
+                <th class="text-left px-5 py-3 font-medium text-slate-600 dark:text-slate-400">Level</th>
+                <th class="text-center px-5 py-3 font-medium text-slate-600 dark:text-slate-400">Chunks</th>
+                <th class="text-right px-5 py-3 font-medium text-slate-600 dark:text-slate-400">Uploaded</th>
+                <th class="text-right px-5 py-3 font-medium text-slate-600 dark:text-slate-400">Actions</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
             {% for u in uploads|reverse %}
-            <tr class="hover:bg-slate-50 transition-colors" id="doc-{{ u.id }}">
-                <td class="px-5 py-3 text-slate-700 font-medium">{{ u.filename }}</td>
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" id="doc-{{ u.id }}">
+                <td class="px-5 py-3 text-slate-700 dark:text-slate-300 font-medium">{{ u.filename }}</td>
                 <td class="px-5 py-3">
                     <span class="px-2 py-0.5 text-xs rounded-full
-                                 {% if u.doc_type == 'past_paper' %}bg-blue-100 text-blue-700
-                                 {% elif u.doc_type == 'mark_scheme' %}bg-purple-100 text-purple-700
-                                 {% elif u.doc_type == 'my_past_exam' %}bg-amber-100 text-amber-700
-                                 {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                 {% if u.doc_type == 'past_paper' %}bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300
+                                 {% elif u.doc_type == 'mark_scheme' %}bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300
+                                 {% elif u.doc_type == 'my_past_exam' %}bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300
+                                 {% else %}bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400{% endif %}">
                         {{ u.doc_type | replace('_', ' ') | title }}
                     </span>
                 </td>
-                <td class="px-5 py-3 text-slate-600">{{ u.subject | replace('_', ' ') | title }}</td>
-                <td class="px-5 py-3 text-slate-600">{{ u.level }}</td>
-                <td class="px-5 py-3 text-center text-slate-500">{{ u.chunks }}</td>
+                <td class="px-5 py-3 text-slate-600 dark:text-slate-400">{{ u.subject | replace('_', ' ') | title }}</td>
+                <td class="px-5 py-3 text-slate-600 dark:text-slate-400">{{ u.level }}</td>
+                <td class="px-5 py-3 text-center text-slate-500 dark:text-slate-400">{{ u.chunks }}</td>
                 <td class="px-5 py-3 text-right text-slate-400 text-xs">{{ u.uploaded_at[:10] }}</td>
                 <td class="px-5 py-3 text-right">
                     <button onclick="deleteDocument('{{ u.id }}')"
@@ -66,13 +67,14 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% else %}
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
-    <svg class="w-12 h-12 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
+    <svg class="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
     </svg>
-    <p class="text-slate-500 font-medium">No documents uploaded yet</p>
+    <p class="text-slate-500 dark:text-slate-400 font-medium">No documents uploaded yet</p>
     <p class="text-sm text-slate-400 mt-1">Upload IB PDFs to start building your knowledge base.</p>
     <a href="{{ url_for('upload.upload') }}"
        class="inline-block mt-4 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">

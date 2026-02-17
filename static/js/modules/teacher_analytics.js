@@ -45,6 +45,12 @@ async function loadGradeDistribution() {
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
         },
     });
+
+    // Populate sr-only text alternative
+    const descEl = document.getElementById('grade-dist-chart-desc');
+    if (descEl) {
+        descEl.textContent = `Grade distribution: ${counts.map((c, i) => `Grade ${i + 1}: ${c}`).join(', ')}`;
+    }
 }
 
 async function loadCommandTermBreakdown() {
@@ -79,6 +85,12 @@ async function loadCommandTermBreakdown() {
             scales: { r: { beginAtZero: true, max: 100 } },
         },
     });
+
+    // Populate sr-only text alternative
+    const descEl = document.getElementById('command-term-chart-desc');
+    if (descEl) {
+        descEl.textContent = `Command term performance: ${labels.map((l, i) => `${l}: ${data[i]}%`).join(', ')}`;
+    }
 }
 
 async function loadActivityHeatmap() {

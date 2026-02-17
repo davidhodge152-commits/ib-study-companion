@@ -8,24 +8,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>body { font-family: 'Inter', sans-serif; }</style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-full">
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 min-h-full">
     <div class="max-w-4xl mx-auto px-6 py-8">
         <!-- Header -->
         <div class="mb-8 text-center">
-            <h1 class="text-2xl font-bold text-slate-800">IB Study Companion</h1>
-            <p class="text-slate-500 text-sm mt-1">Parent View — {{ student_name }}</p>
+            <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-200">IB Study Companion</h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Parent View — {{ student_name }}</p>
         </div>
 
         <!-- Alerts -->
         {% if alerts %}
         <div class="space-y-3 mb-6">
             {% for alert in alerts %}
-            <div class="rounded-xl p-4 border
-                {% if alert.type == 'warning' %}bg-amber-50 border-amber-200
-                {% else %}bg-red-50 border-red-200{% endif %}">
+            <div role="alert" class="rounded-xl p-4 border
+                {% if alert.type == 'warning' %}bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800
+                {% else %}bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800{% endif %}">
                 <p class="text-sm font-medium
-                    {% if alert.type == 'warning' %}text-amber-800
-                    {% else %}text-red-800{% endif %}">
+                    {% if alert.type == 'warning' %}text-amber-800 dark:text-amber-300
+                    {% else %}text-red-800 dark:text-red-300{% endif %}">
                     {{ alert.message }}
                 </p>
             </div>
@@ -35,8 +35,8 @@
 
         <!-- Exam Countdown -->
         {% if countdown %}
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6 text-center">
-            <p class="text-sm text-slate-500 mb-1">Days Until Exams</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 mb-6 text-center">
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-1">Days Until Exams</p>
             <p class="text-4xl font-bold
                 {% if countdown.urgency == 'calm' %}text-emerald-600
                 {% elif countdown.urgency == 'focused' %}text-blue-600
@@ -47,25 +47,25 @@
 
         <!-- Weekly Digest -->
         {% if weekly_summary %}
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
-            <h3 class="text-sm font-semibold text-slate-700 mb-3">This Week</h3>
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 mb-6">
+            <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">This Week</h3>
             {% set this_week = weekly_summary[0] %}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
                     <p class="text-2xl font-bold text-indigo-600">{{ this_week.total_questions }}</p>
-                    <p class="text-xs text-slate-500">Questions</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Questions</p>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-indigo-600">{{ this_week.subjects_studied|length }}</p>
-                    <p class="text-xs text-slate-500">Subjects</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Subjects</p>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-indigo-600">{{ this_week.avg_grade }}</p>
-                    <p class="text-xs text-slate-500">Avg Grade</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Avg Grade</p>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-indigo-600">{{ streak }}{% if streak %} day{{ 's' if streak != 1 }}{% endif %}</p>
-                    <p class="text-xs text-slate-500">Streak</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Streak</p>
                 </div>
             </div>
         </div>
@@ -73,20 +73,20 @@
 
         <!-- Subject Progress -->
         {% if gaps %}
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 mb-6">
             <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-semibold text-slate-700">Subject Progress</h3>
-                <span class="text-sm font-medium text-slate-500">{{ predicted_total }}/{{ target_total }} points</span>
+                <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Subject Progress</h3>
+                <span class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ predicted_total }}/{{ target_total }} points</span>
             </div>
             <div class="space-y-3">
                 {% for g in gaps %}
                 <div class="flex items-center gap-3">
-                    <span class="text-sm text-slate-700 w-40 truncate">{{ g.subject }}</span>
+                    <span class="text-sm text-slate-700 dark:text-slate-300 w-40 truncate">{{ g.subject }}</span>
                     <span class="text-xs font-medium px-2 py-0.5 rounded-full
-                        {% if g.level == 'HL' %}bg-indigo-100 text-indigo-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                        {% if g.level == 'HL' %}bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300{% else %}bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400{% endif %}">
                         {{ g.level }}
                     </span>
-                    <div class="flex-1 bg-slate-100 rounded-full h-2.5">
+                    <div class="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-2.5">
                         {% if g.status != 'no_data' %}
                         {% set bar_pct = ((g.predicted / g.target) * 100) | int %}
                         {% set bar_pct = [bar_pct, 100] | min %}
@@ -97,7 +97,7 @@
                              style="width: {{ bar_pct }}%"></div>
                         {% endif %}
                     </div>
-                    <span class="text-xs text-slate-500 w-16 text-right">
+                    <span class="text-xs text-slate-500 dark:text-slate-400 w-16 text-right">
                         {% if g.status == 'no_data' %}No data
                         {% else %}{{ g.predicted }}/{{ g.target }}{% endif %}
                     </span>
@@ -109,27 +109,27 @@
 
         <!-- Activity Heatmap -->
         {% if heatmap %}
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
-            <h3 class="text-sm font-semibold text-slate-700 mb-3">Study Activity (Last 90 Days)</h3>
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 mb-6">
+            <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Study Activity (Last 90 Days)</h3>
             <div class="flex items-center gap-1 mb-2">
                 <span class="text-xs text-slate-400 mr-2">Days active: {{ days_active_30 }}/30 (last month)</span>
             </div>
             <div class="flex flex-wrap gap-1">
                 {% for day in heatmap %}
                 <div class="w-3 h-3 rounded-sm
-                    {% if day.count == 0 %}bg-slate-100
-                    {% elif day.count <= 2 %}bg-green-200
-                    {% elif day.count <= 5 %}bg-green-400
-                    {% else %}bg-green-600{% endif %}"
+                    {% if day.count == 0 %}bg-slate-100 dark:bg-slate-700
+                    {% elif day.count <= 2 %}bg-green-200 dark:bg-green-800
+                    {% elif day.count <= 5 %}bg-green-400 dark:bg-green-600
+                    {% else %}bg-green-600 dark:bg-green-500{% endif %}"
                      title="{{ day.date }}: {{ day.count }} questions"></div>
                 {% endfor %}
             </div>
             <div class="flex items-center gap-1 mt-2 text-xs text-slate-400">
                 <span>Less</span>
-                <div class="w-3 h-3 rounded-sm bg-slate-100"></div>
-                <div class="w-3 h-3 rounded-sm bg-green-200"></div>
-                <div class="w-3 h-3 rounded-sm bg-green-400"></div>
-                <div class="w-3 h-3 rounded-sm bg-green-600"></div>
+                <div class="w-3 h-3 rounded-sm bg-slate-100 dark:bg-slate-700"></div>
+                <div class="w-3 h-3 rounded-sm bg-green-200 dark:bg-green-800"></div>
+                <div class="w-3 h-3 rounded-sm bg-green-400 dark:bg-green-600"></div>
+                <div class="w-3 h-3 rounded-sm bg-green-600 dark:bg-green-500"></div>
                 <span>More</span>
             </div>
         </div>
@@ -137,21 +137,21 @@
 
         <!-- Recent Activity -->
         {% if recent_activity %}
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
-            <h3 class="text-sm font-semibold text-slate-700 mb-3">Recent Activity</h3>
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 mb-6">
+            <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Recent Activity</h3>
             <div class="space-y-2">
                 {% for a in recent_activity %}
-                <div class="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+                <div class="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-700 last:border-0">
                     <div class="flex items-center gap-3">
                         <span class="text-xs text-slate-400">{{ a.date }}</span>
-                        <span class="text-sm text-slate-700">{{ a.subject }}</span>
+                        <span class="text-sm text-slate-700 dark:text-slate-300">{{ a.subject }}</span>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="text-xs text-slate-500">{{ a.questions }} Q{{ 's' if a.questions != 1 }}</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">{{ a.questions }} Q{{ 's' if a.questions != 1 }}</span>
                         <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold
-                            {% if a.avg_grade >= 6 %}bg-green-100 text-green-700
-                            {% elif a.avg_grade >= 4 %}bg-yellow-100 text-yellow-700
-                            {% else %}bg-red-100 text-red-700{% endif %}">
+                            {% if a.avg_grade >= 6 %}bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300
+                            {% elif a.avg_grade >= 4 %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300
+                            {% else %}bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300{% endif %}">
                             {{ a.avg_grade | round(0) | int }}
                         </span>
                     </div>
@@ -163,25 +163,25 @@
 
         <!-- Insights -->
         {% if insights %}
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
-            <h3 class="text-sm font-semibold text-slate-700 mb-3">Insights</h3>
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 mb-6">
+            <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Insights</h3>
             <div class="space-y-3">
                 {% for insight in insights %}
                 <div class="p-3 rounded-lg border
-                    {% if insight.severity == 'red' %}bg-red-50 border-red-200
-                    {% elif insight.severity == 'yellow' %}bg-amber-50 border-amber-200
-                    {% elif insight.severity == 'green' %}bg-green-50 border-green-200
-                    {% else %}bg-blue-50 border-blue-200{% endif %}">
+                    {% if insight.severity == 'red' %}bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800
+                    {% elif insight.severity == 'yellow' %}bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800
+                    {% elif insight.severity == 'green' %}bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800
+                    {% else %}bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800{% endif %}">
                     <p class="text-sm font-medium
-                        {% if insight.severity == 'red' %}text-red-800
-                        {% elif insight.severity == 'yellow' %}text-amber-800
-                        {% elif insight.severity == 'green' %}text-green-800
-                        {% else %}text-blue-800{% endif %}">{{ insight.title }}</p>
+                        {% if insight.severity == 'red' %}text-red-800 dark:text-red-300
+                        {% elif insight.severity == 'yellow' %}text-amber-800 dark:text-amber-300
+                        {% elif insight.severity == 'green' %}text-green-800 dark:text-green-300
+                        {% else %}text-blue-800 dark:text-blue-300{% endif %}">{{ insight.title }}</p>
                     <p class="text-xs mt-1
-                        {% if insight.severity == 'red' %}text-red-600
-                        {% elif insight.severity == 'yellow' %}text-amber-600
-                        {% elif insight.severity == 'green' %}text-green-600
-                        {% else %}text-blue-600{% endif %}">{{ insight.body }}</p>
+                        {% if insight.severity == 'red' %}text-red-600 dark:text-red-400
+                        {% elif insight.severity == 'yellow' %}text-amber-600 dark:text-amber-400
+                        {% elif insight.severity == 'green' %}text-green-600 dark:text-green-400
+                        {% else %}text-blue-600 dark:text-blue-400{% endif %}">{{ insight.body }}</p>
                 </div>
                 {% endfor %}
             </div>

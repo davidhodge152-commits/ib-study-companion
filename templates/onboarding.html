@@ -3,34 +3,53 @@
 {% block title %}Welcome — IB Study Companion{% endblock %}
 
 {% block fullcontent %}
-<div class="min-h-screen bg-gradient-to-br from-indigo-50 to-slate-50 flex items-center justify-center p-8">
-    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 max-w-2xl w-full p-10">
+<div class="min-h-screen bg-gradient-to-br from-indigo-50 to-slate-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-8">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 max-w-2xl w-full p-10">
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-slate-800">Welcome to IB Study Companion</h1>
-            <p class="text-slate-500 mt-2">Set up your profile to get personalized, target-driven study tools.</p>
+            <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-200">Welcome to IB Study Companion</h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-2">Set up your profile to get personalized, target-driven study tools.</p>
+        </div>
+
+        <!-- Step indicator -->
+        <div class="flex items-center justify-center gap-2 mb-8" id="step-indicator">
+            <div class="flex items-center gap-2">
+                <span class="step-dot w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold" data-step="1">1</span>
+                <span class="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">About You</span>
+            </div>
+            <div class="w-8 h-0.5 bg-slate-200 dark:bg-slate-700"></div>
+            <div class="flex items-center gap-2">
+                <span class="step-dot w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-sm font-bold" data-step="2">2</span>
+                <span class="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">Subjects</span>
+            </div>
+            <div class="w-8 h-0.5 bg-slate-200 dark:bg-slate-700"></div>
+            <div class="flex items-center gap-2">
+                <span class="step-dot w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-sm font-bold" data-step="3">3</span>
+                <span class="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">Targets</span>
+            </div>
         </div>
 
         {% if error %}
-        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
             {{ error }}
         </div>
         {% endif %}
 
         <form method="POST" action="{{ url_for('core.onboarding_submit') }}" id="onboarding-form">
-            <!-- Step 1: Basic Info -->
+            <!-- Step 1: About You -->
+            <div id="step-1" class="step-section">
             <div class="mb-8">
-                <h2 class="text-lg font-semibold text-slate-700 mb-4">About You</h2>
+                <h2 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">About You</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Your Name</label>
-                        <input type="text" name="name" required placeholder="e.g. David"
+                        <label for="name-input" class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Your Name</label>
+                        <input type="text" name="name" id="name-input" required placeholder="e.g. David"
                                value="{{ profile.name if profile else '' }}"
-                               class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                               class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Exam Session</label>
-                        <select name="exam_session" required
-                                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+                        <label for="exam-session-select" class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Exam Session</label>
+                        <select name="exam_session" id="exam-session-select" required
+                                class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white dark:bg-slate-700">
                             <option value="">Select session...</option>
                             {% set sessions = ["May 2025", "November 2025", "May 2026", "November 2026", "May 2027", "November 2027"] %}
                             {% for s in sessions %}
@@ -40,23 +59,13 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Target IB Points -->
-            <div class="mb-8">
-                <h2 class="text-lg font-semibold text-slate-700 mb-2">Target IB Points</h2>
-                <p class="text-sm text-slate-500 mb-3">Most universities want 36+. Top programs want 40+.</p>
-                <div class="flex items-center gap-4">
-                    <input type="number" name="target_total_points" min="24" max="45"
-                           value="{{ profile.target_total_points if profile else 35 }}"
-                           class="w-24 px-4 py-2.5 border border-slate-300 rounded-lg text-sm text-center font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
-                    <span class="text-sm text-slate-500">out of 45</span>
-                </div>
             </div>
 
             <!-- Step 2: Subject Selection -->
+            <div id="step-2" class="step-section hidden">
             <div class="mb-8">
-                <h2 class="text-lg font-semibold text-slate-700 mb-2">Your Subjects</h2>
-                <p class="text-sm text-slate-500 mb-4">Select up to 6 subjects. Set each as HL or SL with your target grade.</p>
+                <h2 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">Your Subjects</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Select up to 6 subjects. Set each as HL or SL with your target grade.</p>
 
                 <div id="subject-slots" class="space-y-3">
                     <!-- Subject rows added by JS -->
@@ -67,11 +76,31 @@
                     + Add Subject
                 </button>
             </div>
+            </div>
+
+            <!-- Step 3: Target IB Points -->
+            <div id="step-3" class="step-section hidden">
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">Target IB Points</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Most universities want 36+. Top programs want 40+.</p>
+                <div class="flex items-center gap-4">
+                    <input type="number" name="target_total_points" id="target-points-input" min="24" max="45"
+                           value="{{ profile.target_total_points if profile else 35 }}"
+                           class="w-24 px-4 py-2.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg text-sm text-center font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">out of 45</span>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6" id="step-nav">
+                <button type="button" id="step-back-btn" onclick="prevStep()" class="hidden px-6 py-3 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-sm transition-colors min-h-[44px]">Back</button>
+                <button type="button" id="step-next-btn" onclick="nextStep()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm min-h-[44px]">Next</button>
+            </div>
 
             <button type="submit"
                     class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm">
                 {% if profile %}Save Changes{% else %}Get Started{% endif %}
             </button>
+            </div>
         </form>
     </div>
 </div>
@@ -109,21 +138,21 @@ function addSubjectRow(defaultName = '', defaultLevel = 'HL', defaultTarget = 5)
 
     row.innerHTML = `
         <select name="subject_${idx}" required
-                class="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+                class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white dark:bg-slate-700">
             ${options}
         </select>
         <select name="level_${idx}"
-                class="w-20 px-2 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white">
+                class="w-20 px-2 py-2.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white dark:bg-slate-700">
             <option value="HL"${defaultLevel === 'HL' ? ' selected' : ''}>HL</option>
             <option value="SL"${defaultLevel === 'SL' ? ' selected' : ''}>SL</option>
         </select>
         <select name="target_${idx}"
-                class="w-20 px-2 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
+                class="w-20 px-2 py-2.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white dark:bg-slate-700"
                 title="Target grade">
             ${targetOptions}
         </select>
-        <button type="button" onclick="removeSubject(${idx})" class="text-slate-400 hover:text-red-500 transition-colors p-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <button type="button" onclick="removeSubject(${idx})" class="text-slate-400 hover:text-red-500 transition-colors p-1" aria-label="Remove subject">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
     `;
 
@@ -156,5 +185,53 @@ if (EXISTING_PROFILE && EXISTING_PROFILE.subjects) {
     addSubjectRow();
     addSubjectRow();
 }
+
+let currentStep = 1;
+const totalSteps = 3;
+
+function showStep(step) {
+    document.querySelectorAll('.step-section').forEach(s => s.classList.add('hidden'));
+    const stepEl = document.getElementById(`step-${step}`);
+    if (stepEl) stepEl.classList.remove('hidden');
+
+    // Update step dots
+    document.querySelectorAll('.step-dot').forEach(dot => {
+        const dotStep = parseInt(dot.dataset.step);
+        if (dotStep <= step) {
+            dot.classList.remove('bg-slate-200', 'dark:bg-slate-700', 'text-slate-500');
+            dot.classList.add('bg-indigo-600', 'text-white');
+        } else {
+            dot.classList.remove('bg-indigo-600', 'text-white');
+            dot.classList.add('bg-slate-200', 'dark:bg-slate-700', 'text-slate-500');
+        }
+    });
+
+    // Update nav buttons
+    const backBtn = document.getElementById('step-back-btn');
+    const nextBtn = document.getElementById('step-next-btn');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const stepNav = document.getElementById('step-nav');
+
+    if (backBtn) backBtn.classList.toggle('hidden', step === 1);
+    if (step === totalSteps) {
+        if (nextBtn) nextBtn.classList.add('hidden');
+        if (submitBtn) submitBtn.classList.remove('hidden');
+    } else {
+        if (nextBtn) nextBtn.classList.remove('hidden');
+        if (submitBtn) submitBtn.classList.add('hidden');
+    }
+
+    currentStep = step;
+}
+
+function nextStep() {
+    if (currentStep < totalSteps) showStep(currentStep + 1);
+}
+
+function prevStep() {
+    if (currentStep > 1) showStep(currentStep - 1);
+}
+
+showStep(1);
 </script>
 {% endblock %}
