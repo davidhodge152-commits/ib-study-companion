@@ -16,6 +16,25 @@ from db_stores import GamificationProfileDB, StudentProfileDB, UploadStoreDB
 
 bp = Blueprint("upload", __name__)
 
+# Magic byte signatures for file header validation
+_MAGIC_BYTES = {
+    ".pdf": b"%PDF",
+    ".png": b"\x89PNG",
+    ".jpg": b"\xff\xd8\xff",
+    ".jpeg": b"\xff\xd8\xff",
+    ".webp": b"RIFF",
+}
+
+
+def _validate_file_header(file_storage, ext: str) -> bool:
+    """Check file header magic bytes match the claimed extension."""
+    expected = _MAGIC_BYTES.get(ext)
+    if not expected:
+        return False
+    header = file_storage.read(len(expected))
+    file_storage.seek(0)
+    return header.startswith(expected)
+
 
 @bp.route("/upload")
 @login_required
@@ -42,6 +61,9 @@ def api_upload():
     ext = Path(file.filename).suffix.lower()
     if ext not in allowed_ext:
         return jsonify({"error": f"Supported formats: PDF, PNG, JPG, WEBP"}), 400
+
+    if not _validate_file_header(file, ext):
+        return jsonify({"error": "File content does not match its extension."}), 400
 
     is_image = ext in {".png", ".jpg", ".jpeg", ".webp"}
     doc_type = request.form.get("doc_type", "notes")

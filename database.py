@@ -798,7 +798,7 @@ MIGRATIONS: list[tuple[int, str]] = [
         );
     """),
 
-    # Migration 23: University Admissions Profiles
+    # Migration 23: University Admissions Profiles  (note: 24+ added in Phase 2)
     (23, """
         CREATE TABLE IF NOT EXISTS admissions_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -813,6 +813,37 @@ MIGRATIONS: list[tuple[int, str]] = [
             updated_at TEXT NOT NULL DEFAULT '',
             UNIQUE(user_id)
         );
+    """),
+
+    # Migration 24: Account lockout fields
+    (24, """
+        ALTER TABLE users ADD COLUMN login_attempts INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE users ADD COLUMN locked_until TEXT NOT NULL DEFAULT '';
+    """),
+
+    # Migration 25: Audit log
+    (25, """
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            action TEXT NOT NULL,
+            detail TEXT NOT NULL DEFAULT '',
+            ip_address TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id, created_at);
+    """),
+
+    # Migration 26: Password reset tokens
+    (26, """
+        ALTER TABLE users ADD COLUMN reset_token TEXT NOT NULL DEFAULT '';
+        ALTER TABLE users ADD COLUMN reset_token_expires TEXT NOT NULL DEFAULT '';
+    """),
+
+    # Migration 27: Parent token expiration
+    (27, """
+        ALTER TABLE parent_config ADD COLUMN token_expires_at TEXT NOT NULL DEFAULT '';
     """),
 ]
 

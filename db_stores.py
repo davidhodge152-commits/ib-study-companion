@@ -1430,10 +1430,11 @@ class ParentConfigDB:
 
     def generate_token(self) -> str:
         token = secrets.token_hex(16)
+        expires = (datetime.now() + timedelta(days=90)).isoformat()
         db = get_db()
         db.execute(
-            "UPDATE parent_config SET token=?, created_at=? WHERE user_id=?",
-            (token, datetime.now().isoformat(), self.user_id),
+            "UPDATE parent_config SET token=?, created_at=?, token_expires_at=? WHERE user_id=?",
+            (token, datetime.now().isoformat(), expires, self.user_id),
         )
         db.commit()
         return token
@@ -1477,9 +1478,20 @@ class ParentConfigDB:
     @staticmethod
     def load_by_token(token: str) -> Optional[ParentConfigDB]:
         db = get_db()
-        row = db.execute("SELECT user_id FROM parent_config WHERE token=? AND enabled=1", (token,)).fetchone()
+        row = db.execute(
+            "SELECT user_id, token_expires_at FROM parent_config WHERE token=? AND enabled=1",
+            (token,),
+        ).fetchone()
         if not row:
             return None
+        # Check expiration
+        expires_at = row["token_expires_at"] if "token_expires_at" in row.keys() else ""
+        if expires_at:
+            try:
+                if datetime.now() > datetime.fromisoformat(expires_at):
+                    return None
+            except (ValueError, TypeError):
+                pass
         return ParentConfigDB(row["user_id"])
 
 

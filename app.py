@@ -14,6 +14,7 @@ from flask import Flask
 import database
 from auth import auth_bp, login_manager
 from blueprints import register_blueprints
+from extensions import limiter
 
 
 def create_app(test_config=None):
@@ -77,12 +78,36 @@ def create_app(test_config=None):
     # Register database teardown
     database.init_app(app)
 
+    # Rate limiter (disabled in testing)
+    limiter.init_app(app)
+    if app.config.get("TESTING"):
+        limiter.enabled = False
+
     # Register auth blueprint and login manager
     app.register_blueprint(auth_bp)
     login_manager.init_app(app)
 
     # Register all application blueprints
     register_blueprints(app)
+
+    # Security headers
+    @app.after_request
+    def set_security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+            "img-src 'self' data:; "
+            "connect-src 'self'"
+        )
+        if not app.debug:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
 
     # Start push notification scheduler (non-blocking)
     if not app.config.get("TESTING"):

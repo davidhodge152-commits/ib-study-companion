@@ -18,6 +18,7 @@ from db_stores import (
     ParentConfigDB,
     StudentProfileDB,
 )
+from audit import log_event
 
 bp = Blueprint("parent", __name__)
 
@@ -45,6 +46,7 @@ def api_parent_toggle():
         parent_config.save_all(enabled=True)
         if not parent_config.token:
             parent_config.generate_token()
+            log_event("parent_token_generate", uid, "action=enable")
         profile = StudentProfileDB.load(uid)
         if profile and not parent_config.student_display_name:
             parent_config.save_all(student_display_name=profile.name)
@@ -52,6 +54,7 @@ def api_parent_toggle():
         parent_config.save_all(enabled=False)
     elif action == "regenerate":
         parent_config.generate_token()
+        log_event("parent_token_generate", uid, f"action={action}")
 
     return jsonify({
         "enabled": parent_config.enabled,

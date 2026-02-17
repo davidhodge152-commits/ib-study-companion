@@ -1,10 +1,19 @@
 """
-Singleton management for expensive objects (RAG engine, grader).
+Singleton management for expensive objects (RAG engine, grader) and rate limiter.
 
 Replaces the nonlocal closure pattern from create_app().
 """
 
 from __future__ import annotations
+
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per hour"],
+    storage_uri="memory://",
+)
 
 
 class EngineManager:

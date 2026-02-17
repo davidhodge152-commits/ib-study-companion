@@ -11,6 +11,7 @@ from flask import Blueprint, Response, jsonify, request
 from flask_login import login_required
 
 from helpers import current_user_id
+from audit import log_event
 from db_stores import (
     GradeDetailLogDB,
     ActivityLogDB,
@@ -50,6 +51,7 @@ def api_export_report():
         misconception_log=misc_log,
     )
 
+    log_event("data_export", uid, "type=pdf_report")
     safe_name = profile.name.replace(" ", "_")
     return Response(
         pdf_bytes,
@@ -74,6 +76,7 @@ def api_export_grades():
         "Strengths", "Improvements", "Examiner Tip",
     ])
 
+    log_event("data_export", uid, "type=grades_csv")
     for e in grade_log.entries:
         writer.writerow([
             e.timestamp[:10] if e.timestamp else "",

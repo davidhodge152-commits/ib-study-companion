@@ -29,6 +29,14 @@ class BaseConfig:
     DATABASE = os.environ.get("DATABASE_URL", str(BASE_DIR / "ib_study.db"))
     WTF_CSRF_ENABLED = True
 
+    # Session security
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    PERMANENT_SESSION_LIFETIME = 86400
+
+    # Upload limits
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
+
     # AI provider keys
     GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -42,6 +50,15 @@ class BaseConfig:
     # Logging
     LOG_FORMAT = os.environ.get("LOG_FORMAT", "text")  # "json" or "text"
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+
+    # Email
+    EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "log")  # "log" or "smtp"
+    MAIL_SERVER = os.environ.get("MAIL_SERVER", "localhost")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", "587"))
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME", "")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
+    MAIL_FROM = os.environ.get("MAIL_FROM", "noreply@example.com")
+    BASE_URL = os.environ.get("BASE_URL", "http://localhost:5001")
 
     # Future integrations (unused for now, documented for reference)
     REDIS_URL = os.environ.get("REDIS_URL", "")
@@ -59,6 +76,7 @@ class DevelopmentConfig(BaseConfig):
 class ProductionConfig(BaseConfig):
     DEBUG = False
     LOG_FORMAT = os.environ.get("LOG_FORMAT", "json")
+    SESSION_COOKIE_SECURE = True
 
     @classmethod
     def validate(cls):
