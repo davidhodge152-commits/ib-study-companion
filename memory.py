@@ -19,7 +19,7 @@ from datetime import datetime
 from database import get_db
 
 
-MEMORY_TYPES = {"learning_style", "interest", "struggle", "preference", "context"}
+MEMORY_TYPES = {"learning_style", "interest", "struggle", "preference", "context", "area_of_knowledge"}
 
 EXTRACTION_PROMPT = """Analyze this tutoring conversation and extract learnable facts about the student.
 
@@ -113,6 +113,7 @@ class StudentMemory:
             "struggle": [],
             "preference": [],
             "context": [],
+            "area_of_knowledge": [],
         }
 
         for m in memories:
@@ -127,6 +128,7 @@ class StudentMemory:
             "struggle": "Known struggles",
             "preference": "Preferences",
             "context": "Context",
+            "area_of_knowledge": "Areas of Knowledge",
         }
 
         for key, label in labels.items():
