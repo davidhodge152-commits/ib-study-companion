@@ -7,6 +7,7 @@ A schema_version table handles migrations.
 
 from __future__ import annotations
 
+import fcntl
 import json
 import sqlite3
 from datetime import datetime
@@ -960,6 +961,15 @@ MIGRATIONS: list[tuple[int, str]] = [
             UNIQUE(date, metric)
         );
     """),
+
+    # Migration 37: Performance indexes
+    (37, """
+        CREATE INDEX IF NOT EXISTS idx_grades_user_timestamp ON grades(user_id, timestamp);
+        CREATE INDEX IF NOT EXISTS idx_flashcards_user_subject ON flashcards(user_id, subject);
+        CREATE INDEX IF NOT EXISTS idx_agent_interactions_created ON agent_interactions(created_at);
+        CREATE INDEX IF NOT EXISTS idx_credit_tx_user_type ON credit_transactions(user_id, type);
+        CREATE INDEX IF NOT EXISTS idx_community_papers_subject ON community_papers(subject, level);
+    """),
 ]
 
 
@@ -989,24 +999,42 @@ def init_db() -> None:
 
 
 def run_migrations() -> None:
-    """Apply any unapplied versioned migrations."""
-    db = get_db()
-    applied = {
-        row["version"]
-        for row in db.execute("SELECT version FROM schema_version").fetchall()
-    }
-    for version, sql in MIGRATIONS:
-        if version not in applied:
-            try:
-                db.executescript(sql)
-            except sqlite3.OperationalError as e:
-                if "duplicate column" not in str(e):
-                    raise
-            db.execute(
-                "INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
-                (version, datetime.now().isoformat()),
-            )
-            db.commit()
+    """Apply any unapplied versioned migrations.
+
+    Uses file-based locking to prevent race conditions when multiple
+    Gunicorn workers start simultaneously.
+    """
+    db_path = current_app.config.get("DATABASE", str(Path(__file__).parent / "ib_study.db"))
+    lock_path = Path(db_path).with_suffix(".migration.lock")
+
+    try:
+        lock_file = open(lock_path, "w")
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+    except OSError:
+        lock_file = None  # Proceed without lock on platforms that don't support it
+
+    try:
+        db = get_db()
+        applied = {
+            row["version"]
+            for row in db.execute("SELECT version FROM schema_version").fetchall()
+        }
+        for version, sql in MIGRATIONS:
+            if version not in applied:
+                try:
+                    db.executescript(sql)
+                except sqlite3.OperationalError as e:
+                    if "duplicate column" not in str(e):
+                        raise
+                db.execute(
+                    "INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
+                    (version, datetime.now().isoformat()),
+                )
+                db.commit()
+    finally:
+        if lock_file:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
 
 
 def init_app(app) -> None:

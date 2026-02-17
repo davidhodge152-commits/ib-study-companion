@@ -49,8 +49,15 @@ def api_create_group():
 @bp.route("/api/groups")
 @login_required
 def api_list_groups():
+    from helpers import paginate_args, paginated_response
     uid = current_user_id()
-    return jsonify({"groups": StudyGroupStoreDB.user_groups(uid)})
+    page, limit = paginate_args(default_limit=20)
+    groups = StudyGroupStoreDB.user_groups(uid)
+    total = len(groups)
+    start = (page - 1) * limit
+    result = paginated_response(groups[start:start + limit], total, page, limit)
+    result["groups"] = result.pop("items")
+    return jsonify(result)
 
 
 @bp.route("/api/groups/<int:group_id>")
@@ -137,11 +144,17 @@ def api_submit_challenge(challenge_id):
 @bp.route("/api/leaderboard")
 @login_required
 def api_leaderboard():
+    from helpers import paginate_args, paginated_response
     scope = request.args.get("scope", "global")
     scope_id = int(request.args.get("scope_id", 0))
     period = request.args.get("period", "all")
-    entries = LeaderboardStoreDB.get(scope, scope_id, period)
-    return jsonify({"leaderboard": entries})
+    page, limit = paginate_args(default_limit=50)
+    entries = LeaderboardStoreDB.get(scope, scope_id, period, limit=limit * page)
+    total = len(entries)
+    start = (page - 1) * limit
+    result = paginated_response(entries[start:start + limit], total, page, limit)
+    result["leaderboard"] = result.pop("items")
+    return jsonify(result)
 
 
 # ── Community Papers ──────────────────────────────────────
@@ -244,10 +257,16 @@ def api_share_flashcards():
 @bp.route("/api/flashcards/shared")
 @login_required
 def api_list_shared_flashcards():
+    from helpers import paginate_args, paginated_response
     subject = request.args.get("subject", "")
     topic = request.args.get("topic", "")
-    decks = SharedFlashcardDeckDB.list_decks(subject=subject, topic=topic)
-    return jsonify({"decks": decks})
+    page, limit = paginate_args(default_limit=20)
+    decks = SharedFlashcardDeckDB.list_decks(subject=subject, topic=topic, limit=limit * page)
+    total = len(decks)
+    start = (page - 1) * limit
+    result = paginated_response(decks[start:start + limit], total, page, limit)
+    result["decks"] = result.pop("items")
+    return jsonify(result)
 
 
 @bp.route("/api/flashcards/shared/<int:deck_id>")
@@ -287,9 +306,15 @@ def api_buddy_preferences():
 @bp.route("/api/buddy/matches")
 @login_required
 def api_buddy_matches():
+    from helpers import paginate_args, paginated_response
     uid = current_user_id()
-    matches = StudyBuddyDB.find_matches(uid)
-    return jsonify({"matches": matches})
+    page, limit = paginate_args(default_limit=10)
+    matches = StudyBuddyDB.find_matches(uid, limit=limit * page)
+    total = len(matches)
+    start = (page - 1) * limit
+    result = paginated_response(matches[start:start + limit], total, page, limit)
+    result["matches"] = result.pop("items")
+    return jsonify(result)
 
 
 @bp.route("/api/buddy/connect", methods=["POST"])

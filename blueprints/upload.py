@@ -78,51 +78,52 @@ def api_upload():
 
     file.save(str(save_path))
 
+    # Try background processing first, fall back to synchronous
+    from tasks import enqueue, is_async_available
+
+    if is_async_available():
+        # Background: enqueue ingestion, return immediately
+        from ingest import ingest_uploaded_file
+        upload_id = uuid.uuid4().hex
+        uid = current_user_id()
+
+        # Record upload as "processing"
+        upload_entry = {
+            "id": upload_id,
+            "filename": filename,
+            "doc_type": doc_type,
+            "subject": "",
+            "level": "",
+            "chunks": 0,
+            "uploaded_at": datetime.now().isoformat(),
+        }
+        UploadStoreDB(uid).add(upload_entry)
+
+        enqueue(
+            ingest_uploaded_file,
+            str(save_path),
+            filename,
+            doc_type,
+            is_image,
+        )
+
+        gam = GamificationProfileDB(uid)
+        gam.award_xp(XP_AWARDS["upload_document"], "upload_document")
+
+        return jsonify({
+            "success": True,
+            "status": "processing",
+            "upload_id": upload_id,
+            "filename": filename,
+        })
+
+    # Synchronous fallback
     try:
-        from ingest import (
-            extract_text,
-            extract_text_from_image,
-            classify_document,
-            detect_subject,
-            detect_level,
-            chunk_text,
-            file_hash,
-        )
-        import chromadb
+        from ingest import ingest_uploaded_file
+        result = ingest_uploaded_file(str(save_path), filename, doc_type, is_image)
 
-        text = extract_text_from_image(save_path) if is_image else extract_text(save_path)
-        if not text.strip():
-            msg = "Could not extract text from image" if is_image else "No extractable text in PDF (scanned?)"
-            return jsonify({"error": msg}), 400
-
-        detected_type = doc_type if doc_type != "auto" else classify_document(filename, text)
-        subject = detect_subject(filename, text)
-        level = detect_level(filename, text)
-        chunks = chunk_text(text)
-        fhash = file_hash(save_path)
-        prefix = f"{save_path.stem}_{fhash}"
-
-        chroma_dir = Path(__file__).parent.parent / "chroma_db"
-        client = chromadb.PersistentClient(path=str(chroma_dir))
-        collection = client.get_or_create_collection(
-            name="ib_documents",
-            metadata={"hnsw:space": "cosine"},
-        )
-
-        ids = [f"{prefix}_c{i:04d}" for i in range(len(chunks))]
-        metadatas = [
-            {
-                "source": filename,
-                "doc_type": detected_type,
-                "subject": subject,
-                "level": level,
-                "chunk_index": i,
-                "total_chunks": len(chunks),
-            }
-            for i in range(len(chunks))
-        ]
-
-        collection.add(documents=chunks, ids=ids, metadatas=metadatas)
+        if not result.get("success"):
+            return jsonify({"error": result.get("error", "Ingestion failed")}), 400
 
         EngineManager.reset()
 
@@ -133,17 +134,17 @@ def api_upload():
     upload_entry = {
         "id": uuid.uuid4().hex,
         "filename": filename,
-        "doc_type": detected_type,
-        "subject": subject,
-        "level": level,
-        "chunks": len(chunks),
+        "doc_type": result["doc_type"],
+        "subject": result["subject"],
+        "level": result["level"],
+        "chunks": result["chunks"],
         "uploaded_at": datetime.now().isoformat(),
     }
     UploadStoreDB(uid).add(upload_entry)
 
     if doc_type == "my_past_exam":
         try:
-            _analyze_writing_style(text)
+            _analyze_writing_style(result.get("text", ""))
         except Exception:
             pass
 
@@ -153,10 +154,10 @@ def api_upload():
     return jsonify({
         "success": True,
         "filename": filename,
-        "doc_type": detected_type,
-        "subject": subject,
-        "level": level,
-        "chunks": len(chunks),
+        "doc_type": result["doc_type"],
+        "subject": result["subject"],
+        "level": result["level"],
+        "chunks": result["chunks"],
     })
 
 

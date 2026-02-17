@@ -69,40 +69,36 @@ class RAGEngine:
             )
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel("gemini-2.0-flash")
-        self._chroma_client = None
-        self._collection = None
+        self._vector_store = None
 
-    # ── ChromaDB access ────────────────────────────────────────────
+    # ── Vector store access ────────────────────────────────────────
 
-    def _get_collection(self):
-        """Lazily initialise ChromaDB collection on first access."""
-        if self._collection is None:
-            if not CHROMA_DIR.exists():
-                raise FileNotFoundError(
-                    f"No ChromaDB store at {CHROMA_DIR}. Run `python ingest.py` first."
-                )
-            import chromadb
-            self._chroma_client = chromadb.PersistentClient(path=str(CHROMA_DIR))
-            self._collection = self._chroma_client.get_collection(COLLECTION_NAME)
-        return self._collection
+    def _get_store(self):
+        """Lazily initialise vector store on first access."""
+        if self._vector_store is None:
+            from vector_store import get_vector_store
+            self._vector_store = get_vector_store()
+        return self._vector_store
 
     @property
     def collection(self):
-        return self._get_collection()
+        """Backwards-compatible access to the underlying collection."""
+        return self._get_store()._get_collection()
 
     def collection_stats(self) -> dict:
         """Return summary stats about ingested documents."""
         try:
-            col = self.collection
+            store = self._get_store()
         except Exception:
             return {"count": 0, "subjects": [], "doc_types": []}
 
-        data = col.get(include=["metadatas"])
-        subjects = sorted({m.get("subject", "unknown") for m in data["metadatas"]})
-        doc_types = sorted({m.get("doc_type", "unknown") for m in data["metadatas"]})
-        sources = sorted({m.get("source", "unknown") for m in data["metadatas"]})
+        data = store.get()
+        metadatas = data.get("metadatas", [])
+        subjects = sorted({m.get("subject", "unknown") for m in metadatas})
+        doc_types = sorted({m.get("doc_type", "unknown") for m in metadatas})
+        sources = sorted({m.get("source", "unknown") for m in metadatas})
         return {
-            "count": col.count(),
+            "count": store.count(),
             "subjects": subjects,
             "doc_types": doc_types,
             "sources": sources,
@@ -133,11 +129,11 @@ class RAGEngine:
         elif len(conditions) > 1:
             where_filter = {"$and": conditions}
 
-        results = self.collection.query(
+        store = self._get_store()
+        results = store.query(
             query_texts=[query_text],
             n_results=n_results,
             where=where_filter,
-            include=["documents", "metadatas", "distances"],
         )
 
         chunks: list[RetrievedChunk] = []

@@ -148,6 +148,16 @@ def db(app):
 
 
 @pytest.fixture
+def fake_redis():
+    """Provide a fakeredis instance for cache/session tests."""
+    try:
+        import fakeredis
+        return fakeredis.FakeRedis()
+    except ImportError:
+        pytest.skip("fakeredis not installed")
+
+
+@pytest.fixture
 def seeded_grades(app):
     """Seed some grade data for testing."""
     with app.app_context():

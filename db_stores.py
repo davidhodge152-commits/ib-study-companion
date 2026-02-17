@@ -2399,6 +2399,18 @@ class LeaderboardStoreDB:
 
     @staticmethod
     def get(scope: str = "global", scope_id: int = 0, period: str = "all", limit: int = 50) -> list[dict]:
+        # Check cache first (5-minute TTL)
+        try:
+            from cache_backend import get_cache
+            cache = get_cache()
+            cache_key = f"leaderboard:{scope}:{scope_id}:{period}"
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return cached[:limit]
+        except Exception:
+            cache = None
+            cache_key = None
+
         db = get_db()
         # Real-time leaderboard from gamification table
         if scope == "global":
@@ -2434,6 +2446,14 @@ class LeaderboardStoreDB:
             entry = dict(r)
             entry["rank"] = i
             result.append(entry)
+
+        # Cache for 5 minutes
+        if cache_key:
+            try:
+                cache.set(cache_key, result, ttl=300)
+            except Exception:
+                pass
+
         return result
 
 
@@ -2873,6 +2893,20 @@ class StudyBuddyDB:
             if len(matches) >= limit:
                 break
         return matches
+
+
+# ── Pagination helpers for stores ─────────────────────────────────
+
+
+def _paginated_query(query: str, count_query: str, params: list,
+                     page: int, limit: int) -> tuple[list[dict], int]:
+    """Execute a paginated query. Returns (rows_as_dicts, total_count)."""
+    db = get_db()
+    total_row = db.execute(count_query, params).fetchone()
+    total = total_row[0] if total_row else 0
+    offset = (page - 1) * limit
+    rows = db.execute(query + " LIMIT ? OFFSET ?", [*params, limit, offset]).fetchall()
+    return [dict(r) for r in rows], total
 
 
 # ── Agent Interaction Store ─────────────────────────────────

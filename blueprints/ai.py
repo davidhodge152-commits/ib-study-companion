@@ -86,9 +86,17 @@ def api_tutor_message():
 @bp.route("/api/tutor/history")
 @login_required
 def api_tutor_history():
+    from helpers import paginate_args, paginated_response
+
     uid = current_user_id()
+    page, limit = paginate_args(default_limit=20)
     store = TutorConversationStoreDB(uid)
-    return jsonify({"conversations": store.list_conversations()})
+    convos = store.list_conversations(limit=limit * page)
+    total = len(convos)
+    start = (page - 1) * limit
+    result = paginated_response(convos[start:start + limit], total, page, limit)
+    result["conversations"] = result.pop("items")
+    return jsonify(result)
 
 
 @bp.route("/api/tutor/<int:conv_id>")
@@ -328,18 +336,28 @@ def api_oral_grade():
 @login_required
 def api_oral_history():
     """List past oral practice sessions."""
+    from helpers import paginate_args, paginated_response
+
     uid = current_user_id()
+    page, limit = paginate_args(default_limit=20)
     try:
         from database import get_db
         db = get_db()
+        total_row = db.execute(
+            "SELECT COUNT(*) FROM oral_sessions WHERE user_id = ?", (uid,)
+        ).fetchone()
+        total = total_row[0] if total_row else 0
+        offset = (page - 1) * limit
         rows = db.execute(
             "SELECT id, subject, level, text_title, global_issue, "
             "total_score, started_at, completed_at "
             "FROM oral_sessions WHERE user_id = ? "
-            "ORDER BY started_at DESC LIMIT 20",
-            (uid,),
+            "ORDER BY started_at DESC LIMIT ? OFFSET ?",
+            (uid, limit, offset),
         ).fetchall()
-        return jsonify({"sessions": [dict(r) for r in rows]})
+        result = paginated_response([dict(r) for r in rows], total, page, limit)
+        result["sessions"] = result.pop("items")
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

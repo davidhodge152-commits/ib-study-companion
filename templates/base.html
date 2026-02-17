@@ -396,7 +396,7 @@
         </button>
     </div>
 
-    <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script type="module" src="{{ asset_url('app.js') }}"></script>
     <script>
     // Service Worker registration
     if ('serviceWorker' in navigator) {

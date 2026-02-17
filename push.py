@@ -124,11 +124,10 @@ def _check_streak_at_risk(user_id: int) -> bool:
     return activity is None  # No activity today = streak at risk
 
 
-def send_study_reminders(app) -> int:
-    """Check all subscribed users and send appropriate study reminders.
+def _do_send_study_reminders(app) -> int:
+    """Core logic: check all subscribed users and send reminders.
 
-    Call this from a background scheduler (e.g. APScheduler, cron).
-    Returns total notifications sent.
+    Batch-fetches streak/activity data to avoid N+1 queries.
     """
     total_sent = 0
     with app.app_context():
@@ -138,11 +137,32 @@ def send_study_reminders(app) -> int:
             "SELECT DISTINCT user_id FROM push_subscriptions"
         ).fetchall()
 
-        for user_row in users:
-            uid = user_row["user_id"]
+        if not users:
+            return 0
+
+        user_ids = [u["user_id"] for u in users]
+
+        # Batch fetch: streaks for all subscribed users
+        placeholders = ",".join("?" * len(user_ids))
+        streak_rows = db.execute(
+            f"SELECT user_id, current_streak FROM gamification WHERE user_id IN ({placeholders})",
+            user_ids,
+        ).fetchall()
+        streaks = {r["user_id"]: r["current_streak"] for r in streak_rows}
+
+        # Batch fetch: today's activity for all subscribed users
+        today = datetime.now().strftime("%Y-%m-%d")
+        active_rows = db.execute(
+            f"SELECT DISTINCT user_id FROM grades WHERE user_id IN ({placeholders}) AND timestamp LIKE ?",
+            [*user_ids, f"{today}%"],
+        ).fetchall()
+        active_today = {r["user_id"] for r in active_rows}
+
+        for uid in user_ids:
+            streak = streaks.get(uid, 0)
 
             # 1. Streak-at-risk notification
-            if _check_streak_at_risk(uid):
+            if streak >= 2 and uid not in active_today:
                 total_sent += send_push(
                     uid,
                     "Your streak is at risk!",
@@ -161,6 +181,24 @@ def send_study_reminders(app) -> int:
                 total_sent += send_push(uid, "Time to review?", body, "/study")
 
     return total_sent
+
+
+def send_study_reminders(app) -> int:
+    """Check all subscribed users and send appropriate study reminders.
+
+    Call this from a background scheduler (e.g. APScheduler, cron).
+    Uses RQ if available to avoid blocking the scheduler thread.
+    Returns total notifications sent (or 0 if enqueued).
+    """
+    try:
+        from tasks import enqueue, is_async_available
+        if is_async_available():
+            enqueue(_do_send_study_reminders, app)
+            return 0
+    except ImportError:
+        pass
+
+    return _do_send_study_reminders(app)
 
 
 def init_scheduler(app):

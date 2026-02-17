@@ -49,42 +49,58 @@ def api_gamification():
 @bp.route("/api/misconceptions")
 @login_required
 def api_misconceptions():
+    from helpers import paginate_args, paginated_response
+
     uid = current_user_id()
+    page, limit = paginate_args(default_limit=20)
     misc_log = MisconceptionLogDB(uid)
     subject = request.args.get("subject", "")
-    return jsonify({
-        "misconceptions": misc_log.active_misconceptions(subject),
-    })
+    all_misc = misc_log.active_misconceptions(subject)
+    total = len(all_misc)
+    start = (page - 1) * limit
+    result = paginated_response(all_misc[start:start + limit], total, page, limit)
+    result["misconceptions"] = result.pop("items")
+    return jsonify(result)
 
 
 @bp.route("/api/mock-reports")
 @login_required
 def api_mock_reports():
+    from helpers import paginate_args, paginated_response
+
     uid = current_user_id()
+    page, limit = paginate_args(default_limit=10)
     store = MockExamReportStoreDB(uid)
     subject = request.args.get("subject", "")
     if subject:
         reports = store.by_subject(subject)
     else:
-        reports = store.recent(10)
-    return jsonify({
-        "reports": [
-            {
-                "id": r.id,
-                "subject": r.subject,
-                "level": r.level,
-                "date": r.date,
-                "percentage": r.percentage,
-                "grade": r.grade,
-                "total_marks_earned": r.total_marks_earned,
-                "total_marks_possible": r.total_marks_possible,
-                "command_term_breakdown": r.command_term_breakdown,
-                "improvements": r.improvements,
-                "created_at": r.created_at,
-            }
-            for r in reports
-        ],
-    })
+        reports = store.recent(limit * page)
+
+    total = len(reports)
+    start = (page - 1) * limit
+    page_reports = reports[start:start + limit]
+
+    report_dicts = [
+        {
+            "id": r.id,
+            "subject": r.subject,
+            "level": r.level,
+            "date": r.date,
+            "percentage": r.percentage,
+            "grade": r.grade,
+            "total_marks_earned": r.total_marks_earned,
+            "total_marks_possible": r.total_marks_possible,
+            "command_term_breakdown": r.command_term_breakdown,
+            "improvements": r.improvements,
+            "created_at": r.created_at,
+        }
+        for r in page_reports
+    ]
+
+    result = paginated_response(report_dicts, total, page, limit)
+    result["reports"] = result.pop("items")
+    return jsonify(result)
 
 
 @bp.route("/api/mock-reports/create", methods=["POST"])

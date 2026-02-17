@@ -7,9 +7,10 @@ spaced repetition, and study planner.
 
 from __future__ import annotations
 
+import hashlib
 import os
 
-from flask import Flask
+from flask import Flask, request as flask_request
 
 import database
 from auth import auth_bp, login_manager
@@ -40,6 +41,24 @@ def create_app(test_config=None):
     except ImportError:
         csrf = None
 
+    # Server-side sessions (Redis if REDIS_URL set, filesystem fallback)
+    if not app.config.get("TESTING"):
+        try:
+            from flask_session import Session
+            if "SESSION_TYPE" not in app.config:
+                app.config["SESSION_TYPE"] = "filesystem"
+            redis_url = app.config.get("REDIS_URL", "")
+            if redis_url:
+                try:
+                    import redis
+                    app.config["SESSION_TYPE"] = "redis"
+                    app.config["SESSION_REDIS"] = redis.Redis.from_url(redis_url)
+                except (ImportError, Exception):
+                    app.config["SESSION_TYPE"] = "filesystem"
+            Session(app)
+        except ImportError:
+            pass
+
     # i18n with Flask-Babel
     try:
         from flask_babel import Babel
@@ -64,12 +83,32 @@ def create_app(test_config=None):
     except ImportError:
         pass
 
-    # Static file serving for production (whitenoise)
+    # Response compression (optional dependency)
     try:
-        from whitenoise import WhiteNoise
-        app.wsgi_app = WhiteNoise(app.wsgi_app, root=os.path.join(app.root_path, 'static'), prefix='static/')
+        from flask_compress import Compress
+        Compress(app)
     except ImportError:
         pass
+
+    # Static file serving for production (whitenoise) with long cache headers
+    try:
+        from whitenoise import WhiteNoise
+        app.wsgi_app = WhiteNoise(
+            app.wsgi_app,
+            root=os.path.join(app.root_path, 'static'),
+            prefix='static/',
+            max_age=31536000 if not app.debug else 0,
+        )
+    except ImportError:
+        pass
+
+    # Cache backend (Redis or in-memory fallback)
+    from cache_backend import init_cache
+    init_cache(app)
+
+    # Background task processing (RQ or synchronous fallback)
+    from tasks import init_tasks
+    init_tasks(app)
 
     # Structured logging
     from logging_config import init_logging
@@ -90,6 +129,27 @@ def create_app(test_config=None):
     # Register all application blueprints
     register_blueprints(app)
 
+    # Asset URL context processor (JS bundling support)
+    _manifest_cache: dict = {}
+
+    @app.context_processor
+    def asset_helpers():
+        def asset_url(filename: str) -> str:
+            """Map source filename to hashed bundle, falling back to source in dev."""
+            if not _manifest_cache:
+                manifest_path = os.path.join(app.root_path, "static", "dist", "manifest.json")
+                try:
+                    import json
+                    with open(manifest_path) as f:
+                        _manifest_cache.update(json.load(f))
+                except (FileNotFoundError, ValueError):
+                    pass  # No manifest = dev mode, serve unbundled
+            hashed = _manifest_cache.get(filename)
+            if hashed:
+                return f"/static/dist/{hashed}"
+            return f"/static/js/{filename}"
+        return {"asset_url": asset_url}
+
     # Security headers
     @app.after_request
     def set_security_headers(response):
@@ -107,6 +167,25 @@ def create_app(test_config=None):
         )
         if not app.debug:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+    # ETag support for JSON API responses
+    @app.after_request
+    def set_etag(response):
+        if (
+            response.status_code == 200
+            and response.content_type
+            and "application/json" in response.content_type
+            and response.content_length
+            and response.content_length < 1_048_576  # < 1 MB
+        ):
+            data = response.get_data()
+            etag = '"' + hashlib.md5(data).hexdigest() + '"'
+            response.headers["ETag"] = etag
+            if_none_match = flask_request.headers.get("If-None-Match")
+            if if_none_match and if_none_match == etag:
+                response.status_code = 304
+                response.set_data(b"")
         return response
 
     # Start centralized scheduler (push reminders, analytics, cache cleanup)

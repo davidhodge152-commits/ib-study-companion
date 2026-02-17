@@ -28,10 +28,13 @@ def flashcards_page():
 @bp.route("/api/flashcards")
 @login_required
 def api_flashcards():
+    from helpers import paginate_args, paginated_response
+
     uid = current_user_id()
     fc_deck = FlashcardDeckDB(uid)
     subject = request.args.get("subject", "")
     mode = request.args.get("mode", "due")
+    page, limit = paginate_args(default_limit=50, max_limit=200)
 
     if mode == "due":
         cards = fc_deck.due_today()
@@ -40,24 +43,30 @@ def api_flashcards():
     else:
         cards = fc_deck.cards
 
-    return jsonify({
-        "cards": [
-            {
-                "id": c.id,
-                "front": c.front,
-                "back": c.back,
-                "subject": c.subject,
-                "topic": c.topic,
-                "source": c.source,
-                "interval_days": c.interval_days,
-                "next_review": c.next_review,
-                "review_count": c.review_count,
-            }
-            for c in cards
-        ],
-        "due_count": fc_deck.due_count(),
-        "total": len(fc_deck.cards),
-    })
+    total = len(cards)
+    start = (page - 1) * limit
+    page_cards = cards[start:start + limit]
+
+    card_dicts = [
+        {
+            "id": c.id,
+            "front": c.front,
+            "back": c.back,
+            "subject": c.subject,
+            "topic": c.topic,
+            "source": c.source,
+            "interval_days": c.interval_days,
+            "next_review": c.next_review,
+            "review_count": c.review_count,
+        }
+        for c in page_cards
+    ]
+
+    result = paginated_response(card_dicts, total, page, limit)
+    result["cards"] = result.pop("items")
+    result["due_count"] = fc_deck.due_count()
+    result["total"] = total
+    return jsonify(result)
 
 
 @bp.route("/api/flashcards/review", methods=["POST"])

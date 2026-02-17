@@ -18,13 +18,20 @@ bp = Blueprint("notifications", __name__)
 @login_required
 def api_notifications():
     """Return recent notifications and generate any pending ones."""
+    from helpers import paginate_args, paginated_response
+
     uid = current_user_id()
+    page, limit = paginate_args(default_limit=20, max_limit=50)
     generate_pending_notifications(uid)
     store = NotificationStoreDB(uid)
-    return jsonify({
-        "notifications": [asdict(n) for n in store.recent(20)],
-        "unread_count": store.unread_count(),
-    })
+    all_notifs = store.recent(limit * page)
+    total = len(all_notifs)
+    start = (page - 1) * limit
+    page_notifs = all_notifs[start:start + limit]
+    result = paginated_response([asdict(n) for n in page_notifs], total, page, limit)
+    result["notifications"] = result.pop("items")
+    result["unread_count"] = store.unread_count()
+    return jsonify(result)
 
 
 @bp.route("/api/notifications/read", methods=["POST"])

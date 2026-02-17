@@ -132,7 +132,15 @@ class CircuitBreaker:
 
 # Module-level singletons
 _circuit_breaker = CircuitBreaker()
-_cache = TTLCache()
+_cache: TTLCache | None = None
+
+
+def _get_cache() -> TTLCache:
+    """Lazy-init the module-level TTLCache."""
+    global _cache
+    if _cache is None:
+        _cache = TTLCache()
+    return _cache
 
 
 # ── Cost Tracker ────────────────────────────────────────────
@@ -333,10 +341,16 @@ def resilient_llm_call(
     if _circuit_breaker.is_open(provider):
         raise RuntimeError(f"Circuit breaker open for provider: {provider}")
 
-    # Check cache
-    cache_key = _cache._make_key(prompt, system, model)
+    # Check cache (prefer cache_backend if available, fall back to local TTLCache)
+    try:
+        from cache_backend import get_cache as _get_cache_backend
+        cache = _get_cache_backend()
+    except ImportError:
+        cache = None
+
+    cache_key = TTLCache._make_key(prompt, system, model)
     if cache_ttl > 0:
-        cached = _cache.get(cache_key)
+        cached = cache.get(cache_key) if cache else _get_cache().get(cache_key)
         if cached is not None:
             return cached, {
                 "cache_hit": True,
@@ -361,7 +375,10 @@ def resilient_llm_call(
 
     # Cache the result
     if cache_ttl > 0:
-        _cache.set(cache_key, response_text, cache_ttl)
+        if cache:
+            cache.set(cache_key, response_text, cache_ttl)
+        else:
+            _get_cache().set(cache_key, response_text, cache_ttl)
 
     # Track cost
     input_text = system + prompt + (str(messages) if messages else "")
@@ -378,5 +395,5 @@ def get_circuit_breaker() -> CircuitBreaker:
 
 
 def get_cache() -> TTLCache:
-    """Access the module-level cache singleton."""
-    return _cache
+    """Access the module-level TTLCache singleton."""
+    return _get_cache()

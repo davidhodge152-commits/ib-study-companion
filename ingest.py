@@ -349,6 +349,59 @@ def extract_text_from_image(image_path: Path) -> str:
         return ""
 
 
+def ingest_uploaded_file(
+    save_path: str,
+    filename: str,
+    doc_type: str,
+    is_image: bool = False,
+) -> dict:
+    """Standalone ingestion function that doesn't need Flask request context.
+
+    Designed to be called via tasks.enqueue() for background processing.
+    Returns a dict with ingestion results.
+    """
+    save_path = Path(save_path)
+
+    text = extract_text_from_image(save_path) if is_image else extract_text(save_path)
+    if not text.strip():
+        return {"error": "No extractable text", "success": False}
+
+    detected_type = doc_type if doc_type != "auto" else classify_document(filename, text)
+    subject = detect_subject(filename, text)
+    level = detect_level(filename, text)
+    chunks = chunk_text(text)
+    fhash = file_hash(save_path)
+    prefix = f"{save_path.stem}_{fhash}"
+
+    from vector_store import get_vector_store
+    store = get_vector_store()
+
+    ids = [f"{prefix}_c{i:04d}" for i in range(len(chunks))]
+    metadatas = [
+        {
+            "source": filename,
+            "doc_type": detected_type,
+            "subject": subject,
+            "level": level,
+            "chunk_index": i,
+            "total_chunks": len(chunks),
+        }
+        for i in range(len(chunks))
+    ]
+
+    store.add(ids=ids, documents=chunks, metadatas=metadatas)
+
+    return {
+        "success": True,
+        "filename": filename,
+        "doc_type": detected_type,
+        "subject": subject,
+        "level": level,
+        "chunks": len(chunks),
+        "text": text,
+    }
+
+
 def ingest(reset: bool = False) -> None:
     if not DATA_DIR.exists():
         DATA_DIR.mkdir(parents=True)

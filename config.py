@@ -65,6 +65,21 @@ class BaseConfig:
     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 
+    # Response compression
+    COMPRESS_MIMETYPES = [
+        "text/html", "text/css", "text/xml", "text/javascript",
+        "application/json", "application/javascript", "application/xml",
+    ]
+    COMPRESS_MIN_SIZE = 500
+
+    # Rate limiting (defaults to in-memory; set REDIS_URL for Redis-backed)
+    RATELIMIT_STORAGE_URI = os.environ.get("REDIS_URL", "") or "memory://"
+
+    # Server-side sessions (defaults to filesystem; upgraded to Redis when available)
+    SESSION_TYPE = "filesystem"
+    SESSION_PERMANENT = True
+    SESSION_KEY_PREFIX = "ibstudy:"
+
     FEATURE_FLAGS = FEATURE_FLAGS
 
 

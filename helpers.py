@@ -11,7 +11,7 @@ from datetime import datetime, date, timedelta
 from functools import wraps
 from pathlib import Path
 
-from flask import abort, redirect, url_for
+from flask import abort, redirect, request, url_for
 from flask_login import current_user
 
 from auth import login_manager
@@ -372,3 +372,31 @@ def generate_pending_notifications(user_id: int):
                 break
 
     return new_notifications
+
+
+# ── Pagination ──────────────────────────────────────────────
+
+def paginate_args(default_limit: int = 20, max_limit: int = 100) -> tuple[int, int]:
+    """Extract page/limit from request.args. Returns (page, limit)."""
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        limit = min(max_limit, max(1, int(request.args.get("limit", default_limit))))
+    except (ValueError, TypeError):
+        limit = default_limit
+    return page, limit
+
+
+def paginated_response(items: list, total: int, page: int, limit: int) -> dict:
+    """Standard pagination envelope."""
+    return {
+        "items": items,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "pages": max(1, (total + limit - 1) // limit),
+        },
+    }
