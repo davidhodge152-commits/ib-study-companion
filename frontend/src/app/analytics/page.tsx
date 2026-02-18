@@ -33,8 +33,8 @@ export default function AnalyticsPage() {
             Deep-dive into your study performance and habits
           </p>
         </div>
-        <div className="rounded-xl border border-danger-500/20 bg-danger-50 p-6 text-center dark:bg-danger-500/10">
-          <p className="text-danger-700 dark:text-danger-500">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center">
+          <p className="text-destructive">
             Failed to load analytics data. Please try refreshing.
           </p>
         </div>

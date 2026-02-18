@@ -32,8 +32,8 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-600">
-            <BookOpen className="h-8 w-8 text-white" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
+            <BookOpen className="h-8 w-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold">Reset your password</h1>
           <p className="mt-1 text-muted-foreground">
@@ -60,8 +60,8 @@ export default function ForgotPasswordPage() {
         ) : (
           <>
             {error && (
-              <div className="mb-4 rounded-lg border border-danger-500/20 bg-danger-50 p-3 dark:bg-danger-500/10" role="alert">
-                <p className="text-sm text-danger-700 dark:text-danger-500">{error}</p>
+              <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/5 p-3" role="alert">
+                <p className="text-sm text-destructive">{error}</p>
               </div>
             )}
             <Card>

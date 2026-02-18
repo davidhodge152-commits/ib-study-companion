@@ -17,6 +17,8 @@ import {
   LineChart,
   User,
   CreditCard,
+  GraduationCap,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,9 +36,11 @@ const ALL_ITEMS = [
   { href: "/groups", label: "Study Groups", icon: Users, section: "social" },
   { href: "/community", label: "Community Papers", icon: Newspaper, section: "social" },
   { href: "/tutor", label: "AI Tutor", icon: MessageCircle, section: "social" },
+  { href: "/admissions", label: "Admissions", icon: GraduationCap, section: "social" },
   { href: "/analytics", label: "Analytics", icon: LineChart, section: "social" },
   { href: "/account", label: "Account", icon: User, section: "settings" },
   { href: "/pricing", label: "Pricing", icon: CreditCard, section: "settings" },
+  { href: "/parent/settings", label: "Parent Sharing", icon: UserCog, section: "settings" },
 ];
 
 export function MobileSidebar() {
@@ -45,8 +49,8 @@ export function MobileSidebar() {
   const renderSection = (section: string, title?: string) => (
     <>
       {title && (
-        <div className="mt-2 border-t border-slate-700 pt-2">
-          <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <div className="mt-2 border-t border-border pt-2">
+          <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {title}
           </p>
         </div>
@@ -59,8 +63,8 @@ export function MobileSidebar() {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 pathname === href
-                  ? "bg-brand-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
@@ -74,12 +78,12 @@ export function MobileSidebar() {
 
   return (
     <ScrollArea className="h-full">
-      <div className="border-b border-slate-700 p-5">
+      <div className="border-b border-border p-5">
         <h1 className="text-lg font-bold">IB Study Companion</h1>
       </div>
       <nav className="space-y-1 p-4" aria-label="Mobile navigation">
         {renderSection("main")}
-        {renderSection("social", "Social")}
+        {renderSection("social", "Social & AI")}
         {renderSection("settings", "Settings")}
       </nav>
     </ScrollArea>

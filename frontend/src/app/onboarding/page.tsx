@@ -107,7 +107,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-50 to-slate-50 p-8 dark:from-slate-900 dark:to-slate-800">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 to-background p-8">
       <Card className="w-full max-w-2xl">
         <CardContent className="p-10">
           <div className="mb-8 text-center">
@@ -122,15 +122,15 @@ export default function OnboardingPage() {
             {[1, 2, 3].map((s) => (
               <div key={s} className="flex items-center gap-2">
                 {s > 1 && (
-                  <div className="h-0.5 w-8 bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-0.5 w-8 bg-muted" />
                 )}
                 <button
                   onClick={() => setStep(s)}
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-colors",
                     step >= s
-                      ? "bg-brand-600 text-white"
-                      : "bg-slate-200 text-slate-500 dark:bg-slate-700"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
                   )}
                 >
                   {s}
@@ -143,7 +143,7 @@ export default function OnboardingPage() {
           </div>
 
           {error && (
-            <div className="mb-6 rounded-lg border border-danger-500/20 bg-danger-50 p-4 text-sm text-danger-700 dark:bg-danger-500/10 dark:text-danger-500">
+            <div className="mb-6 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
               {error}
             </div>
           )}

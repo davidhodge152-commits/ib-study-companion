@@ -9,8 +9,14 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, BarChart3 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 
 export default function InsightsPage() {
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useInsights();
   const { data: predictions } = usePredictedGrades();
 
@@ -20,8 +26,19 @@ export default function InsightsPage() {
     return (
       <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center">
         <p className="text-destructive">
-          Failed to load insights. Please try refreshing.
+          Failed to load insights.
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ["insights"] })
+          }
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Retry
+        </Button>
       </div>
     );
   }
@@ -37,6 +54,35 @@ export default function InsightsPage() {
         predicted,
       }))
     : [];
+
+  // Check if the user has any data at all
+  const hasData =
+    data.total_answers > 0 ||
+    gradeLabels.length > 0 ||
+    subjectStats.length > 0;
+
+  if (!hasData) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Insights</h1>
+          <p className="text-muted-foreground">
+            Track your performance, identify gaps, and see predicted grades
+          </p>
+        </div>
+        <EmptyState
+          icon={<BarChart3 className="h-6 w-6" />}
+          title="No insights yet"
+          description="Complete some study sessions to see your performance breakdown, gap analysis, and AI-predicted grades."
+          action={
+            <Link href="/study">
+              <Button>Start a Study Session</Button>
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -131,8 +131,8 @@ export default function ClassDetailPage() {
       </div>
 
       {hasError && (
-        <div className="rounded-xl border border-danger-500/20 bg-danger-50 p-4 text-center dark:bg-danger-500/10">
-          <p className="text-sm text-danger-700 dark:text-danger-500">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-center">
+          <p className="text-sm text-destructive">
             Some data failed to load. Showing available information below.
           </p>
         </div>

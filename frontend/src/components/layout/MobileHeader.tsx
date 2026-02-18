@@ -10,13 +10,13 @@ export function MobileHeader() {
       <Sheet>
         <SheetTrigger asChild>
           <button
-            className="flex h-[44px] w-[44px] items-center justify-center rounded-lg bg-slate-900 text-white shadow-lg dark:bg-slate-800"
+            className="flex h-[44px] w-[44px] items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg"
             aria-label="Open navigation menu"
           >
             <Menu className="h-6 w-6" />
           </button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 bg-slate-900 p-0 text-white border-none">
+        <SheetContent side="left" className="w-64 bg-card p-0 text-card-foreground border-border">
           <MobileSidebar />
         </SheetContent>
       </Sheet>

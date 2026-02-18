@@ -69,8 +69,8 @@ export default function ParentDashboardPage() {
       </div>
 
       {hasError && (
-        <div className="rounded-xl border border-danger-500/20 bg-danger-50 p-4 text-center dark:bg-danger-500/10">
-          <p className="text-sm text-danger-700 dark:text-danger-500">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-center">
+          <p className="text-sm text-destructive">
             Some data could not be loaded. Showing available information.
           </p>
         </div>
