@@ -66,7 +66,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except ImportError:
             pass
 
-    # i18n with Flask-Babel (skip on Vercel — no persistent locale DB, saves ~150ms)
+    # i18n with Flask-Babel (skip full init on Vercel — no persistent locale DB, saves ~150ms)
+    # But always register _() so templates don't break.
     if not os.environ.get("VERCEL"):
         try:
             from flask_babel import Babel
@@ -89,7 +90,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
             babel.init_app(app, locale_selector=get_locale)
         except ImportError:
-            pass
+            # No babel — register pass-through _()
+            app.jinja_env.globals["_"] = lambda s, *a, **kw: s
+    else:
+        # Vercel: skip babel import, register pass-through _()
+        app.jinja_env.globals["_"] = lambda s, *a, **kw: s
 
     # Response compression (skip on Vercel — CDN handles gzip/brotli)
     if not os.environ.get("VERCEL"):
