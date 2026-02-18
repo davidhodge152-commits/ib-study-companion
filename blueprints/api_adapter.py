@@ -40,6 +40,31 @@ LOCKOUT_THRESHOLD = 5
 LOCKOUT_MINUTES = 15
 
 
+# ── Debug ────────────────────────────────────────────────────
+
+@bp.route("/api/debug/status")
+def debug_status():
+    """Debug endpoint — returns environment and DB status."""
+    import os
+    import traceback as _tb
+    info = {
+        "flask_env": os.environ.get("FLASK_ENV", "unset"),
+        "vercel": bool(os.environ.get("VERCEL")),
+        "authenticated": current_user.is_authenticated,
+        "user_id": current_user.id if current_user.is_authenticated else None,
+    }
+    try:
+        db = get_db()
+        row = db.execute("SELECT COUNT(*) as c FROM users").fetchone()
+        info["db_ok"] = True
+        info["user_count"] = row["c"] if row else 0
+    except Exception as exc:
+        info["db_ok"] = False
+        info["db_error"] = str(exc)
+        info["db_trace"] = _tb.format_exc()
+    return jsonify(info)
+
+
 # ── Auth ─────────────────────────────────────────────────────
 
 @bp.route("/api/auth/me")
@@ -48,43 +73,47 @@ def auth_me():
     if not current_user.is_authenticated:
         return jsonify({"error": "Not authenticated"}), 401
 
-    db = get_db()
-    row = db.execute(
-        "SELECT id, name, email, role, created_at, locale FROM users WHERE id = ?",
-        (current_user.id,),
-    ).fetchone()
-    if not row:
-        return jsonify({"error": "Not authenticated"}), 401
-
-    # Check plan from billing table (default: free)
-    plan = "free"
-    credits = 0
+    import traceback as _tb
     try:
-        billing = db.execute(
-            "SELECT plan, credits FROM billing WHERE user_id = ?",
+        db = get_db()
+        row = db.execute(
+            "SELECT id, name, email, role, created_at, locale FROM users WHERE id = ?",
             (current_user.id,),
         ).fetchone()
-        if billing:
-            plan = billing["plan"] or "free"
-            credits = billing["credits"] or 0
-    except Exception:
-        pass
+        if not row:
+            return jsonify({"error": "Not authenticated"}), 401
 
-    # Get exam_session from student profile
-    profile = StudentProfileDB.load(current_user.id)
-    exam_session = profile.exam_session if profile else ""
+        # Check plan from billing table (default: free)
+        plan = "free"
+        credits = 0
+        try:
+            billing = db.execute(
+                "SELECT plan, credits FROM billing WHERE user_id = ?",
+                (current_user.id,),
+            ).fetchone()
+            if billing:
+                plan = billing["plan"] or "free"
+                credits = billing["credits"] or 0
+        except Exception:
+            pass
 
-    return jsonify({
-        "id": row["id"],
-        "name": row["name"],
-        "email": row["email"],
-        "role": row["role"] or "student",
-        "exam_session": exam_session,
-        "plan": plan,
-        "credits": credits,
-        "created_at": row["created_at"] or "",
-        "locale": row["locale"] if "locale" in row.keys() else "en",
-    })
+        # Get exam_session from student profile
+        profile = StudentProfileDB.load(current_user.id)
+        exam_session = profile.exam_session if profile else ""
+
+        return jsonify({
+            "id": row["id"],
+            "name": row["name"],
+            "email": row["email"],
+            "role": row["role"] or "student",
+            "exam_session": exam_session,
+            "plan": plan,
+            "credits": credits,
+            "created_at": row["created_at"] or "",
+            "locale": row["locale"] if "locale" in row.keys() else "en",
+        })
+    except Exception as exc:
+        return jsonify({"error": f"auth_me: {exc}", "trace": _tb.format_exc()}), 500
 
 
 @bp.route("/api/auth/login", methods=["POST"])

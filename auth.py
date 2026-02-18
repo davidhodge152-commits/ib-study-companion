@@ -66,7 +66,12 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.get(int(user_id))
+    try:
+        return User.get(int(user_id))
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error("load_user(%s) failed: %s", user_id, exc, exc_info=True)
+        return None
 
 
 def _validate_password(password: str) -> str | None:
