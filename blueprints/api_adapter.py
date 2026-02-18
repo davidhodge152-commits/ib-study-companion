@@ -382,41 +382,57 @@ def get_profile():
 def gamification_status():
     """Return gamification data (XP, streak, badges)."""
     uid = current_user_id()
-    gam = GamificationProfileDB(uid)
-    activity_log = ActivityLogDB(uid)
-    gam.update_streak(activity_log)
-
-    # Compute level from XP (100 XP per level)
-    xp_per_level = 100
-    level = (gam.total_xp // xp_per_level) + 1
-    xp_in_level = gam.total_xp % xp_per_level
-    xp_progress_pct = round((xp_in_level / xp_per_level) * 100)
-
-    daily_goal = gam.daily_goal_xp or 50
-    daily_goal_pct = min(100, round((gam.daily_xp_today / daily_goal) * 100)) if daily_goal > 0 else 0
-
-    # Check streak freeze from gamification table
-    streak_freeze = 0
     try:
-        db = get_db()
-        row = db.execute(
-            "SELECT streak_freeze FROM gamification WHERE user_id = ?", (uid,)
-        ).fetchone()
-        if row and "streak_freeze" in row.keys():
-            streak_freeze = row["streak_freeze"] or 0
-    except Exception:
-        pass
+        gam = GamificationProfileDB(uid)
+        activity_log = ActivityLogDB(uid)
+        try:
+            gam.update_streak(activity_log)
+        except Exception:
+            db = get_db()
+            try:
+                db.execute("ROLLBACK")
+            except Exception:
+                pass
+            logging.warning("gamification: update_streak failed for user %s", uid)
 
-    return jsonify({
-        "level": level,
-        "total_xp": gam.total_xp,
-        "xp_progress_pct": xp_progress_pct,
-        "current_streak": gam.current_streak,
-        "streak_freeze_available": streak_freeze,
-        "daily_xp_today": gam.daily_xp_today,
-        "daily_goal_xp": daily_goal,
-        "daily_goal_pct": daily_goal_pct,
-    })
+        # Compute level from XP (100 XP per level)
+        xp_per_level = 100
+        level = (gam.total_xp // xp_per_level) + 1
+        xp_in_level = gam.total_xp % xp_per_level
+        xp_progress_pct = round((xp_in_level / xp_per_level) * 100)
+
+        daily_goal = gam.daily_goal_xp or 50
+        daily_goal_pct = min(100, round((gam.daily_xp_today / daily_goal) * 100)) if daily_goal > 0 else 0
+
+        streak_freeze = gam.streak_freeze_available
+
+        return jsonify({
+            "level": level,
+            "total_xp": gam.total_xp,
+            "xp_progress_pct": xp_progress_pct,
+            "current_streak": gam.current_streak,
+            "streak_freeze_available": streak_freeze,
+            "daily_xp_today": gam.daily_xp_today,
+            "daily_goal_xp": daily_goal,
+            "daily_goal_pct": daily_goal_pct,
+        })
+    except Exception as exc:
+        logging.exception("gamification_status failed for user %s: %s", uid, exc)
+        db = get_db()
+        try:
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        return jsonify({
+            "level": 1,
+            "total_xp": 0,
+            "xp_progress_pct": 0,
+            "current_streak": 0,
+            "streak_freeze_available": 0,
+            "daily_xp_today": 0,
+            "daily_goal_xp": 50,
+            "daily_goal_pct": 0,
+        })
 
 
 # ── Dashboard ────────────────────────────────────────────────

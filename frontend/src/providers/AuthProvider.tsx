@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (
       !isLoading &&
       isAuthenticated &&
-      profile !== null &&
+      profile != null &&
       !profile.onboarding_complete &&
       !isOnboardingExempt(pathname)
     ) {
