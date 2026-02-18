@@ -66,36 +66,38 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except ImportError:
             pass
 
-    # i18n with Flask-Babel
-    try:
-        from flask_babel import Babel
-        from flask_login import current_user
-        from flask import request
-        babel = Babel()
+    # i18n with Flask-Babel (skip on Vercel — no persistent locale DB, saves ~150ms)
+    if not os.environ.get("VERCEL"):
+        try:
+            from flask_babel import Babel
+            from flask_login import current_user
+            from flask import request
+            babel = Babel()
 
-        def get_locale():
-            if current_user.is_authenticated:
-                try:
-                    from database import get_db
-                    db = get_db()
-                    row = db.execute("SELECT locale FROM users WHERE id = ?",
-                                     (current_user.id,)).fetchone()
-                    if row and row["locale"]:
-                        return row["locale"]
-                except Exception:
-                    pass
-            return request.accept_languages.best_match(["en", "fr", "es"], default="en")
+            def get_locale():
+                if current_user.is_authenticated:
+                    try:
+                        from database import get_db
+                        db = get_db()
+                        row = db.execute("SELECT locale FROM users WHERE id = ?",
+                                         (current_user.id,)).fetchone()
+                        if row and row["locale"]:
+                            return row["locale"]
+                    except Exception:
+                        pass
+                return request.accept_languages.best_match(["en", "fr", "es"], default="en")
 
-        babel.init_app(app, locale_selector=get_locale)
-    except ImportError:
-        pass
+            babel.init_app(app, locale_selector=get_locale)
+        except ImportError:
+            pass
 
-    # Response compression (optional dependency)
-    try:
-        from flask_compress import Compress
-        Compress(app)
-    except ImportError:
-        pass
+    # Response compression (skip on Vercel — CDN handles gzip/brotli)
+    if not os.environ.get("VERCEL"):
+        try:
+            from flask_compress import Compress
+            Compress(app)
+        except ImportError:
+            pass
 
     # Static file serving for production (whitenoise) with long cache headers
     # On Vercel, static files are served by the CDN — skip WhiteNoise to reduce cold start

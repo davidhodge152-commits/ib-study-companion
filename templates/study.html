@@ -520,5 +520,7 @@
 <script>
     // Pass recommendation data to JS
     window.RECOMMENDATION = {{ recommendation | tojson }};
+    // Embedded syllabus topics — avoids extra API call for topic dropdown
+    window.SYLLABUS_TOPICS = {{ syllabus_topics | tojson }};
 </script>
 {% endblock %}

@@ -42,7 +42,20 @@ def study():
     grade_log = GradeDetailLogDB(uid)
     recommendation = generate_recommendation(profile, grade_log)
 
-    return render_template("study.html", profile=profile, recommendation=recommendation)
+    # Embed syllabus topics for enrolled subjects so JS can populate
+    # the topic dropdown instantly without an extra API call.
+    all_topics = {}
+    for subj in profile.subjects:
+        topics = get_syllabus_topics(subj.name)
+        all_topics[subj.name] = [
+            {"id": t.id, "name": t.name, "subtopics": t.subtopics, "hl_only": t.hl_only}
+            for t in topics
+        ]
+
+    return render_template(
+        "study.html", profile=profile, recommendation=recommendation,
+        syllabus_topics=all_topics,
+    )
 
 
 @bp.route("/api/study/generate", methods=["POST"])

@@ -724,46 +724,56 @@ function loadTopicsForSubject(subject, level) {
     const inputEl = document.getElementById('study-topic');
     if (!selectEl || !inputEl) return;
 
-    fetch(`/api/topics/${encodeURIComponent(subject)}?level=${level}`)
-        .then(res => res.json())
-        .then(data => {
-            const topics = data.topics || [];
-            if (topics.length === 0) {
+    // Use embedded data (instant) or fall back to API call
+    const embedded = window.SYLLABUS_TOPICS && window.SYLLABUS_TOPICS[subject];
+    if (embedded) {
+        _populateTopicDropdown(selectEl, inputEl, embedded, level);
+    } else {
+        fetch(`/api/topics?subject=${encodeURIComponent(subject)}&level=${level}`)
+            .then(res => res.json())
+            .then(data => _populateTopicDropdown(selectEl, inputEl, data.topics || [], level))
+            .catch(() => {
                 selectEl.classList.add('hidden');
                 inputEl.classList.remove('hidden');
-                return;
-            }
-
-            selectEl.innerHTML = '<option value="">Select a topic...</option>';
-            topics.forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t.name;
-                opt.textContent = t.hl_only ? `${t.name} (HL)` : t.name;
-                selectEl.appendChild(opt);
             });
-            const freeOpt = document.createElement('option');
-            freeOpt.value = '__custom__';
-            freeOpt.textContent = 'Other (type your own)...';
-            selectEl.appendChild(freeOpt);
+    }
+}
 
-            selectEl.classList.remove('hidden');
-            inputEl.classList.add('hidden');
+function _populateTopicDropdown(selectEl, inputEl, topics, level) {
+    // Filter HL-only topics for SL students
+    const filtered = topics.filter(t => !(t.hl_only && level === 'SL'));
 
-            selectEl.onchange = () => {
-                if (selectEl.value === '__custom__') {
-                    selectEl.classList.add('hidden');
-                    inputEl.classList.remove('hidden');
-                    inputEl.value = '';
-                    inputEl.focus();
-                } else {
-                    inputEl.value = selectEl.value;
-                }
-            };
-        })
-        .catch(() => {
+    if (filtered.length === 0) {
+        selectEl.classList.add('hidden');
+        inputEl.classList.remove('hidden');
+        return;
+    }
+
+    selectEl.innerHTML = '<option value="">Select a topic...</option>';
+    filtered.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.name;
+        opt.textContent = t.hl_only ? `${t.name} (HL)` : t.name;
+        selectEl.appendChild(opt);
+    });
+    const freeOpt = document.createElement('option');
+    freeOpt.value = '__custom__';
+    freeOpt.textContent = 'Other (type your own)...';
+    selectEl.appendChild(freeOpt);
+
+    selectEl.classList.remove('hidden');
+    inputEl.classList.add('hidden');
+
+    selectEl.onchange = () => {
+        if (selectEl.value === '__custom__') {
             selectEl.classList.add('hidden');
             inputEl.classList.remove('hidden');
-        });
+            inputEl.value = '';
+            inputEl.focus();
+        } else {
+            inputEl.value = selectEl.value;
+        }
+    };
 }
 
 function loadSubjectTips(subject, level) {
