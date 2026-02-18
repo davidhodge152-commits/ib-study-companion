@@ -215,6 +215,29 @@ def api_topics(subject):
     return jsonify({"topics": result})
 
 
+@bp.route("/api/topics")
+@login_required
+def api_topics_query():
+    """Query-param variant — avoids URL-encoding issues with & in subject names."""
+    subject = request.args.get("subject", "")
+    if not subject:
+        return jsonify({"topics": []})
+    topics = get_syllabus_topics(subject)
+    level = request.args.get("level", "HL")
+
+    result = []
+    for t in topics:
+        if t.hl_only and level == "SL":
+            continue
+        result.append({
+            "id": t.id,
+            "name": t.name,
+            "subtopics": t.subtopics,
+            "hl_only": t.hl_only,
+        })
+    return jsonify({"topics": result})
+
+
 # ── Predictive Analytics Endpoints ──────────────────────────
 
 

@@ -100,6 +100,20 @@ const COMMAND_TERM_DEFINITIONS = {
     },
 };
 
+// ── CSRF Token Helper ────────────────────────────────────────────
+
+function csrfHeaders() {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['X-CSRFToken'] = token;
+    return headers;
+}
+
+function csrfTokenHeader() {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    return token ? { 'X-CSRFToken': token } : {};
+}
+
 // ── Upload (drag-drop + file input) ──────────────────────────────
 
 (function initUpload() {
@@ -157,7 +171,7 @@ function uploadFile(file) {
         : (document.querySelector('.doc-type-btn.active')?.dataset?.type || 'notes');
     formData.append('doc_type', selectedDocType);
 
-    fetch('/api/upload', { method: 'POST', body: formData })
+    fetch('/api/upload', { method: 'POST', headers: csrfTokenHeader(), body: formData })
         .then(res => {
             bar.style.width = '80%';
             status.textContent = 'Processing...';
@@ -202,7 +216,7 @@ document.querySelectorAll('.doc-type-btn').forEach(btn => {
 function deleteDocument(docId) {
     if (!confirm('Delete this document? This will remove it from the knowledge base.')) return;
 
-    fetch(`/api/documents/${docId}`, { method: 'DELETE' })
+    fetch(`/api/documents/${docId}`, { method: 'DELETE', headers: csrfTokenHeader() })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -368,7 +382,7 @@ function generateStudy() {
 
     fetch('/api/study/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({
             subject: studySubject,
             topic,
@@ -535,7 +549,7 @@ function submitAnswer() {
 
     fetch('/api/study/grade', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({
             question: q.question_text,
             answer: answer,
@@ -805,7 +819,7 @@ function showSessionSummary() {
     if (studyMode === 'exam_sim' && sessionGradeResults.length > 0) {
         fetch('/api/mock-reports/create', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders(),
             body: JSON.stringify({
                 subject: studySubject,
                 level: studyLevel,
@@ -1157,7 +1171,7 @@ function generateWeaknessReport() {
     btn.textContent = 'Analyzing...';
     content.innerHTML = '<div class="flex items-center gap-3"><div class="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div><span class="text-sm text-slate-500">Generating weakness report...</span></div>';
 
-    fetch('/api/analytics/weakness', { method: 'POST' })
+    fetch('/api/analytics/weakness', { method: 'POST', headers: csrfTokenHeader() })
         .then(res => res.json())
         .then(data => {
             btn.disabled = false;
@@ -1228,7 +1242,7 @@ function loadTopicsForSubject(subject, level) {
     const inputEl = document.getElementById('study-topic');
     if (!selectEl || !inputEl) return;
 
-    fetch(`/api/topics/${encodeURIComponent(subject)}?level=${level}`)
+    fetch(`/api/topics?subject=${encodeURIComponent(subject)}&level=${level}`)
         .then(res => res.json())
         .then(data => {
             const topics = data.topics || [];
@@ -1502,7 +1516,7 @@ function loadMockReports() {
 function toggleMilestone(milestoneId, el) {
     fetch('/api/lifecycle/milestone', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({ milestone_id: milestoneId }),
     })
     .then(res => res.json())
@@ -1551,7 +1565,7 @@ function addCASReflection() {
 
     fetch('/api/lifecycle/cas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({ strand, title, description, learning_outcome: outcome, hours }),
     })
     .then(res => res.json())
@@ -1579,7 +1593,7 @@ function updateLifecycleSection(section) {
 
     fetch('/api/lifecycle/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify(payload),
     })
     .then(res => res.json())
@@ -1612,7 +1626,7 @@ function toggleParentSharing() {
 
     fetch('/api/parent/toggle', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({ action }),
     })
     .then(res => res.json())
@@ -1666,7 +1680,7 @@ function regenerateToken() {
 
     fetch('/api/parent/toggle', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({ action: 'regenerate' }),
     })
     .then(res => res.json())
@@ -1692,7 +1706,7 @@ function savePrivacySettings() {
 
     fetch('/api/parent/privacy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify(payload),
     })
     .then(res => res.json())
@@ -1724,7 +1738,7 @@ function generatePlan() {
 
     fetch('/api/planner/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
     })
     .then(res => res.json())
     .then(data => {
@@ -1750,7 +1764,7 @@ function generatePlan() {
 function togglePlanTask(dayDate, taskIndex, el) {
     fetch('/api/planner/complete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({ date: dayDate, task_index: taskIndex }),
     })
     .then(res => res.json())
@@ -1917,7 +1931,7 @@ function uploadAnswerFile(input) {
     const formData = new FormData();
     formData.append('file', file);
 
-    fetch('/api/study/extract-answer', { method: 'POST', body: formData })
+    fetch('/api/study/extract-answer', { method: 'POST', headers: csrfTokenHeader(), body: formData })
         .then(res => res.json())
         .then(data => {
             if (data.error) {
@@ -2015,7 +2029,7 @@ function requestHint() {
 
     fetch('/api/study/hint', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({
             question: q.question_text,
             command_term: q.command_term,
@@ -2199,7 +2213,7 @@ function toggleNotificationPanel() {
 function markNotificationRead(id) {
     fetch('/api/notifications/read', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({ id }),
     }).then(() => loadNotifications());
 }
@@ -2207,7 +2221,7 @@ function markNotificationRead(id) {
 function markAllNotificationsRead() {
     fetch('/api/notifications/read', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({ id: 'all' }),
     }).then(() => loadNotifications());
 }
@@ -2281,7 +2295,7 @@ function exportSessionQuestions() {
     // Export via API
     fetch('/api/questions/export', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({
             title: `${exportData.subject} Practice Session`,
             description: `${exportData.questions.length} questions`,
@@ -2347,7 +2361,7 @@ function importQuestions() {
     // Import via API
     fetch('/api/questions/import', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({
             title: data.title || 'Imported Questions',
             description: data.description || '',

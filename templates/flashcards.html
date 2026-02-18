@@ -117,12 +117,12 @@
         <h2 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">No flashcards yet</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Flashcards are auto-created when you score below 60% on a question, or you can create them manually.</p>
         <div class="flex gap-3 justify-center">
-            <a href="/study" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors">
-                Start Studying
-            </a>
-            <button onclick="showCreateFlashcard()" class="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg text-sm transition-colors">
-                Create Manually
+            <button onclick="showCreateFlashcard()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition-colors">
+                Create Your First Card
             </button>
+            <a href="/study" class="px-6 py-2.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-sm transition-colors">
+                Go Practice
+            </a>
         </div>
     </div>
 
@@ -175,6 +175,18 @@
 {% block scripts %}
 <script>
 // ── Flashcard Page Logic ────────────────────────────────────────
+
+function csrfHeaders() {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['X-CSRFToken'] = token;
+    return headers;
+}
+
+function csrfTokenHeader() {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    return token ? { 'X-CSRFToken': token } : {};
+}
 
 let fcCards = [];
 let fcIndex = 0;
@@ -416,8 +428,8 @@ function rateCard(quality) {
 
     fetch('/api/flashcards/review', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ card_id: card.id, quality: quality }),
+        headers: csrfHeaders(),
+        body: JSON.stringify({ card_id: card.id, rating: quality }),
     })
     .then(res => res.json())
     .then(data => {
@@ -459,7 +471,7 @@ function createFlashcard() {
 
     fetch('/api/flashcards/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders(),
         body: JSON.stringify({ front, back, subject, topic }),
     })
     .then(res => res.json())
@@ -477,7 +489,7 @@ function createFlashcard() {
 function deleteFlashcard(cardId) {
     if (!confirm('Delete this flashcard?')) return;
 
-    fetch(`/api/flashcards/${cardId}`, { method: 'DELETE' })
+    fetch(`/api/flashcards/${cardId}`, { method: 'DELETE', headers: csrfTokenHeader() })
         .then(res => res.json())
         .then(data => {
             if (data.error) {

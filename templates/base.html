@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if csrf_token is defined %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endif %}
     <title>{% block title %}IB Study Companion{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/tailwind.css?v=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -371,7 +372,7 @@
             var input = document.createElement('input');
             input.type = 'hidden';
             input.name = 'csrf_token';
-            input.value = '{{ csrf_token() }}';
+            input.value = '{{ csrf_token() if csrf_token is defined else "" }}';
             form.prepend(input);
         }
     });

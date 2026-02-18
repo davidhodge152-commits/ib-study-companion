@@ -6,10 +6,22 @@ import { api } from './api.js';
 async function loadGlobalStats() {
     try {
         const res = await api('/api/analytics/global');
-        document.getElementById('stat-users').textContent = res.total_users || 0;
-        document.getElementById('stat-questions').textContent = res.total_questions || 0;
+        const totalUsers = res.total_users || 0;
+        const totalQuestions = res.total_questions || 0;
+        document.getElementById('stat-users').textContent = totalUsers;
+        document.getElementById('stat-questions').textContent = totalQuestions;
         document.getElementById('stat-avg-score').textContent = res.avg_score ? `${res.avg_score}%` : '-';
         document.getElementById('stat-active').textContent = res.active_today || 0;
+
+        // Show empty state if no meaningful data
+        const emptyState = document.getElementById('analytics-empty-state');
+        if (emptyState) {
+            if (totalUsers === 0 && totalQuestions === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+        }
 
         // Subject popularity chart
         if (res.subject_counts && Object.keys(res.subject_counts).length > 0) {

@@ -43,8 +43,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     except ImportError:
         csrf = None
 
+    # Ensure csrf_token() is always available in templates (even when CSRF is disabled in tests)
+    if "csrf_token" not in app.jinja_env.globals:
+        app.jinja_env.globals["csrf_token"] = lambda: ""
+
     # Server-side sessions (Redis if REDIS_URL set, filesystem fallback)
-    if not app.config.get("TESTING"):
+    # On Vercel, use Flask's default signed-cookie sessions (no filesystem)
+    if not app.config.get("TESTING") and not os.environ.get("VERCEL"):
         try:
             from flask_session import Session
             if "SESSION_TYPE" not in app.config:
@@ -177,8 +182,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.cdnfonts.com; "
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
             "img-src 'self' data:; "
             "connect-src 'self'"
@@ -207,7 +212,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return response
 
     # Start centralized scheduler (push reminders, analytics, cache cleanup)
-    if not app.config.get("TESTING"):
+    # On Vercel, cron jobs are handled via HTTP endpoints (see vercel.json)
+    if not app.config.get("TESTING") and not os.environ.get("VERCEL"):
         try:
             from scheduler import init_scheduler
             init_scheduler(app)
