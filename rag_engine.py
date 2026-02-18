@@ -16,7 +16,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 from dotenv import load_dotenv
 
 from subject_config import get_subject_config, get_syllabus_topics, SubjectConfig

@@ -8,7 +8,10 @@ and uses the Socratic method to deepen understanding.
 from __future__ import annotations
 
 import os
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 from dotenv import load_dotenv
 
 load_dotenv()

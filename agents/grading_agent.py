@@ -9,7 +9,10 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 from dotenv import load_dotenv
 
 from agents.base import AgentResponse

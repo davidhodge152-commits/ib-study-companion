@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from datetime import date
-from fpdf import FPDF
+try:
+    from fpdf import FPDF
+except ImportError:
+    FPDF = None
 
 from profile import (
     StudentProfile,

@@ -17,8 +17,14 @@ import re
 import sys
 from pathlib import Path
 
-import chromadb
-from pypdf import PdfReader
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
+try:
+    from pypdf import PdfReader
+except ImportError:
+    PdfReader = None
 
 DATA_DIR = Path(__file__).parent / "data"
 CHROMA_DIR = Path(__file__).parent / "chroma_db"
