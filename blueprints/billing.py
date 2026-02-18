@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, render_template, request, current_app
 from flask_login import login_required, current_user
 
 from helpers import current_user_id
@@ -13,6 +13,46 @@ from helpers import current_user_id
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("billing", __name__)
+
+
+# ---------------------------------------------------------------------------
+# Page routes
+# ---------------------------------------------------------------------------
+
+@bp.route("/billing/success")
+@login_required
+def billing_success():
+    return render_template("billing_success.html")
+
+
+@bp.route("/billing/cancel")
+def billing_cancel():
+    return render_template("billing_cancel.html", show_sidebar=False)
+
+
+@bp.route("/pricing")
+def pricing_page():
+    from subscription_store import PLAN_DISPLAY, PLAN_CREDITS, PLAN_FEATURES
+    current_plan_id = "free"
+    if current_user.is_authenticated:
+        uid = current_user_id()
+        from subscription_store import SubscriptionStoreDB
+        store = SubscriptionStoreDB(uid)
+        current_plan_id = store.current_plan().get("plan_id", "free")
+    return render_template(
+        "pricing.html",
+        show_sidebar=False,
+        plan_display=PLAN_DISPLAY,
+        plan_credits=PLAN_CREDITS,
+        plan_features=PLAN_FEATURES,
+        current_plan=current_plan_id,
+    )
+
+
+@bp.route("/account")
+@login_required
+def account_page():
+    return render_template("account.html")
 
 
 @bp.record_once

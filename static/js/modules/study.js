@@ -1014,6 +1014,45 @@ export function requestHint() {
     });
 }
 
+// ── Submit for Peer Review ────────────────────────────────────────
+
+export function submitForReview() {
+    const q = studyState.questions[studyState.index];
+    if (!q) return;
+
+    const btn = document.getElementById('review-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+    }
+
+    api.post('/api/reviews/submit', {
+        doc_type: 'exam_answer',
+        subject: studyState.subject,
+        title: `${q.command_term}: ${studyState.topic}`,
+        text: document.getElementById('answer-input')?.value || '',
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (btn) {
+            if (data.error) {
+                btn.textContent = 'Failed';
+                setTimeout(() => { btn.textContent = 'Peer Review'; btn.disabled = false; }, 2000);
+            } else {
+                btn.textContent = 'Submitted!';
+                btn.classList.remove('text-amber-600', 'border-amber-200', 'bg-amber-50');
+                btn.classList.add('text-green-600', 'border-green-200', 'bg-green-50');
+            }
+        }
+    })
+    .catch(() => {
+        if (btn) {
+            btn.textContent = 'Failed';
+            setTimeout(() => { btn.textContent = 'Peer Review'; btn.disabled = false; }, 2000);
+        }
+    });
+}
+
 // ── Review Calendar ──────────────────────────────────────────────
 
 window.toggleReviewCalendar = async function() {

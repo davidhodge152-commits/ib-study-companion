@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set show_sidebar = false %}
+
+{% block title %}Payment Successful — IB Study Companion{% endblock %}
+
+{% block fullcontent %}
+<div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-md text-center">
+        <div class="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg class="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+        </div>
+
+        <h1 class="text-2xl font-bold text-slate-800 dark:text-white mb-2">Payment Successful!</h1>
+        <p class="text-slate-500 dark:text-slate-400 mb-6">Your subscription has been activated.</p>
+
+        <div id="plan-info" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 mb-6">
+            <p class="text-sm text-slate-500 dark:text-slate-400">Loading plan details...</p>
+        </div>
+
+        <a href="{{ url_for('core.dashboard') }}"
+           class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors">
+            Go to Dashboard
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+        </a>
+    </div>
+</div>
+
+<script>
+(async function() {
+    try {
+        const res = await fetch('/api/subscription/current');
+        const data = await res.json();
+        const el = document.getElementById('plan-info');
+        if (data.plan) {
+            el.innerHTML = `
+                <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Active Plan</p>
+                <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">${data.plan.name || data.plan.plan_id}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${data.limits?.monthly_credits || 0} credits/month</p>`;
+        }
+    } catch { /* ignore */ }
+})();
+</script>
+{% endblock %}

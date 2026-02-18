@@ -23,6 +23,7 @@ import {
     selectResponseMode, displayQuestion, submitAnswer, nextQuestion,
     skipQuestion, dismissSessionSummary, toggleSpeechToText,
     uploadAnswerFile, requestHint, showSection, studyState,
+    submitForReview,
 } from './modules/study.js';
 
 // Insights & analytics
@@ -73,6 +74,7 @@ window.dismissSessionSummary = dismissSessionSummary;
 window.toggleSpeechToText = toggleSpeechToText;
 window.uploadAnswerFile = uploadAnswerFile;
 window.requestHint = requestHint;
+window.submitForReview = submitForReview;
 
 // Insights
 window.loadInsights = loadInsights;

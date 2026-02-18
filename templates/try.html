@@ -57,7 +57,7 @@
                     </div>
                 </div>
 
-                <a href="/study" class="block w-full py-3 bg-indigo-600 text-white text-center rounded-xl font-semibold hover:bg-indigo-700 transition-colors">
+                <a href="{{ url_for('study.study') }}" class="block w-full py-3 bg-indigo-600 text-white text-center rounded-xl font-semibold hover:bg-indigo-700 transition-colors">
                     Try 3 Questions Free
                 </a>
             </div>
@@ -84,8 +84,8 @@
 
             <div class="flex items-center gap-4 justify-center">
                 <span class="text-sm text-slate-500">Already have an account?</span>
-                <a href="/login" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">Log in</a>
-                <a href="/register" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">Sign up</a>
+                <a href="{{ url_for('auth.login') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">Log in</a>
+                <a href="{{ url_for('auth.register') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">Sign up</a>
             </div>
         </div>
     </div>

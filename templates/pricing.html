@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% set show_sidebar = false %}
+
+{% block title %}Pricing — IB Study Companion{% endblock %}
+
+{% block fullcontent %}
+<div class="min-h-screen px-4 py-12">
+    <div class="max-w-5xl mx-auto">
+        <div class="text-center mb-10">
+            <h1 class="text-3xl font-bold text-slate-800 dark:text-white">Choose Your Plan</h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-2">Unlock your full IB potential with the right plan.</p>
+
+            <!-- Monthly / Annual toggle -->
+            <div class="mt-6 inline-flex items-center bg-slate-100 dark:bg-slate-800 rounded-full p-1">
+                <button id="toggle-monthly" onclick="setBillingInterval('monthly')"
+                        class="px-4 py-2 text-sm font-medium rounded-full transition-colors bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm">
+                    Monthly
+                </button>
+                <button id="toggle-annual" onclick="setBillingInterval('annual')"
+                        class="px-4 py-2 text-sm font-medium rounded-full transition-colors text-slate-500 dark:text-slate-400">
+                    Annual <span class="text-xs text-green-600 dark:text-green-400 font-semibold ml-1">Save 20%</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="plan-cards">
+            <!-- Free -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Free</h3>
+                <p class="text-3xl font-bold text-slate-800 dark:text-white mt-2">$0</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">forever</p>
+                <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-300 flex-1">
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> 3 subjects max</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> AI tutoring</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Grading & feedback</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Flashcards</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Study planner</li>
+                </ul>
+                {% if current_plan == 'free' %}
+                <div class="mt-6 py-2.5 text-center text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded-lg">Current Plan</div>
+                {% else %}
+                <div class="mt-6 py-2.5 text-center text-sm font-medium text-slate-400 dark:text-slate-500">Included</div>
+                {% endif %}
+            </div>
+
+            <!-- Explorer -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Explorer</h3>
+                <p class="text-3xl font-bold text-slate-800 dark:text-white mt-2">
+                    <span class="price-monthly">$9.99</span>
+                    <span class="price-annual hidden">$7.99</span>
+                </p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">/month</p>
+                <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-300 flex-1">
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Everything in Free</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> 200 credits/month</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Document upload</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Insights analytics</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> 6 subjects</li>
+                </ul>
+                {% if current_plan == 'explorer' %}
+                <div class="mt-6 py-2.5 text-center text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded-lg">Current Plan</div>
+                {% else %}
+                <button onclick="checkout('explorer')" class="mt-6 w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    {% if current_plan == 'free' %}Upgrade{% else %}Switch{% endif %}
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Scholar (popular) -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border-2 border-indigo-500 p-6 flex flex-col relative">
+                <span class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-indigo-600 text-white text-xs font-bold rounded-full">Most Popular</span>
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Scholar</h3>
+                <p class="text-3xl font-bold text-slate-800 dark:text-white mt-2">
+                    <span class="price-monthly">$19.99</span>
+                    <span class="price-annual hidden">$15.99</span>
+                </p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">/month</p>
+                <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-300 flex-1">
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Everything in Explorer</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> 500 credits/month</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Exam simulation</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Predicted grades</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Mock reports</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> All subjects</li>
+                </ul>
+                {% if current_plan == 'scholar' %}
+                <div class="mt-6 py-2.5 text-center text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded-lg">Current Plan</div>
+                {% else %}
+                <button onclick="checkout('scholar')" class="mt-6 w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    {% if current_plan in ('free', 'explorer') %}Upgrade{% else %}Switch{% endif %}
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Diploma Pass -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Diploma Pass</h3>
+                <p class="text-3xl font-bold text-slate-800 dark:text-white mt-2">
+                    <span class="price-monthly">$39.99</span>
+                    <span class="price-annual hidden">$31.99</span>
+                </p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">/month</p>
+                <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-300 flex-1">
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Everything in Scholar</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> 1500 credits/month</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> All features unlocked</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> Priority AI responses</li>
+                    <li class="flex items-start gap-2"><span class="text-green-500 mt-0.5">&#10003;</span> University admissions</li>
+                </ul>
+                {% if current_plan == 'diploma_pass' %}
+                <div class="mt-6 py-2.5 text-center text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded-lg">Current Plan</div>
+                {% else %}
+                <button onclick="checkout('diploma_pass')" class="mt-6 w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    Upgrade
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <p class="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
+            All plans include a 7-day free trial. Cancel anytime.
+            {% if not current_user.is_authenticated %}
+            <a href="{{ url_for('auth.login') }}" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline ml-1">Log in</a> or
+            <a href="{{ url_for('auth.register') }}" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">sign up</a> to subscribe.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<script>
+let billingInterval = 'monthly';
+
+function setBillingInterval(interval) {
+    billingInterval = interval;
+    const monthlyBtn = document.getElementById('toggle-monthly');
+    const annualBtn = document.getElementById('toggle-annual');
+
+    if (interval === 'monthly') {
+        monthlyBtn.classList.add('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+        monthlyBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
+        annualBtn.classList.remove('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+        annualBtn.classList.add('text-slate-500', 'dark:text-slate-400');
+        document.querySelectorAll('.price-monthly').forEach(el => el.classList.remove('hidden'));
+        document.querySelectorAll('.price-annual').forEach(el => el.classList.add('hidden'));
+    } else {
+        annualBtn.classList.add('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+        annualBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
+        monthlyBtn.classList.remove('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white', 'shadow-sm');
+        monthlyBtn.classList.add('text-slate-500', 'dark:text-slate-400');
+        document.querySelectorAll('.price-annual').forEach(el => el.classList.remove('hidden'));
+        document.querySelectorAll('.price-monthly').forEach(el => el.classList.add('hidden'));
+    }
+}
+
+async function checkout(planId) {
+    try {
+        const res = await fetch('/api/billing/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan_id: planId, interval: billingInterval }),
+        });
+        const data = await res.json();
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        if (data.url) {
+            window.location.href = data.url;
+        }
+    } catch (err) {
+        alert('Failed to start checkout: ' + err.message);
+    }
+}
+</script>
+{% endblock %}

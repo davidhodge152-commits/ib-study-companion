@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Account — IB Study Companion{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-200">Account</h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage your subscription, credits, and billing.</p>
+</div>
+
+<!-- Subscription Card -->
+<div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6" id="sub-card">
+    <h3 class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Current Subscription</h3>
+    <div id="sub-loading" class="flex items-center gap-3">
+        <div class="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        <span class="text-sm text-slate-500">Loading...</span>
+    </div>
+    <div id="sub-content" class="hidden">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400" id="sub-plan-name">Free</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="sub-status">Active</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="manageSubscription()" id="manage-sub-btn"
+                        class="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
+                    Manage Subscription
+                </button>
+                <a href="{{ url_for('billing.pricing_page') }}"
+                   class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    Change Plan
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Credit Balance -->
+<div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+    <h3 class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Credit Balance</h3>
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-3xl font-bold text-slate-800 dark:text-slate-200" id="credit-balance">--</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">credits available</p>
+        </div>
+        <a href="{{ url_for('billing.pricing_page') }}"
+           class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+            Buy Credits
+        </a>
+    </div>
+</div>
+
+<!-- Transaction History -->
+<div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+        <h3 class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Transaction History</h3>
+    </div>
+    <div id="tx-loading" class="p-6 flex items-center gap-3">
+        <div class="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        <span class="text-sm text-slate-500">Loading...</span>
+    </div>
+    <div id="tx-content" class="hidden">
+        <div id="tx-empty" class="hidden p-6 text-center">
+            <p class="text-sm text-slate-400 dark:text-slate-500">No transactions yet.</p>
+        </div>
+        <table id="tx-table" class="hidden w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+                <tr>
+                    <th class="text-left px-5 py-3 font-medium text-slate-600 dark:text-slate-300">Date</th>
+                    <th class="text-left px-5 py-3 font-medium text-slate-600 dark:text-slate-300">Description</th>
+                    <th class="text-right px-5 py-3 font-medium text-slate-600 dark:text-slate-300">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="tx-body" class="divide-y divide-slate-100 dark:divide-slate-700"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function() {
+    // Load subscription info
+    try {
+        const res = await fetch('/api/billing/history');
+        const data = await res.json();
+
+        document.getElementById('sub-loading').classList.add('hidden');
+        document.getElementById('sub-content').classList.remove('hidden');
+
+        const plan = data.subscription || {};
+        document.getElementById('sub-plan-name').textContent = plan.name || plan.plan_id || 'Free';
+        document.getElementById('sub-status').textContent = `Status: ${plan.status || 'active'}`;
+
+        document.getElementById('credit-balance').textContent = data.balance || 0;
+
+        // Transaction history
+        document.getElementById('tx-loading').classList.add('hidden');
+        document.getElementById('tx-content').classList.remove('hidden');
+
+        const txns = data.transactions || [];
+        if (txns.length === 0) {
+            document.getElementById('tx-empty').classList.remove('hidden');
+        } else {
+            const table = document.getElementById('tx-table');
+            const tbody = document.getElementById('tx-body');
+            table.classList.remove('hidden');
+            tbody.innerHTML = txns.map(tx => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    <td class="px-5 py-3 text-slate-500 dark:text-slate-400 text-xs">${tx.created_at || tx.date || ''}</td>
+                    <td class="px-5 py-3 text-slate-700 dark:text-slate-300">${tx.description || tx.reason || ''}</td>
+                    <td class="px-5 py-3 text-right font-medium ${tx.amount > 0 ? 'text-green-600' : 'text-red-600'}">${tx.amount > 0 ? '+' : ''}${tx.amount}</td>
+                </tr>`).join('');
+        }
+    } catch (err) {
+        document.getElementById('sub-loading').innerHTML = '<p class="text-sm text-red-500">Failed to load account info.</p>';
+        document.getElementById('tx-loading').innerHTML = '<p class="text-sm text-red-500">Failed to load transactions.</p>';
+    }
+})();
+
+async function manageSubscription() {
+    const btn = document.getElementById('manage-sub-btn');
+    btn.disabled = true;
+    btn.textContent = 'Opening...';
+    try {
+        const res = await fetch('/api/billing/portal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            alert(data.error || 'Could not open billing portal.');
+            btn.disabled = false;
+            btn.textContent = 'Manage Subscription';
+        }
+    } catch {
+        alert('Failed to connect to billing portal.');
+        btn.disabled = false;
+        btn.textContent = 'Manage Subscription';
+    }
+}
+</script>
+{% endblock %}

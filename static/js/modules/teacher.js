@@ -22,6 +22,26 @@ window.createClass = async function() {
     }
 };
 
+// Load active assignment count for the dashboard
+async function loadActiveAssignments() {
+    const el = document.getElementById('active-assignments');
+    if (!el) return;
+    try {
+        const res = await api('/api/teacher/stats');
+        const data = await res.json();
+        // Count assignments across all classes
+        const classes = data.classes || [];
+        let total = 0;
+        for (const cls of classes) {
+            total += cls.assignment_count || 0;
+        }
+        el.textContent = total;
+    } catch {
+        el.textContent = '0';
+    }
+}
+loadActiveAssignments();
+
 window.createAssignment = async function() {
     const classId = new URLSearchParams(window.location.search).get('class_id')
         || window.location.pathname.split('/').pop();
