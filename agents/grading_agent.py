@@ -78,12 +78,12 @@ class GradingAgent:
 
     def __init__(self, rag_engine: RAGEngine | None = None) -> None:
         self.rag_engine = rag_engine
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if api_key:
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel("gemini-2.0-flash")
-        else:
-            self.model = None
+        self.model = None
+        if genai is not None:
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if api_key:
+                genai.configure(api_key=api_key)
+                self.model = genai.GenerativeModel("gemini-2.0-flash")
 
     def grade(
         self,

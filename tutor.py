@@ -50,11 +50,12 @@ class TutorSession:
         self.topic = topic
         self.ability_theta = ability_theta
 
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise EnvironmentError("GOOGLE_API_KEY not set")
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-2.0-flash")
+        self.model = None
+        if genai is not None:
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if api_key:
+                genai.configure(api_key=api_key)
+                self.model = genai.GenerativeModel("gemini-2.0-flash")
 
     def respond(self, messages: list[dict]) -> str:
         """Generate a tutor response given conversation history.

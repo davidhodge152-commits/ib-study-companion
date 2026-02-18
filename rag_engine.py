@@ -65,13 +65,12 @@ class RAGEngine:
     """Decoupled retrieval engine — no UI imports."""
 
     def __init__(self) -> None:
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise EnvironmentError(
-                "GOOGLE_API_KEY not set. Copy .env.example to .env and add your key."
-            )
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-2.0-flash")
+        self.model = None
+        if genai is not None:
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if api_key:
+                genai.configure(api_key=api_key)
+                self.model = genai.GenerativeModel("gemini-2.0-flash")
         self._vector_store = None
 
     # ── Vector store access ────────────────────────────────────────
