@@ -156,6 +156,19 @@ _MODEL_PRICING: dict[str, float] = {
 }
 
 
+_FALLBACK_CHAIN: dict[str, list[str]] = {
+    "gemini": ["claude", "openai"],
+    "claude": ["openai", "gemini"],
+    "openai": ["claude", "gemini"],
+}
+
+_FALLBACK_MODELS: dict[str, str] = {
+    "gemini": "gemini-2.0-flash",
+    "claude": "claude-sonnet-4-20250514",
+    "openai": "gpt-4o-mini",
+}
+
+
 class CostTracker:
     """Estimates tokens from character count and applies model-specific pricing."""
 
@@ -340,10 +353,6 @@ def resilient_llm_call(
         (response_text, metadata_dict) where metadata includes tokens, cost,
         latency, cache_hit, provider, model.
     """
-    # Check circuit breaker
-    if _circuit_breaker.is_open(provider):
-        raise RuntimeError(f"Circuit breaker open for provider: {provider}")
-
     # Check cache (prefer cache_backend if available, fall back to local TTLCache)
     try:
         from cache_backend import get_cache as _get_cache_backend
@@ -365,13 +374,30 @@ def resilient_llm_call(
                 "latency_ms": 0,
             }
 
-    # Call with retry
-    start = time.time()
-    try:
-        response_text = _call_with_retry(provider, model, prompt, system, messages)
-    except Exception as exc:
-        _circuit_breaker.record_failure(provider)
-        raise
+    # Build provider chain: requested provider first, then fallbacks
+    providers_to_try = [provider] + _FALLBACK_CHAIN.get(provider, [])
+    last_exc: Exception | None = None
+
+    for current_provider in providers_to_try:
+        current_model = model if current_provider == provider else _FALLBACK_MODELS.get(current_provider, model)
+
+        if _circuit_breaker.is_open(current_provider):
+            continue
+
+        start = time.time()
+        try:
+            response_text = _call_with_retry(current_provider, current_model, prompt, system, messages)
+        except Exception as exc:
+            _circuit_breaker.record_failure(current_provider)
+            last_exc = exc
+            continue
+
+        # Success
+        provider = current_provider
+        model = current_model
+        break
+    else:
+        raise last_exc or RuntimeError("All LLM providers failed")
 
     latency_ms = int((time.time() - start) * 1000)
     _circuit_breaker.record_success(provider)
