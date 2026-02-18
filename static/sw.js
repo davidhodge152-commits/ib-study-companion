@@ -1,9 +1,10 @@
-const CACHE_NAME = 'ib-study-v3';
+const CACHE_NAME = 'ib-study-v4';
 const FLASHCARD_CACHE = 'ib-flashcards-v1';
 
 const STATIC_ASSETS = [
   '/static/app.js',
   '/static/js/app.js',
+  '/static/js/modules/api.js',
   '/static/js/modules/a11y.js',
   '/static/manifest.json',
   '/static/icons/icon-192.png',
