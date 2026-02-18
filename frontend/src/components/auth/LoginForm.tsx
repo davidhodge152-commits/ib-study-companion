@@ -12,12 +12,26 @@ import { Card, CardContent } from "@/components/ui/card";
 export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [clientError, setClientError] = useState("");
   const { login, loginError, isLoggingIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setClientError("");
+
+    if (!email.includes("@")) {
+      setClientError("Please enter a valid email address");
+      return;
+    }
+    if (!password) {
+      setClientError("Password is required");
+      return;
+    }
+
     await login({ email, password });
   };
+
+  const error = clientError || loginError;
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -34,13 +48,13 @@ export function LoginForm() {
         </div>
 
         {/* Error */}
-        {loginError && (
+        {error && (
           <div
             className="mb-4 rounded-lg border border-danger-500/20 bg-danger-50 p-3 dark:bg-danger-500/10"
             role="alert"
           >
             <p className="text-sm text-danger-700 dark:text-danger-500">
-              {loginError}
+              {error}
             </p>
           </div>
         )}

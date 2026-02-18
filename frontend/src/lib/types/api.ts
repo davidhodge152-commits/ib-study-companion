@@ -31,23 +31,73 @@ export interface ProgressDataPoint {
 }
 
 export interface InsightsData {
+  total_answers: number;
+  average_grade: number;
+  average_percentage: number;
   grade_distribution: Record<string, number>;
-  trends: TrendDataPoint[];
+  trend: number[];
+  history: InsightsHistoryItem[];
+  subject_stats: SubjectStat[];
+  command_term_stats: CommandTermStat[];
   gaps: GapItem[];
-  predicted_grades: PredictedGrade[];
+  study_allocation: StudyAllocation[];
+  insights: string[];
+  syllabus_coverage: Record<string, SyllabusCoverage>;
+  writing_profile: WritingProfile;
 }
 
-export interface TrendDataPoint {
-  date: string;
+export interface InsightsHistoryItem {
+  question: string;
+  grade: number;
+  percentage: number;
+  mark: string;
+  timestamp: string;
+}
+
+export interface SubjectStat {
   subject: string;
-  avg_score: number;
+  count: number;
+  avg_percentage: number;
+}
+
+export interface CommandTermStat {
+  command_term: string;
+  count: number;
+  avg_percentage: number;
 }
 
 export interface GapItem {
   subject: string;
-  topic: string;
-  score: number;
-  recommendation: string;
+  status: string;
+  gap: number;
+  target_grade: number;
+  current_avg: number;
+}
+
+export interface StudyAllocation {
+  subject: string;
+  percentage: number;
+}
+
+export interface SyllabusCoverage {
+  overall: number;
+  topics: {
+    id: string;
+    name: string;
+    practiced: number;
+    total: number;
+    pct: number;
+    hl_only: boolean;
+  }[];
+}
+
+export interface WritingProfile {
+  summary: string;
+  verbosity: string;
+  terminology_usage: string;
+  argument_structure: string;
+  common_patterns: string[];
+  analyzed_count: number;
 }
 
 export interface PredictedGrade {

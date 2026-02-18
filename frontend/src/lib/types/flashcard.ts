@@ -1,5 +1,5 @@
 export interface FlashcardDeck {
-  id: number;
+  id: number | string;
   name: string;
   subject: string;
   card_count: number;
@@ -9,8 +9,8 @@ export interface FlashcardDeck {
 }
 
 export interface Flashcard {
-  id: number;
-  deck_id: number;
+  id: number | string;
+  deck_id: number | string;
   front: string;
   back: string;
   difficulty: "easy" | "medium" | "hard";
@@ -20,6 +20,6 @@ export interface Flashcard {
 }
 
 export interface ReviewResult {
-  card_id: number;
+  card_id: number | string;
   quality: 1 | 2 | 3 | 4 | 5;
 }

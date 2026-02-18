@@ -47,11 +47,43 @@ def auth_me():
     """Return current authenticated user or 401."""
     if not current_user.is_authenticated:
         return jsonify({"error": "Not authenticated"}), 401
+
+    db = get_db()
+    row = db.execute(
+        "SELECT id, name, email, role, created_at, locale FROM users WHERE id = ?",
+        (current_user.id,),
+    ).fetchone()
+    if not row:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    # Check plan from billing table (default: free)
+    plan = "free"
+    credits = 0
+    try:
+        billing = db.execute(
+            "SELECT plan, credits FROM billing WHERE user_id = ?",
+            (current_user.id,),
+        ).fetchone()
+        if billing:
+            plan = billing["plan"] or "free"
+            credits = billing["credits"] or 0
+    except Exception:
+        pass
+
+    # Get exam_session from student profile
+    profile = StudentProfileDB.load(current_user.id)
+    exam_session = profile.exam_session if profile else ""
+
     return jsonify({
-        "id": current_user.id,
-        "name": current_user.name,
-        "email": current_user.email,
-        "role": getattr(current_user, "role", "student"),
+        "id": row["id"],
+        "name": row["name"],
+        "email": row["email"],
+        "role": row["role"] or "student",
+        "exam_session": exam_session,
+        "plan": plan,
+        "credits": credits,
+        "created_at": row["created_at"] or "",
+        "locale": row["locale"] if "locale" in row.keys() else "en",
     })
 
 
@@ -263,20 +295,28 @@ def get_profile():
     uid = current_user_id()
     profile = StudentProfileDB.load(uid)
     if not profile:
-        return jsonify({"error": "No profile found. Complete onboarding first."}), 404
+        return jsonify({
+            "name": current_user.name,
+            "exam_session": "",
+            "subjects": [],
+            "onboarding_complete": False,
+        })
+
+    subjects = []
+    for i, s in enumerate(profile.subjects):
+        topics = get_syllabus_topics(s.name)
+        subjects.append({
+            "id": i + 1,
+            "name": s.name,
+            "level": s.level,
+            "topics": [t.name for t in topics] if topics else [],
+        })
 
     return jsonify({
         "name": profile.name,
         "exam_session": profile.exam_session,
-        "target_total_points": profile.target_total_points,
-        "subjects": [
-            {
-                "name": s.name,
-                "level": s.level,
-                "target_grade": s.target_grade,
-            }
-            for s in profile.subjects
-        ],
+        "subjects": subjects,
+        "onboarding_complete": True,
     })
 
 
@@ -289,15 +329,36 @@ def gamification_status():
     activity_log = ActivityLogDB(uid)
     gam.update_streak(activity_log)
 
+    # Compute level from XP (100 XP per level)
+    xp_per_level = 100
+    level = (gam.total_xp // xp_per_level) + 1
+    xp_in_level = gam.total_xp % xp_per_level
+    xp_progress_pct = round((xp_in_level / xp_per_level) * 100)
+
+    daily_goal = gam.daily_goal_xp or 50
+    daily_goal_pct = min(100, round((gam.daily_xp_today / daily_goal) * 100)) if daily_goal > 0 else 0
+
+    # Check streak freeze from gamification table
+    streak_freeze = 0
+    try:
+        db = get_db()
+        row = db.execute(
+            "SELECT streak_freeze FROM gamification WHERE user_id = ?", (uid,)
+        ).fetchone()
+        if row and "streak_freeze" in row.keys():
+            streak_freeze = row["streak_freeze"] or 0
+    except Exception:
+        pass
+
     return jsonify({
+        "level": level,
         "total_xp": gam.total_xp,
-        "daily_xp_today": gam.daily_xp_today,
-        "daily_goal_xp": gam.daily_goal_xp,
+        "xp_progress_pct": xp_progress_pct,
         "current_streak": gam.current_streak,
-        "longest_streak": gam.longest_streak,
-        "badges": gam.badges,
-        "total_questions_answered": gam.total_questions_answered,
-        "total_flashcards_reviewed": gam.total_flashcards_reviewed,
+        "streak_freeze_available": streak_freeze,
+        "daily_xp_today": gam.daily_xp_today,
+        "daily_goal_xp": daily_goal,
+        "daily_goal_pct": daily_goal_pct,
     })
 
 
@@ -324,26 +385,37 @@ def dashboard_data():
     if entries:
         avg_grade = round(sum(e.percentage for e in entries) / len(entries))
 
+    # Count upcoming (incomplete) planner tasks
+    upcoming_tasks = 0
+    try:
+        plan_data = StudyPlanDB(uid).load()
+        if plan_data:
+            for dp in plan_data["daily_plans"]:
+                for t in dp.tasks:
+                    if not t.completed:
+                        upcoming_tasks += 1
+    except Exception:
+        pass
+
     stats = {
-        "streak": gam.current_streak,
         "total_questions": total_questions,
         "avg_grade": avg_grade,
-        "xp": gam.total_xp,
-        "daily_xp": gam.daily_xp_today,
-        "daily_goal": gam.daily_goal_xp,
+        "current_streak": gam.current_streak,
+        "upcoming_tasks": upcoming_tasks,
     }
 
-    # Recent activity
+    # Recent activity — matches frontend ActivityItem type
     recent_activity = []
-    for e in grade_log.recent(10):
+    for idx, e in enumerate(grade_log.recent(10)):
         recent_activity.append({
+            "id": idx + 1,
             "type": "study",
-            "title": f"{e.subject_display} — {e.command_term}",
-            "description": f"Grade {e.grade} ({e.percentage}%)",
+            "description": f"{e.subject_display} — {e.command_term}: Grade {e.grade} ({e.percentage}%)",
             "timestamp": e.timestamp,
+            "subject": e.subject_display,
         })
 
-    # Progress data (last 30 days of grades)
+    # Progress data (last 30 days) — matches frontend ProgressDataPoint type
     progress = []
     daily_data: dict[str, list] = {}
     for e in entries:
@@ -355,18 +427,14 @@ def dashboard_data():
         pcts = daily_data[day]
         progress.append({
             "date": day,
-            "average": round(sum(pcts) / len(pcts)),
-            "count": len(pcts),
+            "score": round(sum(pcts) / len(pcts)),
+            "questions": len(pcts),
         })
-
-    # Heatmap for streak display
-    heatmap = activity_log.daily_heatmap(90)
 
     return jsonify({
         "stats": stats,
         "recent_activity": recent_activity,
         "progress": progress,
-        "heatmap": heatmap,
     })
 
 
@@ -436,13 +504,13 @@ def list_subjects():
 @bp.route("/api/subjects/<subject>/topics")
 @login_required
 def list_topics(subject):
-    """Return syllabus topics for a subject."""
+    """Return syllabus topics for a subject as string array."""
     topics = get_syllabus_topics(subject)
     if not topics:
         return jsonify({"topics": []})
 
     return jsonify({
-        "topics": [{"id": t.id, "name": t.name} for t in topics],
+        "topics": [t.name for t in topics],
     })
 
 
@@ -454,6 +522,7 @@ def flashcard_decks():
     """Return flashcard decks grouped by subject."""
     uid = current_user_id()
     fc = FlashcardDeckDB(uid)
+    today = date.today().isoformat()
 
     # Group cards by subject into virtual "decks"
     decks_map: dict[str, dict] = {}
@@ -461,17 +530,59 @@ def flashcard_decks():
         subj = card.subject or "General"
         if subj not in decks_map:
             decks_map[subj] = {
-                "id": subj,
+                "id": hash(subj) % 1_000_000,
                 "name": subj,
                 "subject": subj,
                 "card_count": 0,
                 "due_count": 0,
+                "mastered": 0,
+                "created_at": "",
             }
         decks_map[subj]["card_count"] += 1
-        if card.next_review and card.next_review <= date.today().isoformat():
+        if card.next_review and card.next_review <= today:
             decks_map[subj]["due_count"] += 1
+        # Card is "mastered" if interval >= 21 days
+        if hasattr(card, "interval_days") and (card.interval_days or 0) >= 21:
+            decks_map[subj]["mastered"] += 1
 
-    return jsonify({"decks": list(decks_map.values())})
+    decks = []
+    for d in decks_map.values():
+        card_count = d["card_count"]
+        mastery_pct = round((d["mastered"] / card_count) * 100) if card_count > 0 else 0
+        decks.append({
+            "id": d["id"],
+            "name": d["name"],
+            "subject": d["subject"],
+            "card_count": card_count,
+            "due_count": d["due_count"],
+            "mastery_pct": mastery_pct,
+            "created_at": d["created_at"],
+        })
+
+    return jsonify({"decks": decks})
+
+
+def _serialize_flashcard(c, deck_id_val=0):
+    """Serialize a flashcard to match the frontend Flashcard type."""
+    interval = getattr(c, "interval_days", 1) or 1
+    ease = getattr(c, "ease_factor", 2.5) or 2.5
+    # Infer difficulty from interval
+    if interval >= 14:
+        difficulty = "easy"
+    elif interval >= 3:
+        difficulty = "medium"
+    else:
+        difficulty = "hard"
+    return {
+        "id": c.id,
+        "deck_id": deck_id_val,
+        "front": c.front,
+        "back": c.back,
+        "difficulty": difficulty,
+        "next_review": c.next_review or "",
+        "interval": interval,
+        "ease_factor": ease,
+    }
 
 
 @bp.route("/api/flashcards/decks/<deck_id>")
@@ -480,26 +591,25 @@ def flashcard_deck_detail(deck_id):
     """Return cards in a specific deck (subject)."""
     uid = current_user_id()
     fc = FlashcardDeckDB(uid)
+    deck_id_num = hash(deck_id) % 1_000_000
 
-    cards = [
-        {
-            "id": c.id,
-            "front": c.front,
-            "back": c.back,
-            "subject": c.subject,
-            "topic": c.topic,
-            "interval_days": c.interval_days,
-            "next_review": c.next_review,
-            "review_count": c.review_count,
-        }
-        for c in fc.cards
-        if c.subject == deck_id
-    ]
+    matching = [c for c in fc.cards if c.subject == deck_id]
+    due_count = sum(1 for c in matching if c.next_review and c.next_review <= date.today().isoformat())
+    mastered = sum(1 for c in matching if (getattr(c, "interval_days", 0) or 0) >= 21)
+    mastery_pct = round((mastered / len(matching)) * 100) if matching else 0
 
-    return jsonify({
-        "deck": {"id": deck_id, "name": deck_id, "subject": deck_id},
-        "cards": cards,
-    })
+    deck = {
+        "id": deck_id_num,
+        "name": deck_id,
+        "subject": deck_id,
+        "card_count": len(matching),
+        "due_count": due_count,
+        "mastery_pct": mastery_pct,
+        "created_at": "",
+    }
+    cards = [_serialize_flashcard(c, deck_id_num) for c in matching]
+
+    return jsonify({"deck": deck, "cards": cards})
 
 
 @bp.route("/api/flashcards/due")
@@ -516,13 +626,8 @@ def flashcards_due():
         if c.next_review and c.next_review <= today:
             if deck_id and c.subject != deck_id:
                 continue
-            cards.append({
-                "id": c.id,
-                "front": c.front,
-                "back": c.back,
-                "subject": c.subject,
-                "topic": c.topic,
-            })
+            deck_id_num = hash(c.subject or "General") % 1_000_000
+            cards.append(_serialize_flashcard(c, deck_id_num))
 
     return jsonify({"cards": cards})
 
@@ -552,24 +657,32 @@ def mark_all_notifications_read():
 @bp.route("/api/planner/tasks")
 @login_required
 def planner_tasks():
-    """Return study plan tasks."""
+    """Return study plan tasks matching frontend PlannerTask type."""
     uid = current_user_id()
     plan_data = StudyPlanDB(uid).load()
 
     tasks = []
+    task_counter = 1
     if plan_data:
         for dp in plan_data["daily_plans"]:
             for i, t in enumerate(dp.tasks):
+                # Build a human-readable title from task data
+                title = f"{t.task_type.replace('_', ' ').title()}: {t.subject}"
+                if t.topic:
+                    title += f" — {t.topic}"
+                description = f"{t.duration_minutes} min {t.task_type} session"
+
                 tasks.append({
-                    "id": f"{dp.date}_{i}",
-                    "date": dp.date,
-                    "subject": t.subject,
-                    "topic": t.topic,
-                    "task_type": t.task_type,
-                    "duration_minutes": t.duration_minutes,
-                    "priority": t.priority,
+                    "id": task_counter,
+                    "title": title,
+                    "description": description,
+                    "due_date": dp.date,
                     "completed": t.completed,
+                    "subject": t.subject,
+                    "priority": t.priority or "medium",
+                    "_composite_id": f"{dp.date}_{i}",
                 })
+                task_counter += 1
 
     return jsonify({"tasks": tasks})
 
@@ -587,22 +700,32 @@ def toggle_planner_task(task_id):
     if not plan_data:
         return jsonify({"error": "No study plan found."}), 404
 
-    # Parse task_id = "date_index"
-    parts = task_id.rsplit("_", 1)
-    if len(parts) != 2:
-        return jsonify({"error": "Invalid task ID."}), 400
-
-    target_date, idx_str = parts
+    # Support numeric ID (sequential counter from task list) or composite "date_index"
     try:
-        idx = int(idx_str)
+        numeric_id = int(task_id)
+        # Walk through tasks in same order as planner_tasks() to find the matching one
+        counter = 1
+        for dp in plan_data["daily_plans"]:
+            for i, t in enumerate(dp.tasks):
+                if counter == numeric_id:
+                    t.completed = completed
+                    plan_db.save(plan_data)
+                    return jsonify({"success": True})
+                counter += 1
     except ValueError:
-        return jsonify({"error": "Invalid task ID."}), 400
-
-    for dp in plan_data["daily_plans"]:
-        if dp.date == target_date and idx < len(dp.tasks):
-            dp.tasks[idx].completed = completed
-            plan_db.save(plan_data)
-            return jsonify({"success": True})
+        # Fallback: composite "date_index" format
+        parts = task_id.rsplit("_", 1)
+        if len(parts) == 2:
+            target_date, idx_str = parts
+            try:
+                idx = int(idx_str)
+                for dp in plan_data["daily_plans"]:
+                    if dp.date == target_date and idx < len(dp.tasks):
+                        dp.tasks[idx].completed = completed
+                        plan_db.save(plan_data)
+                        return jsonify({"success": True})
+            except ValueError:
+                pass
 
     return jsonify({"error": "Task not found."}), 404
 
@@ -719,7 +842,8 @@ def change_password():
 @bp.route("/api/community/posts")
 @login_required
 def community_posts():
-    """Return community papers as paginated posts."""
+    """Return community papers as paginated CommunityPost items."""
+    uid = current_user_id()
     page, limit = paginate_args()
     db = get_db()
 
@@ -736,14 +860,32 @@ def community_posts():
 
     items = []
     for r in rows:
+        paper_id = r["id"]
+
+        # Aggregate votes (sum of ratings)
+        vote_row = db.execute(
+            "SELECT COALESCE(SUM(rating), 0) as votes FROM paper_ratings WHERE paper_id = ?",
+            (paper_id,),
+        ).fetchone()
+        votes = vote_row["votes"] if vote_row else 0
+
+        # User's own vote
+        user_vote_row = db.execute(
+            "SELECT rating FROM paper_ratings WHERE paper_id = ? AND user_id = ?",
+            (paper_id, uid),
+        ).fetchone()
+        user_vote = user_vote_row["rating"] if user_vote_row else 0
+
         items.append({
-            "id": r["id"],
+            "id": paper_id,
             "title": r["title"],
-            "subject": r["subject"],
-            "level": r["level"],
+            "content": r.get("description", "") or f"{r['subject']} {r['level']} resource",
             "author": r["author_name"] or "Anonymous",
+            "subject": r["subject"],
+            "votes": votes,
+            "comment_count": r["download_count"] or 0,
             "created_at": r["created_at"],
-            "download_count": r["download_count"],
+            "user_vote": user_vote,
         })
 
     return jsonify({
@@ -792,6 +934,56 @@ def vote_community_post(post_id):
 
 
 # ── Groups ───────────────────────────────────────────────────
+
+@bp.route("/api/groups")
+@login_required
+def list_groups():
+    """Return study groups matching frontend StudyGroup type."""
+    uid = current_user_id()
+    db = get_db()
+    rows = db.execute(
+        "SELECT g.*, "
+        "(SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) as member_count, "
+        "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ?) as is_member "
+        "FROM study_groups g ORDER BY g.created_at DESC",
+        (uid,),
+    ).fetchall()
+
+    groups = []
+    for r in rows:
+        groups.append({
+            "id": r["id"],
+            "name": r["name"],
+            "description": r.get("description", "") or "",
+            "member_count": r["member_count"] or 0,
+            "subject": r["subject"] or "",
+            "is_member": bool(r["is_member"]),
+        })
+
+    return jsonify({"groups": groups})
+
+
+@bp.route("/api/groups/<int:group_id>/join", methods=["POST"])
+@login_required
+def join_group(group_id):
+    """Join a study group."""
+    uid = current_user_id()
+    db = get_db()
+
+    existing = db.execute(
+        "SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?",
+        (group_id, uid),
+    ).fetchone()
+    if existing:
+        return jsonify({"success": True})
+
+    db.execute(
+        "INSERT INTO group_members (group_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)",
+        (group_id, uid, datetime.now().isoformat()),
+    )
+    db.commit()
+    return jsonify({"success": True})
+
 
 @bp.route("/api/groups/create", methods=["POST"])
 @login_required

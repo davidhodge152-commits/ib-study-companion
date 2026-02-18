@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "../api-client";
 import { useStudyStore } from "../stores/study-store";
-import type { StudyQuestion, GradeResult } from "../types";
+import type { StudyQuestion, GradeResult, GenerateResponse } from "../types";
 
 export function useStudy() {
   const store = useStudyStore();
@@ -19,43 +19,29 @@ export function useStudy() {
       store.setIsGenerating(true);
       store.resetStreamContent();
       try {
-        const stream = await api.stream("/api/study/generate", {
+        const data = await api.post<GenerateResponse>("/api/study/generate", {
           subject,
           topic,
         });
-        const reader = stream.getReader();
-        const decoder = new TextDecoder();
-        let fullText = "";
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-
-          // Parse SSE data lines
-          const lines = chunk.split("\n");
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              if (data === "[DONE]") continue;
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.content) {
-                  fullText += parsed.content;
-                  store.appendStreamContent(parsed.content);
-                }
-                if (parsed.question) {
-                  store.setCurrentQuestion(parsed.question as StudyQuestion);
-                }
-              } catch {
-                // partial JSON, append as text
-                fullText += data;
-                store.appendStreamContent(data);
-              }
-            }
-          }
+        // Set the first question from the response
+        if (data.questions && data.questions.length > 0) {
+          const q = data.questions[0];
+          const question: StudyQuestion = {
+            id: `q-${Date.now()}`,
+            subject,
+            topic: q.topic || topic,
+            level: "HL",
+            question_text: q.question_text,
+            question: q.question_text,
+            marks: q.marks || 0,
+            command_term: q.command_term,
+            model_answer: q.model_answer,
+          };
+          store.setCurrentQuestion(question);
+          store.appendStreamContent(q.question_text);
         }
-        return fullText;
+        return data;
       } finally {
         store.setIsGenerating(false);
       }

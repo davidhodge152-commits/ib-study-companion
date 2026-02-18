@@ -14,6 +14,12 @@ export function useTutorHistory() {
   });
 }
 
+interface TutorMessageResponse {
+  success: boolean;
+  response: string;
+  follow_ups?: string[];
+}
+
 export function useTutorChat(conversationId?: string) {
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<TutorMessage[]>([]);
@@ -44,40 +50,19 @@ export function useTutorChat(conversationId?: string) {
       setStreamingContent("");
 
       try {
-        const stream = await api.stream("/api/tutor/message", {
-          conversation_id: conversationId,
-          message,
-          subject,
-          topic,
-          images,
-        });
-
-        const reader = stream.getReader();
-        const decoder = new TextDecoder();
-        let fullContent = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              if (data === "[DONE]") continue;
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.content) {
-                  fullContent += parsed.content;
-                  setStreamingContent(fullContent);
-                }
-              } catch {
-                fullContent += data;
-                setStreamingContent(fullContent);
-              }
-            }
+        const data = await api.post<TutorMessageResponse>(
+          "/api/tutor/message",
+          {
+            conversation_id: conversationId,
+            message,
+            subject,
+            topic,
+            images,
           }
-        }
+        );
+
+        const fullContent = data.response || "";
+        setStreamingContent(fullContent);
 
         const assistantMsg: TutorMessage = {
           id: `msg-${Date.now()}`,

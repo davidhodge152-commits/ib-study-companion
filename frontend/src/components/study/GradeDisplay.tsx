@@ -39,9 +39,9 @@ export function GradeDisplay({ result, className }: GradeDisplayProps) {
         >
           <div className="text-center">
             <div className="text-4xl font-bold">
-              {result.score}
+              {result.mark_earned}
               <span className="text-2xl text-muted-foreground">
-                /{result.max_score}
+                /{result.mark_total}
               </span>
             </div>
             <div
@@ -49,17 +49,36 @@ export function GradeDisplay({ result, className }: GradeDisplayProps) {
             >
               {percentage}%
             </div>
+            {result.grade !== undefined && (
+              <div className="mt-1 text-sm text-muted-foreground">
+                IB Grade: {result.grade}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Feedback */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold">Feedback</h4>
-          <MarkdownRenderer content={result.feedback} />
-        </div>
+        {/* Examiner Commentary */}
+        {result.full_commentary && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold">Examiner Commentary</h4>
+            <MarkdownRenderer content={result.full_commentary} />
+          </div>
+        )}
+
+        {/* Examiner Tip */}
+        {result.examiner_tip && (
+          <div className="rounded-lg bg-blue-50 p-3 dark:bg-blue-500/10">
+            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+              Examiner Tip
+            </h4>
+            <p className="mt-1 text-sm text-blue-700 dark:text-blue-400">
+              {result.examiner_tip}
+            </p>
+          </div>
+        )}
 
         {/* Strengths */}
-        {result.strengths.length > 0 && (
+        {result.strengths && result.strengths.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Strengths</h4>
             <div className="flex flex-wrap gap-2">
@@ -76,7 +95,7 @@ export function GradeDisplay({ result, className }: GradeDisplayProps) {
         )}
 
         {/* Improvements */}
-        {result.improvements.length > 0 && (
+        {result.improvements && result.improvements.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Areas for Improvement</h4>
             <div className="flex flex-wrap gap-2">
@@ -97,6 +116,20 @@ export function GradeDisplay({ result, className }: GradeDisplayProps) {
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Model Answer</h4>
             <MarkdownRenderer content={result.model_answer} />
+          </div>
+        )}
+
+        {/* XP earned */}
+        {result.xp_earned !== undefined && result.xp_earned > 0 && (
+          <div className="flex items-center gap-2 rounded-lg bg-purple-50 p-3 dark:bg-purple-500/10">
+            <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+              +{result.xp_earned} XP earned
+            </span>
+            {result.new_badges && result.new_badges.length > 0 && (
+              <span className="text-sm text-purple-600 dark:text-purple-400">
+                | New badge: {result.new_badges.map((b) => b.name).join(", ")}
+              </span>
+            )}
           </div>
         )}
       </CardContent>

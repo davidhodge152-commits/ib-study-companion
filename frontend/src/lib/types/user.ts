@@ -2,10 +2,10 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  exam_session: string;
-  plan: "free" | "pro" | "premium";
-  credits: number;
-  created_at: string;
+  exam_session?: string;
+  plan?: "free" | "pro" | "premium";
+  credits?: number;
+  created_at?: string;
   locale?: string;
   role?: "student" | "teacher" | "parent";
 }

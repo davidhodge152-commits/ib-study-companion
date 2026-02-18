@@ -1,8 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api-client";
-import type { InsightsData } from "@/lib/types";
+import { useInsights, usePredictedGrades } from "@/lib/hooks/useInsights";
 import {
   Card,
   CardHeader,
@@ -13,11 +11,8 @@ import {
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 
 export default function InsightsPage() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["insights"],
-    queryFn: () => api.get<InsightsData>("/api/insights"),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data, isLoading, error } = useInsights();
+  const { data: predictions } = usePredictedGrades();
 
   if (isLoading) return <LoadingSkeleton variant="page" />;
 
@@ -32,8 +27,16 @@ export default function InsightsPage() {
   }
 
   const gradeLabels = Object.entries(data.grade_distribution);
-  const latestTrends = data.trends.slice(-5);
-  const topGaps = data.gaps.slice(0, 4);
+  const subjectStats = data.subject_stats || [];
+  const topGaps = (data.gaps || []).slice(0, 4);
+
+  // Build predicted grades from separate endpoint
+  const predictedGrades = predictions?.by_subject
+    ? Object.entries(predictions.by_subject).map(([subject, predicted]) => ({
+        subject,
+        predicted,
+      }))
+    : [];
 
   return (
     <div className="space-y-6">
@@ -42,6 +45,28 @@ export default function InsightsPage() {
         <p className="text-muted-foreground">
           Track your performance, identify gaps, and see predicted grades
         </p>
+      </div>
+
+      {/* Summary stats */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p className="text-3xl font-bold">{data.total_answers}</p>
+            <p className="text-sm text-muted-foreground">Total Answers</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p className="text-3xl font-bold">{data.average_grade || 0}</p>
+            <p className="text-sm text-muted-foreground">Average Grade</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p className="text-3xl font-bold">{data.average_percentage || 0}%</p>
+            <p className="text-sm text-muted-foreground">Average Score</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
@@ -90,34 +115,34 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
-        {/* Trend Chart */}
+        {/* Subject Performance */}
         <Card>
           <CardHeader>
-            <CardTitle>Trend Chart</CardTitle>
+            <CardTitle>Subject Performance</CardTitle>
             <CardDescription>
-              Your average scores over recent sessions
+              Your average scores by subject
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {latestTrends.length > 0 ? (
+            {subjectStats.length > 0 ? (
               <div className="space-y-3">
-                {latestTrends.map((point, i) => (
+                {subjectStats.map((stat, i) => (
                   <div key={i} className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium">{point.subject}</p>
+                      <p className="text-sm font-medium">{stat.subject}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(point.date).toLocaleDateString()}
+                        {stat.count} question{stat.count !== 1 ? "s" : ""}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-24 rounded-full bg-muted">
                         <div
                           className="h-2 rounded-full bg-primary"
-                          style={{ width: `${point.avg_score}%` }}
+                          style={{ width: `${stat.avg_percentage}%` }}
                         />
                       </div>
                       <span className="w-10 text-right text-sm font-medium">
-                        {point.avg_score}%
+                        {Math.round(stat.avg_percentage)}%
                       </span>
                     </div>
                   </div>
@@ -125,7 +150,7 @@ export default function InsightsPage() {
               </div>
             ) : (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No trend data yet. Keep studying to track progress.
+                No subject data yet. Keep studying to track progress.
               </p>
             )}
           </CardContent>
@@ -136,7 +161,7 @@ export default function InsightsPage() {
           <CardHeader>
             <CardTitle>Gap Analysis</CardTitle>
             <CardDescription>
-              Topics where you need the most improvement
+              Subjects where you need the most improvement
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -149,17 +174,18 @@ export default function InsightsPage() {
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="text-sm font-medium">{gap.topic}</p>
+                        <p className="text-sm font-medium">{gap.subject}</p>
                         <p className="text-xs text-muted-foreground">
-                          {gap.subject}
+                          Target: {gap.target_grade} | Current:{" "}
+                          {Math.round(gap.current_avg)}%
                         </p>
                       </div>
                       <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
-                        {gap.score}%
+                        Gap: {gap.gap}
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {gap.recommendation}
+                      Status: {gap.status}
                     </p>
                   </div>
                 ))}
@@ -179,23 +205,22 @@ export default function InsightsPage() {
             <CardTitle>Predicted Grades</CardTitle>
             <CardDescription>
               AI-predicted grades based on your performance
+              {predictions?.predicted_total !== undefined && (
+                <span className="ml-1 font-medium">
+                  (Predicted total: {predictions.predicted_total})
+                </span>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {data.predicted_grades.length > 0 ? (
+            {predictedGrades.length > 0 ? (
               <div className="space-y-3">
-                {data.predicted_grades.map((pg, i) => (
+                {predictedGrades.map((pg, i) => (
                   <div
                     key={i}
                     className="flex items-center justify-between rounded-lg border p-3"
                   >
-                    <div>
-                      <p className="text-sm font-medium">{pg.subject}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Target: {pg.target} | Confidence:{" "}
-                        {Math.round(pg.confidence * 100)}%
-                      </p>
-                    </div>
+                    <p className="text-sm font-medium">{pg.subject}</p>
                     <span className="text-2xl font-bold">{pg.predicted}</span>
                   </div>
                 ))}
@@ -208,6 +233,28 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Insights */}
+      {data.insights && data.insights.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Study Insights</CardTitle>
+            <CardDescription>
+              Personalized recommendations based on your study patterns
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {data.insights.map((insight, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <span className="mt-0.5 text-primary">•</span>
+                  <span>{insight}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

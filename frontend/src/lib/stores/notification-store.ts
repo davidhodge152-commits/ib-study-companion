@@ -3,12 +3,14 @@
 import { create } from "zustand";
 
 export interface AppNotification {
-  id: number;
-  message: string;
-  type: "info" | "success" | "warning" | "study_reminder" | "streak";
+  id: number | string;
+  title: string;
+  body: string;
+  type: string;
   read: boolean;
   created_at: string;
-  link?: string;
+  action_url?: string;
+  data?: Record<string, unknown>;
 }
 
 interface NotificationState {
