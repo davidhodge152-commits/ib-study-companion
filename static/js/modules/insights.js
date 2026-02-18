@@ -13,7 +13,10 @@ export function loadInsights() {
     api.get('/api/insights')
         .then(res => res.json())
         .then(data => {
-            if (data.error) return;
+            if (data.error) {
+                _showInsightsError(data.error);
+                return;
+            }
 
             renderTextInsights(data.insights || []);
             renderCommandTermTable(data.command_term_stats || {});
@@ -23,7 +26,7 @@ export function loadInsights() {
             renderDistChart(data);
             renderSyllabusCoverage(data.syllabus_coverage || null);
             loadMisconceptions();
-            loadPredictedGrades();
+            renderPredictedGrades(data);
             loadMockReports();
 
             if (data.writing_profile) {
@@ -43,16 +46,7 @@ export function loadInsights() {
             }
         })
         .catch(err => {
-            const container = document.getElementById('insights-cards');
-            if (container) {
-                container.innerHTML = `
-                    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center col-span-3" role="alert">
-                        <p class="text-red-700 dark:text-red-400 font-medium text-sm">Failed to load insights. Please try again.</p>
-                        <button onclick="loadInsights()" class="mt-3 px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
-                            Try Again
-                        </button>
-                    </div>`;
-            }
+            _showInsightsError(err.message || 'Network error');
         });
 }
 
@@ -372,41 +366,54 @@ function loadMisconceptions() {
         .catch(err => console.error('Misconceptions load error:', err));
 }
 
-function loadPredictedGrades() {
-    api.get('/api/insights')
-        .then(res => res.json())
-        .then(data => {
-            const section = document.getElementById('predicted-grade-section');
-            const content = document.getElementById('predicted-grade-content');
-            if (!section || !content) return;
+function renderPredictedGrades(data) {
+    const section = document.getElementById('predicted-grade-section');
+    const content = document.getElementById('predicted-grade-content');
+    if (!section || !content) return;
 
-            const gaps = data.gaps || [];
-            const subjectsWithData = gaps.filter(g => g.predicted && g.predicted !== '\u2014');
-            if (subjectsWithData.length === 0) return;
+    const gaps = data.gaps || [];
+    const subjectsWithData = gaps.filter(g => g.predicted && g.predicted !== '\u2014');
+    if (subjectsWithData.length === 0) return;
 
-            section.style.display = 'block';
+    section.style.display = 'block';
 
-            content.innerHTML = subjectsWithData.map(g => {
-                const predicted = g.predicted || 0;
-                const target = g.target || 0;
-                const onTrack = predicted >= target;
+    content.innerHTML = subjectsWithData.map(g => {
+        const predicted = g.predicted || 0;
+        const target = g.target || 0;
+        const onTrack = predicted >= target;
 
-                return `
-                    <div class="flex items-center gap-4">
-                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300 w-40 shrink-0">${escapeHtml(g.subject)}</span>
-                        <div class="flex-1">
-                            <div class="relative bg-slate-100 dark:bg-slate-700 rounded-full h-4">
-                                <div class="absolute h-4 rounded-full ${onTrack ? 'bg-green-500' : 'bg-amber-500'} transition-all"
-                                     style="width: ${(predicted / 7) * 100}%"></div>
-                                ${target > 0 ? `<div class="absolute h-6 w-0.5 bg-red-500 -top-1" style="left: ${(target / 7) * 100}%" title="Target: ${target}"></div>` : ''}
-                            </div>
-                        </div>
-                        <span class="text-sm font-bold ${onTrack ? 'text-green-600' : 'text-amber-600'} w-8 text-right">${predicted}</span>
-                        <span class="text-xs text-slate-400 dark:text-slate-500 w-20">${g.status === 'on_track' ? 'On Track' : g.status === 'close' ? 'Close' : g.status === 'behind' ? 'Behind' : ''}</span>
-                    </div>`;
-            }).join('');
-        })
-        .catch(err => console.error('Predicted grades load error:', err));
+        return `
+            <div class="flex items-center gap-4">
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300 w-40 shrink-0">${escapeHtml(g.subject)}</span>
+                <div class="flex-1">
+                    <div class="relative bg-slate-100 dark:bg-slate-700 rounded-full h-4">
+                        <div class="absolute h-4 rounded-full ${onTrack ? 'bg-green-500' : 'bg-amber-500'} transition-all"
+                             style="width: ${(predicted / 7) * 100}%"></div>
+                        ${target > 0 ? `<div class="absolute h-6 w-0.5 bg-red-500 -top-1" style="left: ${(target / 7) * 100}%" title="Target: ${target}"></div>` : ''}
+                    </div>
+                </div>
+                <span class="text-sm font-bold ${onTrack ? 'text-green-600' : 'text-amber-600'} w-8 text-right">${predicted}</span>
+                <span class="text-xs text-slate-400 dark:text-slate-500 w-20">${g.status === 'on_track' ? 'On Track' : g.status === 'close' ? 'Close' : g.status === 'behind' ? 'Behind' : ''}</span>
+            </div>`;
+    }).join('');
+}
+
+function _showInsightsError(message) {
+    const ids = ['insights-cards', 'ct-breakdown-content', 'gap-table-content', 'allocation-content'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && id === 'insights-cards') {
+            el.innerHTML = `
+                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center col-span-3" role="alert">
+                    <p class="text-red-700 dark:text-red-400 font-medium text-sm">Failed to load insights. Please try again.</p>
+                    <button onclick="loadInsights()" class="mt-3 px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+                        Try Again
+                    </button>
+                </div>`;
+        } else if (el) {
+            el.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Unable to load data.</p>';
+        }
+    });
 }
 
 function loadMockReports() {

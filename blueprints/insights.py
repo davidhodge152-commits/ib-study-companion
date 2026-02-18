@@ -23,6 +23,37 @@ from db_stores import (
 )
 from subject_config import get_subject_config, get_syllabus_topics
 
+def _compute_user_analytics(history_records: list[dict]) -> dict:
+    """Compute analytics from a user's grade history records."""
+    if not history_records:
+        return {
+            "total_answers": 0,
+            "average_grade": 0.0,
+            "average_percentage": 0.0,
+            "grade_distribution": {},
+            "trend": [],
+        }
+
+    grades = [r["grade"] for r in history_records]
+    percentages = [r["percentage"] for r in history_records]
+    dist = {g: grades.count(g) for g in range(1, 8) if grades.count(g) > 0}
+
+    window = min(10, len(percentages))
+    trend = []
+    for i in range(len(percentages)):
+        start = max(0, i - window + 1)
+        avg = sum(percentages[start : i + 1]) / (i - start + 1)
+        trend.append(round(avg, 1))
+
+    return {
+        "total_answers": len(history_records),
+        "average_grade": round(sum(grades) / len(grades), 2),
+        "average_percentage": round(sum(percentages) / len(percentages), 1),
+        "grade_distribution": dist,
+        "trend": trend,
+    }
+
+
 bp = Blueprint("insights", __name__)
 
 
@@ -41,12 +72,15 @@ def insights():
 def api_insights():
     try:
         uid = current_user_id()
-        grader = EngineManager.get_grader()
-        analytics_data = grader.get_analytics()
 
+        # Compute analytics from the current user's grade history
+        # (not the singleton grader which is locked to user_id=1)
         grade_history = GradeHistoryDB(uid)
+        raw_history = grade_history.history
+        analytics_data = _compute_user_analytics(raw_history)
+
         history = []
-        for r in grade_history.history:
+        for r in raw_history:
             history.append({
                 "question": r["question"][:60],
                 "grade": r["grade"],
