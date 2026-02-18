@@ -90,8 +90,42 @@ window.showNewConversation = function() {
 };
 
 window.quickStart = function(subject, topic) {
-    document.getElementById('tutor-subject').value = subject;
-    document.getElementById('tutor-topic').value = topic;
+    // Set the subject dropdown if it exists, otherwise the text input
+    const subjectSelect = document.getElementById('tutor-subject-select');
+    const subjectInput = document.getElementById('tutor-subject');
+    if (subjectSelect) {
+        // Try to select the matching option
+        const option = Array.from(subjectSelect.options).find(o => o.value === subject);
+        if (option) {
+            subjectSelect.value = subject;
+            subjectInput.classList.add('hidden');
+            subjectInput.value = subject;
+            // Trigger topic dropdown population
+            handleTutorSubjectChange(subjectSelect);
+        } else {
+            subjectSelect.value = '__custom__';
+            subjectInput.classList.remove('hidden');
+            subjectInput.value = subject;
+        }
+    } else {
+        subjectInput.value = subject;
+    }
+
+    // Set topic
+    const topicSelect = document.getElementById('tutor-topic-select');
+    const topicInput = document.getElementById('tutor-topic');
+    if (topic && topicSelect && !topicSelect.classList.contains('hidden')) {
+        const topicOption = Array.from(topicSelect.options).find(o => o.value === topic);
+        if (topicOption) {
+            topicSelect.value = topic;
+            topicInput.value = topic;
+        } else {
+            topicInput.value = topic;
+        }
+    } else if (topic) {
+        topicInput.value = topic;
+    }
+
     startConversation();
 };
 

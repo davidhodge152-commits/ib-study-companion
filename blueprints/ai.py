@@ -25,10 +25,25 @@ bp = Blueprint("ai", __name__)
 @bp.route("/tutor")
 @login_required
 def tutor_page():
+    from subject_config import get_syllabus_topics
     uid = current_user_id()
     profile = StudentProfileDB(uid)
     gam = GamificationProfileDB(uid)
-    return render_template("tutor.html", profile=profile, gam=gam)
+
+    # Embed syllabus topics for enrolled subjects so JS can populate
+    # the topic dropdown instantly without an extra API call.
+    all_topics = {}
+    for subj in profile.subjects:
+        topics = get_syllabus_topics(subj.name)
+        all_topics[subj.name] = [
+            {"id": t.id, "name": t.name, "subtopics": t.subtopics, "hl_only": t.hl_only}
+            for t in topics
+        ]
+
+    return render_template(
+        "tutor.html", profile=profile, gam=gam,
+        syllabus_topics=all_topics,
+    )
 
 
 @bp.route("/api/tutor/start", methods=["POST"])
