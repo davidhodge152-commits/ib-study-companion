@@ -1,5 +1,12 @@
+"use client";
+
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function BillingSuccessPage() {
@@ -22,19 +29,15 @@ export default function BillingSuccessPage() {
               />
             </svg>
           </div>
-          <CardTitle className="text-2xl">Payment Successful</CardTitle>
+          <CardTitle className="text-2xl">Payment Successful!</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            Thank you for upgrading your plan! Your new features are now active
-            and ready to use.
+            Your plan has been upgraded. You now have access to all features.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Button asChild>
               <Link href="/dashboard">Go to Dashboard</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/account">View Account</Link>
             </Button>
           </div>
         </CardContent>

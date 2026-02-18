@@ -766,6 +766,44 @@ def list_documents():
 
 # ── Account ──────────────────────────────────────────────────
 
+@bp.route("/api/account/profile")
+@login_required
+def get_account_profile():
+    """Return user account info for the account settings page."""
+    uid = current_user_id()
+    db = get_db()
+    row = db.execute(
+        "SELECT id, name, email, role, created_at, locale FROM users WHERE id = ?",
+        (uid,),
+    ).fetchone()
+    if not row:
+        return jsonify({"error": "User not found"}), 404
+
+    profile = StudentProfileDB.load(uid)
+    plan = "free"
+    credits = 0
+    try:
+        billing = db.execute(
+            "SELECT plan, credits FROM billing WHERE user_id = ?", (uid,)
+        ).fetchone()
+        if billing:
+            plan = billing["plan"] or "free"
+            credits = billing["credits"] or 0
+    except Exception:
+        pass
+
+    return jsonify({
+        "id": row["id"],
+        "name": row["name"],
+        "email": row["email"],
+        "role": row["role"] or "student",
+        "plan": plan,
+        "credits": credits,
+        "exam_session": profile.exam_session if profile else "",
+        "created_at": row["created_at"] or "",
+    })
+
+
 @bp.route("/api/account/profile", methods=["PATCH"])
 @login_required
 def update_account_profile():

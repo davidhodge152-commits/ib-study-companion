@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardHeader,
@@ -10,33 +11,88 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api-client";
+import type { User } from "@/lib/types";
 
 export default function AccountPage() {
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [passwordMsg, setPasswordMsg] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  const { data: user } = useQuery({
+    queryKey: ["auth", "user"],
+    queryFn: () => api.get<User>("/api/auth/me"),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Pre-fill form with current user data
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setEmail(user.email || "");
+    }
+  }, [user]);
 
   async function handleProfileSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    // TODO: call api.patch("/api/account/profile", { name, email })
-    setTimeout(() => setSaving(false), 500);
+    setProfileMsg(null);
+    try {
+      await api.patch("/api/account/profile", { name, email });
+      setProfileMsg({
+        type: "success",
+        text: "Profile updated successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+    } catch (err) {
+      setProfileMsg({
+        type: "error",
+        text:
+          err instanceof Error ? err.message : "Failed to update profile.",
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (newPassword !== confirmPassword) return;
     setSaving(true);
-    // TODO: call api.post("/api/account/change-password", { currentPassword, newPassword })
-    setTimeout(() => {
-      setSaving(false);
+    setPasswordMsg(null);
+    try {
+      await api.post("/api/account/change-password", {
+        currentPassword,
+        newPassword,
+      });
+      setPasswordMsg({
+        type: "success",
+        text: "Password updated successfully.",
+      });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    }, 500);
+    } catch (err) {
+      setPasswordMsg({
+        type: "error",
+        text:
+          err instanceof Error ? err.message : "Failed to update password.",
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   const inputClasses =
@@ -62,6 +118,17 @@ export default function AccountPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {profileMsg && (
+                <div
+                  className={`rounded-lg border p-3 text-sm ${
+                    profileMsg.type === "success"
+                      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  }`}
+                >
+                  {profileMsg.text}
+                </div>
+              )}
               <div>
                 <label
                   htmlFor="name"
@@ -113,6 +180,17 @@ export default function AccountPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {passwordMsg && (
+                <div
+                  className={`rounded-lg border p-3 text-sm ${
+                    passwordMsg.type === "success"
+                      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  }`}
+                >
+                  {passwordMsg.text}
+                </div>
+              )}
               <div>
                 <label
                   htmlFor="current-password"

@@ -25,6 +25,7 @@ export function useTutorChat(conversationId?: string) {
   const [messages, setMessages] = useState<TutorMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [followUps, setFollowUps] = useState<string[]>([]);
 
   const sendMessage = useMutation({
     mutationFn: async ({
@@ -48,6 +49,7 @@ export function useTutorChat(conversationId?: string) {
       setMessages((prev) => [...prev, userMsg]);
       setIsStreaming(true);
       setStreamingContent("");
+      setFollowUps([]);
 
       try {
         const data = await api.post<TutorMessageResponse>(
@@ -63,6 +65,10 @@ export function useTutorChat(conversationId?: string) {
 
         const fullContent = data.response || "";
         setStreamingContent(fullContent);
+
+        if (data.follow_ups && data.follow_ups.length > 0) {
+          setFollowUps(data.follow_ups);
+        }
 
         const assistantMsg: TutorMessage = {
           id: `msg-${Date.now()}`,
@@ -87,6 +93,7 @@ export function useTutorChat(conversationId?: string) {
     setMessages,
     isStreaming,
     streamingContent,
+    followUps,
     sendMessage: sendMessage.mutateAsync,
     isSending: sendMessage.isPending,
   };
