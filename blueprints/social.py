@@ -38,30 +38,63 @@ def groups_page():
 @bp.route("/api/groups", methods=["POST"])
 @login_required
 def api_create_group():
+    import logging
     uid = current_user_id()
     data = request.get_json(force=True)
-    result = StudyGroupStoreDB.create(
-        name=data.get("name", "Study Group"),
-        created_by=uid,
-        subject=data.get("subject", ""),
-        level=data.get("level", ""),
-        max_members=data.get("max_members", 20),
-    )
-    return jsonify({"success": True, **result})
+    try:
+        result = StudyGroupStoreDB.create(
+            name=data.get("name", "Study Group"),
+            created_by=uid,
+            subject=data.get("subject", ""),
+            level=data.get("level", ""),
+            max_members=data.get("max_members", 20),
+        )
+        return jsonify({"success": True, **result})
+    except Exception as exc:
+        logging.exception("api_create_group failed: %s", exc)
+        try:
+            db = get_db()
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        return jsonify({"error": "Failed to create group"}), 500
 
 
 @bp.route("/api/groups")
 @login_required
 def api_list_groups():
-    from helpers import paginate_args, paginated_response
+    import logging
     uid = current_user_id()
-    page, limit = paginate_args(default_limit=20)
-    groups = StudyGroupStoreDB.user_groups(uid)
-    total = len(groups)
-    start = (page - 1) * limit
-    result = paginated_response(groups[start:start + limit], total, page, limit)
-    result["groups"] = result.pop("items")
-    return jsonify(result)
+    try:
+        db = get_db()
+        rows = db.execute(
+            "SELECT g.id, g.name, g.subject, g.created_at, "
+            "(SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) as member_count, "
+            "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ?) as is_member, "
+            "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ? AND gm.role IN ('admin', 'owner')) as is_admin "
+            "FROM study_groups g ORDER BY g.created_at DESC",
+            (uid, uid),
+        ).fetchall()
+        groups = []
+        for r in rows:
+            groups.append({
+                "id": r["id"],
+                "name": r["name"],
+                "description": "",
+                "member_count": r["member_count"] or 0,
+                "subject": r["subject"] or "",
+                "is_member": bool(r["is_member"]),
+                "is_admin": bool(r["is_admin"]),
+            })
+        return jsonify({"groups": groups})
+    except Exception as exc:
+        logging.exception("api_list_groups failed for user %s: %s", uid, exc)
+        try:
+            db = get_db()
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        return jsonify({"groups": []})
 
 
 @bp.route("/api/groups/<int:group_id>")
@@ -78,14 +111,30 @@ def api_get_group(group_id):
 @bp.route("/api/groups/<int:group_id>/join", methods=["POST"])
 @login_required
 def api_join_group(group_id):
+    import logging
     uid = current_user_id()
-    data = request.get_json(force=True)
-    invite_code = data.get("invite_code", "")
-    group = StudyGroupStoreDB.get(group_id)
-    if not group or group["invite_code"] != invite_code:
-        return jsonify({"error": "Invalid invite code"}), 400
-    ok = StudyGroupStoreDB.join(group_id, uid)
-    return jsonify({"success": ok})
+    try:
+        db = get_db()
+        existing = db.execute(
+            "SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?",
+            (group_id, uid),
+        ).fetchone()
+        if existing:
+            return jsonify({"success": True})
+        db.execute(
+            "INSERT INTO group_members (group_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)",
+            (group_id, uid, __import__("datetime").datetime.now().isoformat()),
+        )
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as exc:
+        logging.exception("api_join_group failed: %s", exc)
+        try:
+            db = get_db()
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        return jsonify({"error": "Failed to join group"}), 500
 
 
 @bp.route("/api/groups/join", methods=["POST"])
@@ -104,9 +153,19 @@ def api_join_group_by_code():
 @bp.route("/api/groups/<int:group_id>/leave", methods=["POST"])
 @login_required
 def api_leave_group(group_id):
+    import logging
     uid = current_user_id()
-    StudyGroupStoreDB.leave(group_id, uid)
-    return jsonify({"success": True})
+    try:
+        StudyGroupStoreDB.leave(group_id, uid)
+        return jsonify({"success": True})
+    except Exception as exc:
+        logging.exception("api_leave_group failed: %s", exc)
+        try:
+            db = get_db()
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        return jsonify({"error": "Failed to leave group"}), 500
 
 
 # ── Challenges ──────────────────────────────────────────

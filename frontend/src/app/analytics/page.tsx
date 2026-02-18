@@ -43,13 +43,28 @@ export default function AnalyticsPage() {
   }
 
   const study_allocation = data.study_allocation ?? [];
-  const command_term_stats = data.command_term_stats ?? [];
-  const subject_stats = data.subject_stats ?? [];
   const grade_distribution = data.grade_distribution ?? {};
   const total_answers = data.total_answers ?? 0;
   const average_percentage = data.average_percentage ?? 0;
   const average_grade = data.average_grade ?? 0;
   const insights = data.insights ?? [];
+
+  // API may return stats as object { key: {count, avg_percentage} } or array — normalize
+  const command_term_stats = Array.isArray(data.command_term_stats)
+    ? data.command_term_stats
+    : Object.entries(data.command_term_stats ?? {}).map(([term, val]) => ({
+        command_term: term,
+        count: (val as { count: number }).count ?? 0,
+        avg_percentage: (val as { avg_percentage: number }).avg_percentage ?? 0,
+      }));
+
+  const subject_stats = Array.isArray(data.subject_stats)
+    ? data.subject_stats
+    : Object.entries(data.subject_stats ?? {}).map(([subj, val]) => ({
+        subject: subj,
+        count: (val as { count: number }).count ?? 0,
+        avg_percentage: (val as { avg_percentage: number }).avg_percentage ?? 0,
+      }));
 
   // Compute max values for bar scaling (guard against division by zero)
   const maxAllocation =
