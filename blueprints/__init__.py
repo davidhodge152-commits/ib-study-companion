@@ -25,6 +25,7 @@ def register_blueprints(app):
     from blueprints.exam import bp as exam_bp
     from blueprints.export import bp as export_bp
     from blueprints.guest import bp as guest_bp
+    from blueprints.api_adapter import bp as api_adapter_bp
 
     app.register_blueprint(core_bp)
     app.register_blueprint(study_bp)
@@ -43,3 +44,4 @@ def register_blueprints(app):
     app.register_blueprint(exam_bp)
     app.register_blueprint(export_bp)
     app.register_blueprint(guest_bp)
+    app.register_blueprint(api_adapter_bp)
