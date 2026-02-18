@@ -42,3 +42,33 @@ export function useCreateGroup() {
     },
   });
 }
+
+export function useLeaveGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: number) =>
+      api.post(`/api/groups/${groupId}/leave`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      toast.success("Left group.");
+    },
+    onError: () => {
+      toast.error("Failed to leave group.");
+    },
+  });
+}
+
+export function useDeleteGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: number) =>
+      api.delete(`/api/groups/${groupId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      toast.success("Group deleted.");
+    },
+    onError: () => {
+      toast.error("Failed to delete group.");
+    },
+  });
+}

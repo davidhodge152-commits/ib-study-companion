@@ -8,7 +8,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, Response, jsonify, render_template, request
 from flask_login import login_required
 
 from helpers import current_user_id
@@ -100,6 +100,73 @@ def api_tutor_message():
 
     store.add_message(conv_id, "assistant", response)
     return jsonify({"success": True, "response": response, "follow_ups": follow_ups})
+
+
+@bp.route("/api/tutor/message/stream", methods=["POST"])
+@login_required
+def api_tutor_message_stream():
+    """Stream tutor response via Server-Sent Events for real-time token delivery."""
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    conv_id = data.get("conversation_id")
+    user_message = data.get("message", "")
+
+    store = TutorConversationStoreDB(uid)
+    conv = store.get(conv_id)
+    if not conv:
+        return jsonify({"error": "Conversation not found"}), 404
+
+    store.add_message(conv_id, "user", user_message)
+
+    def generate():
+        full_response = ""
+        try:
+            from tutor import TutorSession
+            ability_store = StudentAbilityStoreDB(uid)
+            ability = ability_store.get_theta(conv.get("subject", ""), conv.get("topic", ""))
+            tutor = TutorSession(
+                subject=conv.get("subject", ""),
+                topic=conv.get("topic", ""),
+                ability_theta=ability.get("theta", 0.0),
+            )
+            messages_so_far = conv["messages"] + [{"role": "user", "content": user_message}]
+
+            # Try streaming if the model supports it
+            try:
+                stream_response = tutor.respond_stream(messages_so_far)
+                for chunk in stream_response:
+                    if chunk:
+                        full_response += chunk
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+            except (AttributeError, NotImplementedError):
+                # Fallback: model doesn't support streaming, send full response at once
+                full_response = tutor.respond(messages_so_far)
+                yield f"data: {json.dumps({'type': 'chunk', 'content': full_response})}\n\n"
+
+            # Generate follow-ups
+            follow_ups = []
+            try:
+                follow_ups = tutor.suggest_follow_ups(full_response)
+            except Exception:
+                pass
+
+            yield f"data: {json.dumps({'type': 'done', 'follow_ups': follow_ups})}\n\n"
+
+        except ImportError:
+            full_response = "The AI tutor requires the Gemini API. Please configure your API key."
+            yield f"data: {json.dumps({'type': 'chunk', 'content': full_response})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'follow_ups': []})}\n\n"
+        except Exception as e:
+            logger.error("api_tutor_message_stream failed: %s", e, exc_info=True)
+            full_response = "I encountered an issue processing your message. Please try again."
+            yield f"data: {json.dumps({'type': 'chunk', 'content': full_response})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'follow_ups': []})}\n\n"
+        finally:
+            if full_response:
+                store.add_message(conv_id, "assistant", full_response)
+
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @bp.route("/api/tutor/history")

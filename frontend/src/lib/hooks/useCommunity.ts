@@ -120,3 +120,34 @@ export function useCreateComment() {
     },
   });
 }
+
+export function useReportPost() {
+  return useMutation({
+    mutationFn: ({ postId, reason }: { postId: number; reason: string }) =>
+      api.post<{ success: boolean; message: string }>(
+        `/api/community/posts/${postId}/report`,
+        { reason }
+      ),
+    onSuccess: (data) => {
+      toast.success(data.message || "Report submitted.");
+    },
+    onError: () => {
+      toast.error("Failed to submit report.");
+    },
+  });
+}
+
+export function useDeletePost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (postId: number) =>
+      api.delete(`/api/community/posts/${postId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["community"] });
+      toast.success("Post deleted.");
+    },
+    onError: () => {
+      toast.error("Failed to delete post.");
+    },
+  });
+}

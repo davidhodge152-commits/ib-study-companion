@@ -95,6 +95,41 @@ class TutorSession:
         response = self.model.generate_content(full_prompt)
         return response.text
 
+    def respond_stream(self, messages: list[dict]):
+        """Stream tutor response chunks as a generator.
+
+        Yields text chunks as Gemini generates them, enabling real-time
+        token-by-token delivery to the frontend via SSE.
+        """
+        if self.ability_theta > 1.0:
+            ability_note = "This is an advanced student. Use sophisticated language and deeper analysis."
+        elif self.ability_theta > 0.0:
+            ability_note = "This student has solid foundations. Push them towards higher-order thinking."
+        elif self.ability_theta > -1.0:
+            ability_note = "This student is developing. Use clear, step-by-step explanations."
+        else:
+            ability_note = "This student needs extra support. Use simple language and concrete examples."
+
+        system = TUTOR_SYSTEM_PROMPT.format(
+            subject=self.subject,
+            topic=self.topic,
+            theta=f"{self.ability_theta:.1f}",
+            ability_note=ability_note,
+        )
+
+        conversation = [system + "\n\n"]
+        for msg in messages:
+            role = "Student" if msg["role"] == "user" else "Tutor"
+            conversation.append(f"{role}: {msg['content']}")
+
+        conversation.append("Tutor:")
+        full_prompt = "\n\n".join(conversation)
+
+        response = self.model.generate_content(full_prompt, stream=True)
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
+
     def suggest_follow_ups(self, last_response: str) -> list[str]:
         """Generate 2-3 follow-up question suggestions based on the last response."""
         try:

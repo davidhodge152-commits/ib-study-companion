@@ -21,16 +21,37 @@ export function RegisterForm() {
     e.preventDefault();
     setClientError("");
 
-    if (password !== confirmPassword) {
-      setClientError("Passwords do not match");
+    if (!name.trim() || name.trim().length < 2) {
+      setClientError("Name must be at least 2 characters");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setClientError("Please enter a valid email address");
       return;
     }
     if (password.length < 8) {
       setClientError("Password must be at least 8 characters");
       return;
     }
+    if (!/[A-Z]/.test(password)) {
+      setClientError("Password must contain at least one uppercase letter");
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setClientError("Password must contain at least one lowercase letter");
+      return;
+    }
+    if (!/\d/.test(password)) {
+      setClientError("Password must contain at least one number");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setClientError("Passwords do not match");
+      return;
+    }
 
-    await register({ name, email, password });
+    await register({ name: name.trim(), email, password });
   };
 
   const error = clientError || registerError;
@@ -91,7 +112,7 @@ export function RegisterForm() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="At least 8 characters"
+                  placeholder="8+ chars, uppercase, lowercase, number"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

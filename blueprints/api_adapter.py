@@ -991,6 +991,7 @@ def community_posts():
             "title": r["title"],
             "content": r.get("description", "") or f"{r['subject']} {r['level']} resource",
             "author": r["author_name"] or "Anonymous",
+            "author_id": r["uploader_id"],
             "subject": r["subject"],
             "votes": votes,
             "comment_count": comment_count,
@@ -1086,6 +1087,61 @@ def create_comment(post_id):
     return jsonify({"success": True}), 201
 
 
+# ── Community Moderation ─────────────────────────────────────
+
+@bp.route("/api/community/posts/<int:post_id>/report", methods=["POST"])
+@login_required
+def report_community_post(post_id):
+    """Report a community post for moderation review."""
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    reason = (data.get("reason") or "").strip()
+
+    if not reason:
+        return jsonify({"error": "A reason is required."}), 400
+
+    db = get_db()
+    # Verify post exists
+    post = db.execute("SELECT id FROM community_papers WHERE id = ?", (post_id,)).fetchone()
+    if not post:
+        return jsonify({"error": "Post not found."}), 404
+
+    # Prevent duplicate reports from the same user
+    existing = db.execute(
+        "SELECT id FROM paper_reports WHERE paper_id = ? AND reporter_id = ?",
+        (post_id, uid),
+    ).fetchone()
+    if existing:
+        return jsonify({"success": True, "message": "Already reported."})
+
+    db.execute(
+        "INSERT INTO paper_reports (paper_id, reporter_id, reason, created_at) VALUES (?, ?, ?, ?)",
+        (post_id, uid, reason, datetime.now().isoformat()),
+    )
+    db.commit()
+    return jsonify({"success": True, "message": "Report submitted. Thank you for keeping the community safe."})
+
+
+@bp.route("/api/community/posts/<int:post_id>", methods=["DELETE"])
+@login_required
+def delete_community_post(post_id):
+    """Delete a community post — only the author can delete their own post."""
+    uid = current_user_id()
+    db = get_db()
+    post = db.execute("SELECT id, uploader_id FROM community_papers WHERE id = ?", (post_id,)).fetchone()
+    if not post:
+        return jsonify({"error": "Post not found."}), 404
+    if post["uploader_id"] != uid:
+        return jsonify({"error": "You can only delete your own posts."}), 403
+
+    db.execute("DELETE FROM community_comments WHERE post_id = ?", (post_id,))
+    db.execute("DELETE FROM paper_ratings WHERE paper_id = ?", (post_id,))
+    db.execute("DELETE FROM paper_reports WHERE paper_id = ?", (post_id,))
+    db.execute("DELETE FROM community_papers WHERE id = ?", (post_id,))
+    db.commit()
+    return jsonify({"success": True})
+
+
 # ── Analytics Events ──────────────────────────────────────────
 
 @bp.route("/api/analytics/event", methods=["POST"])
@@ -1119,9 +1175,10 @@ def list_groups():
     rows = db.execute(
         "SELECT g.*, "
         "(SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) as member_count, "
-        "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ?) as is_member "
+        "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ?) as is_member, "
+        "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ? AND gm.role = 'admin') as is_admin "
         "FROM study_groups g ORDER BY g.created_at DESC",
-        (uid,),
+        (uid, uid),
     ).fetchall()
 
     groups = []
@@ -1133,6 +1190,7 @@ def list_groups():
             "member_count": r["member_count"] or 0,
             "subject": r["subject"] or "",
             "is_member": bool(r["is_member"]),
+            "is_admin": bool(r["is_admin"]),
         })
 
     return jsonify({"groups": groups})
@@ -1156,6 +1214,48 @@ def join_group(group_id):
         "INSERT INTO group_members (group_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)",
         (group_id, uid, datetime.now().isoformat()),
     )
+    db.commit()
+    return jsonify({"success": True})
+
+
+@bp.route("/api/groups/<int:group_id>/leave", methods=["POST"])
+@login_required
+def leave_group(group_id):
+    """Leave a study group."""
+    uid = current_user_id()
+    db = get_db()
+
+    membership = db.execute(
+        "SELECT role FROM group_members WHERE group_id = ? AND user_id = ?",
+        (group_id, uid),
+    ).fetchone()
+    if not membership:
+        return jsonify({"error": "Not a member of this group."}), 400
+
+    db.execute(
+        "DELETE FROM group_members WHERE group_id = ? AND user_id = ?",
+        (group_id, uid),
+    )
+    db.commit()
+    return jsonify({"success": True})
+
+
+@bp.route("/api/groups/<int:group_id>", methods=["DELETE"])
+@login_required
+def delete_group(group_id):
+    """Delete a study group — only the creator (admin) can delete."""
+    uid = current_user_id()
+    db = get_db()
+
+    membership = db.execute(
+        "SELECT role FROM group_members WHERE group_id = ? AND user_id = ?",
+        (group_id, uid),
+    ).fetchone()
+    if not membership or membership["role"] != "admin":
+        return jsonify({"error": "Only the group creator can delete this group."}), 403
+
+    db.execute("DELETE FROM group_members WHERE group_id = ?", (group_id,))
+    db.execute("DELETE FROM study_groups WHERE id = ?", (group_id,))
     db.commit()
     return jsonify({"success": True})
 
@@ -1186,3 +1286,115 @@ def create_group():
     )
     db.commit()
     return jsonify({"success": True, "group_id": group_id, "invite_code": invite_code})
+
+
+# ── Flashcard generation from documents ──────────────────────
+
+@bp.route("/api/flashcards/generate", methods=["POST"])
+@login_required
+def generate_flashcards_from_doc():
+    """Generate flashcards from a specific uploaded document using AI.
+
+    Accepts { document_id: int, count: int (default 10) }.
+    Retrieves document chunks, sends them to the engine, and creates cards.
+    """
+    uid = current_user_id()
+    data = request.get_json(silent=True) or {}
+    doc_id = data.get("document_id")
+    count = min(int(data.get("count", 10)), 30)
+
+    if not doc_id:
+        return jsonify({"error": "document_id is required."}), 400
+
+    db = get_db()
+
+    # Get document metadata
+    doc = db.execute(
+        "SELECT id, filename, subject, doc_type FROM uploads WHERE id = ? AND user_id = ?",
+        (doc_id, uid),
+    ).fetchone()
+    if not doc:
+        return jsonify({"error": "Document not found."}), 404
+
+    subject = doc["subject"] or "General"
+
+    # Retrieve stored text chunks for this document
+    chunks = db.execute(
+        "SELECT content FROM document_chunks WHERE upload_id = ? ORDER BY chunk_index LIMIT 20",
+        (doc_id,),
+    ).fetchall()
+
+    if not chunks:
+        # Fallback: try ChromaDB
+        try:
+            from vector_store import get_vector_store
+            vs = get_vector_store()
+            results = vs.query(
+                query_text=f"{subject} key concepts",
+                n_results=15,
+                where={"source": doc["filename"]},
+            )
+            if results and results.get("documents"):
+                chunk_texts = results["documents"][0] if isinstance(results["documents"][0], list) else results["documents"]
+            else:
+                return jsonify({"error": "No text extracted from this document. Try re-uploading."}), 400
+        except Exception:
+            return jsonify({"error": "No text extracted from this document. Try re-uploading."}), 400
+    else:
+        chunk_texts = [c["content"] for c in chunks]
+
+    # Combine chunks into context (limit ~8k chars)
+    context = "\n\n---\n\n".join(chunk_texts)[:8000]
+
+    try:
+        engine = EngineManager.get_engine()
+        cards_raw = engine.generate_flashcards(
+            context=context,
+            subject=subject,
+            count=count,
+        )
+    except AttributeError:
+        # Engine doesn't have generate_flashcards — use a simple prompt-based approach
+        try:
+            from ai_core import call_llm
+            prompt = (
+                f"You are an IB {subject} expert. Based on the following study material, "
+                f"create exactly {count} flashcards as JSON. Each flashcard should have "
+                f"'front' (a clear question) and 'back' (a concise, accurate answer). "
+                f"Focus on key concepts, definitions, and exam-relevant material.\n\n"
+                f"Study material:\n{context}\n\n"
+                f"Return ONLY valid JSON: [{{'front': '...', 'back': '...'}}]"
+            )
+            import json
+            raw = call_llm(prompt, max_tokens=2000)
+            # Parse the JSON from the response
+            start = raw.find("[")
+            end = raw.rfind("]") + 1
+            if start >= 0 and end > start:
+                cards_raw = json.loads(raw[start:end])
+            else:
+                cards_raw = []
+        except Exception as e:
+            logger.error("Flashcard generation failed: %s", e, exc_info=True)
+            return jsonify({"error": "Failed to generate flashcards. Please try again."}), 500
+    except Exception as e:
+        logger.error("Flashcard generation failed: %s", e, exc_info=True)
+        return jsonify({"error": "Failed to generate flashcards. Please try again."}), 500
+
+    # Persist generated cards
+    fc = FlashcardDeckDB(uid)
+    created = []
+    for card in cards_raw[:count]:
+        front = card.get("front", "").strip()
+        back = card.get("back", "").strip()
+        if front and back:
+            new_card = fc.add_card(front=front, back=back, subject=subject)
+            if new_card:
+                created.append({"id": new_card.id, "front": front, "back": back})
+
+    return jsonify({
+        "success": True,
+        "cards_created": len(created),
+        "subject": subject,
+        "cards": created,
+    })

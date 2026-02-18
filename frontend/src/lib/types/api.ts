@@ -138,6 +138,7 @@ export interface CommunityPost {
   title: string;
   content: string;
   author: string;
+  author_id?: number;
   subject: string;
   votes: number;
   comment_count: number;
@@ -160,6 +161,7 @@ export interface StudyGroup {
   member_count: number;
   subject: string;
   is_member: boolean;
+  is_admin?: boolean;
 }
 
 export interface PaginatedResponse<T> {

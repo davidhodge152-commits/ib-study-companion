@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api-client";
 import type { TutorMessage, TutorConversation } from "../types";
 
@@ -14,21 +14,16 @@ export function useTutorHistory() {
   });
 }
 
-interface TutorMessageResponse {
-  success: boolean;
-  response: string;
-  follow_ups?: string[];
-}
-
 export function useTutorChat(conversationId?: string) {
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<TutorMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [followUps, setFollowUps] = useState<string[]>([]);
+  const [isSending, setIsSending] = useState(false);
 
-  const sendMessage = useMutation({
-    mutationFn: async ({
+  const sendMessage = useCallback(
+    async ({
       message,
       subject,
       topic,
@@ -48,45 +43,97 @@ export function useTutorChat(conversationId?: string) {
       };
       setMessages((prev) => [...prev, userMsg]);
       setIsStreaming(true);
+      setIsSending(true);
       setStreamingContent("");
       setFollowUps([]);
 
+      let fullContent = "";
+
       try {
-        const data = await api.post<TutorMessageResponse>(
-          "/api/tutor/message",
-          {
+        // Use SSE streaming endpoint
+        const stream = await api.stream("/api/tutor/message/stream", {
+          conversation_id: conversationId,
+          message,
+          subject,
+          topic,
+          images,
+        });
+
+        const reader = stream.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Parse SSE events from buffer
+          const lines = buffer.split("\n");
+          // Keep incomplete last line in buffer
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const event = JSON.parse(line.slice(6));
+              if (event.type === "chunk") {
+                fullContent += event.content;
+                setStreamingContent(fullContent);
+              } else if (event.type === "done") {
+                if (event.follow_ups?.length) {
+                  setFollowUps(event.follow_ups);
+                }
+              }
+            } catch {
+              // Skip malformed JSON lines
+            }
+          }
+        }
+      } catch {
+        // Fallback: if streaming fails, use the regular POST endpoint
+        try {
+          const data = await api.post<{
+            success: boolean;
+            response: string;
+            follow_ups?: string[];
+          }>("/api/tutor/message", {
             conversation_id: conversationId,
             message,
             subject,
             topic,
             images,
+          });
+          fullContent = data.response || "";
+          setStreamingContent(fullContent);
+          if (data.follow_ups?.length) {
+            setFollowUps(data.follow_ups);
           }
-        );
-
-        const fullContent = data.response || "";
-        setStreamingContent(fullContent);
-
-        if (data.follow_ups && data.follow_ups.length > 0) {
-          setFollowUps(data.follow_ups);
+        } catch {
+          fullContent =
+            "Failed to get a response. Please check your connection and try again.";
+          setStreamingContent(fullContent);
         }
-
-        const assistantMsg: TutorMessage = {
-          id: `msg-${Date.now()}`,
-          role: "assistant",
-          content: fullContent,
-          timestamp: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        return assistantMsg;
-      } finally {
-        setIsStreaming(false);
-        setStreamingContent("");
       }
-    },
-    onSuccess: () => {
+
+      // Add assistant message
+      const assistantMsg: TutorMessage = {
+        id: `msg-${Date.now()}`,
+        role: "assistant",
+        content: fullContent,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+      setIsStreaming(false);
+      setStreamingContent("");
+      setIsSending(false);
+
       queryClient.invalidateQueries({ queryKey: ["tutor", "history"] });
+      return assistantMsg;
     },
-  });
+    [conversationId, queryClient]
+  );
 
   return {
     messages,
@@ -94,7 +141,7 @@ export function useTutorChat(conversationId?: string) {
     isStreaming,
     streamingContent,
     followUps,
-    sendMessage: sendMessage.mutateAsync,
-    isSending: sendMessage.isPending,
+    sendMessage,
+    isSending,
   };
 }

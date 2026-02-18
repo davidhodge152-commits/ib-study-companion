@@ -149,7 +149,7 @@ export default function UploadPage() {
                 Drag and drop files here, or click to browse
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Supports PDF, DOCX, images (PNG, JPG), and text files
+                Supports PDF and images (PNG, JPG, WEBP) — max 16 MB
               </p>
             </div>
             <Button
@@ -162,7 +162,7 @@ export default function UploadPage() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg"
+              accept=".pdf,.png,.jpg,.jpeg,.webp"
               onChange={handleFileInput}
               className="hidden"
             />

@@ -50,17 +50,22 @@ export function useStudy() {
 
   const gradeAnswer = useMutation({
     mutationFn: async ({
-      questionId,
+      question,
       answer,
     }: {
-      questionId: string;
+      question: StudyQuestion;
       answer: string;
     }) => {
       store.setIsGrading(true);
       try {
         return await api.post<GradeResult>("/api/study/grade", {
-          question_id: questionId,
+          question: question.question_text || question.question,
           answer,
+          subject: question.subject,
+          marks: question.marks || 4,
+          command_term: question.command_term || "",
+          level: question.level || "HL",
+          topic: question.topic || "",
         });
       } finally {
         store.setIsGrading(false);

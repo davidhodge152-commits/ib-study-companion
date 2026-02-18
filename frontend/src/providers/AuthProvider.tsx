@@ -7,8 +7,17 @@ import { isPublicRoute } from "@/lib/auth";
 import { api } from "@/lib/api-client";
 import { useUIStore } from "@/lib/stores/ui-store";
 
+/** Routes that don't require completed onboarding */
+const ONBOARDING_EXEMPT = ["/onboarding", "/login", "/register", "/try", "/pricing", "/forgot-password", "/reset-password"];
+
+function isOnboardingExempt(pathname: string): boolean {
+  return ONBOARDING_EXEMPT.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, profile } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const showUpgradeModal = useUIStore((s) => s.showUpgradeModal);
@@ -29,6 +38,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push("/login");
     }
   }, [isLoading, isAuthenticated, pathname, router]);
+
+  // Redirect authenticated users who haven't completed onboarding
+  useEffect(() => {
+    if (
+      !isLoading &&
+      isAuthenticated &&
+      profile !== null &&
+      !profile.onboarding_complete &&
+      !isOnboardingExempt(pathname)
+    ) {
+      router.replace("/onboarding");
+    }
+  }, [isLoading, isAuthenticated, profile, pathname, router]);
 
   // Show skeleton layout while checking auth on protected routes
   // This renders the sidebar/shell shape so it doesn't feel like a blank page

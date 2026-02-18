@@ -145,10 +145,23 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     # Register all application blueprints
     register_blueprints(app)
 
-    # Exempt JSON API adapter from CSRF (React frontend uses session cookies, not form tokens)
+    # Exempt all JSON API blueprints from CSRF.
+    # The React frontend uses session cookies (not form tokens) for auth,
+    # so CSRF token submission is not possible for API calls.
+    # All endpoints are protected by @login_required or @login_or_guest.
     if csrf is not None:
         from blueprints.api_adapter import bp as _api_bp
-        csrf.exempt(_api_bp)
+        from blueprints.study import bp as _study_bp
+        from blueprints.ai import bp as _ai_bp
+        from blueprints.flashcards import bp as _fc_bp
+        from blueprints.insights import bp as _insights_bp
+        from blueprints.gamification import bp as _gam_bp
+        from blueprints.export import bp as _export_bp
+        from blueprints.billing import bp as _billing_bp
+
+        for _bp in [_api_bp, _study_bp, _ai_bp, _fc_bp, _insights_bp,
+                     _gam_bp, _export_bp, _billing_bp]:
+            csrf.exempt(_bp)
 
     # Google OAuth (optional)
     try:

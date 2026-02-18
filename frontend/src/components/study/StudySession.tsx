@@ -57,7 +57,7 @@ export function StudySession({ className }: StudySessionProps) {
   const handleSubmitAnswer = useCallback(async () => {
     if (!currentQuestion || !answer.trim()) return;
     setPhase("grading");
-    await gradeAnswer({ questionId: currentQuestion.id, answer });
+    await gradeAnswer({ question: currentQuestion, answer });
     setPhase("result");
   }, [currentQuestion, answer, gradeAnswer]);
 
