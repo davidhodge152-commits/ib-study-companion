@@ -22,9 +22,18 @@ def _create_limiter():
                 return decorator
         return _NoOpLimiter()
 
-    from flask_limiter import Limiter
-    from flask_limiter.util import get_remote_address
-    return Limiter(key_func=get_remote_address, default_limits=["200 per hour"])
+    try:
+        from flask_limiter import Limiter
+        from flask_limiter.util import get_remote_address
+        return Limiter(key_func=get_remote_address, default_limits=["200 per hour"])
+    except ImportError:
+        class _NoOpLimiter:
+            enabled = False
+            def init_app(self, app): pass
+            def limit(self, *a, **kw):
+                def decorator(f): return f
+                return decorator
+        return _NoOpLimiter()
 
 
 limiter = _create_limiter()

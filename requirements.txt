@@ -1,16 +1,13 @@
 # Vercel deployment dependencies (trimmed for 250MB serverless limit)
 # Full list: requirements-full.txt
 flask>=3.0.0
-flask-limiter>=3.5.0
 flask-login>=0.6.3
 flask-wtf>=1.2.0
-flask-babel>=4.0.0
-flask-compress>=1.15.0
+# flask-limiter, flask-babel, flask-compress, whitenoise: skipped on Vercel
+# (no-op stubs used instead to reduce cold start)
 python-dotenv>=1.0.0
-whitenoise>=6.7.0
 tenacity>=8.2.0
 # Primary AI provider (google-generativeai excluded — too large with grpcio)
-# Use GOOGLE_API_KEY with the lighter google-genai SDK if needed
 anthropic>=0.39.0
 openai>=1.50.0
 # Stripe payment processing

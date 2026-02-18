@@ -12,6 +12,7 @@
     { "source": "/(.*)", "destination": "/api/index.py" }
   ],
   "crons": [
+    { "path": "/health", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/study-reminders", "schedule": "0 */4 * * *" },
     { "path": "/api/cron/daily-analytics", "schedule": "0 2 * * *" },
     { "path": "/api/cron/monthly-credits", "schedule": "0 1 * * *" }
