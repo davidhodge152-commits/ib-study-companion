@@ -138,7 +138,12 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', loadInsights);
+<script type="module">
+    import { loadInsights } from '/static/js/modules/insights.js';
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadInsights);
+    } else {
+        loadInsights();
+    }
 </script>
 {% endblock %}

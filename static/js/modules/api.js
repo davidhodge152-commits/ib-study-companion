@@ -88,9 +88,18 @@ function showUpgradeModal(type, planName) {
 /**
  * The api export is both callable as a function — api(url, options) — and has
  * convenience methods: api.get(), api.post(), api.postForm(), api.delete().
+ *
+ * api(url, options)  → returns parsed JSON (for modules that do: const data = await api('/url'))
+ * api.get(url)       → returns raw Response  (for modules that do: api.get('/url').then(r => r.json()))
+ * api.post(url,data) → returns raw Response
  */
 export async function api(url, options = {}) {
-    return apiFetch(url, options);
+    const res = await apiFetch(url, options);
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return res.json();
+    }
+    return res;
 }
 api.get = (url) => apiFetch(url);
 api.post = (url, data) => apiFetch(url, { method: 'POST', body: JSON.stringify(data) });
