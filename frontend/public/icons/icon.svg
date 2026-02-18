@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#4f46e5"/>
+  <g transform="translate(256,240)">
+    <!-- Open book -->
+    <path d="M-120,20 C-120,-20 -60,-40 0,-50 C60,-40 120,-20 120,20 L120,80 C120,60 60,40 0,30 C-60,40 -120,60 -120,80 Z" fill="white" opacity="0.95"/>
+    <!-- Book spine -->
+    <line x1="0" y1="-50" x2="0" y2="80" stroke="#4f46e5" stroke-width="3" opacity="0.3"/>
+    <!-- Page lines left -->
+    <line x1="-90" y1="0" x2="-20" y2="-10" stroke="#4f46e5" stroke-width="2" opacity="0.2"/>
+    <line x1="-85" y1="20" x2="-15" y2="10" stroke="#4f46e5" stroke-width="2" opacity="0.2"/>
+    <line x1="-80" y1="40" x2="-10" y2="30" stroke="#4f46e5" stroke-width="2" opacity="0.2"/>
+    <!-- Page lines right -->
+    <line x1="90" y1="0" x2="20" y2="-10" stroke="#4f46e5" stroke-width="2" opacity="0.2"/>
+    <line x1="85" y1="20" x2="15" y2="10" stroke="#4f46e5" stroke-width="2" opacity="0.2"/>
+    <line x1="80" y1="40" x2="10" y2="30" stroke="#4f46e5" stroke-width="2" opacity="0.2"/>
+    <!-- Graduation cap -->
+    <polygon points="0,-110 -80,-70 0,-30 80,-70" fill="white" opacity="0.95"/>
+    <rect x="-5" y="-110" width="10" height="10" fill="white" opacity="0.95"/>
+    <line x1="80" y1="-70" x2="80" y2="-35" stroke="white" stroke-width="3" opacity="0.95"/>
+    <circle cx="80" cy="-32" r="5" fill="white" opacity="0.95"/>
+  </g>
+  <!-- IB text -->
+  <text x="256" y="380" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="48" fill="white" opacity="0.9">IB STUDY</text>
+</svg>

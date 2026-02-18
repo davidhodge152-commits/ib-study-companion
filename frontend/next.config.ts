@@ -1,0 +1,20 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactCompiler: true,
+
+  // Proxy API requests to Flask backend during development
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination:
+          process.env.NEXT_PUBLIC_API_URL
+            ? `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`
+            : "http://127.0.0.1:5001/api/:path*",
+      },
+    ];
+  },
+};
+
+export default nextConfig;

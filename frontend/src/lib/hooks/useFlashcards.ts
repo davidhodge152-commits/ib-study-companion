@@ -1,0 +1,43 @@
+"use client";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../api-client";
+import type { FlashcardDeck, Flashcard, ReviewResult } from "../types";
+
+export function useFlashcardDecks() {
+  return useQuery({
+    queryKey: ["flashcards", "decks"],
+    queryFn: () => api.get<{ decks: FlashcardDeck[] }>("/api/flashcards/decks"),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useFlashcardDeck(deckId: number) {
+  return useQuery({
+    queryKey: ["flashcards", "deck", deckId],
+    queryFn: () => api.get<{ deck: FlashcardDeck; cards: Flashcard[] }>(`/api/flashcards/decks/${deckId}`),
+    enabled: !!deckId,
+  });
+}
+
+export function useDueCards(deckId?: number) {
+  return useQuery({
+    queryKey: ["flashcards", "due", deckId],
+    queryFn: () =>
+      api.get<{ cards: Flashcard[] }>(
+        deckId ? `/api/flashcards/due?deck_id=${deckId}` : "/api/flashcards/due"
+      ),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useReviewFlashcard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (review: ReviewResult) =>
+      api.post("/api/flashcards/review", review),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["flashcards"] });
+    },
+  });
+}
