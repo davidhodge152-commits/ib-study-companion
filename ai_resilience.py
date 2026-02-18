@@ -258,7 +258,10 @@ class TransientLLMError(Exception):
 def _do_call(provider: str, model: str, prompt: str, system: str, messages: list[dict] | None) -> str:
     """Execute the actual LLM API call (no retry, no cache)."""
     if provider == "gemini":
-        import google.generativeai as genai
+        try:
+            import google.generativeai as genai
+        except ImportError:
+            raise RuntimeError("google-generativeai package not installed — Gemini unavailable")
         import os
         genai.configure(api_key=os.getenv("GOOGLE_API_KEY", ""))
         m = genai.GenerativeModel(model)

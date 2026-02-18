@@ -69,7 +69,10 @@ class ChromaDBStore:
 
     def _get_collection(self):
         if self._collection is None:
-            import chromadb
+            try:
+                import chromadb
+            except ImportError:
+                raise RuntimeError("chromadb is not installed — vector search unavailable")
             self._client = chromadb.PersistentClient(path=self._chroma_dir)
             self._collection = self._client.get_or_create_collection(
                 name=self._collection_name,

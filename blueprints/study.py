@@ -359,7 +359,10 @@ def api_study_extract_answer():
             finally:
                 tmp_path.unlink(missing_ok=True)
         else:
-            import google.generativeai as genai
+            try:
+                import google.generativeai as genai
+            except ImportError:
+                return jsonify({"error": "Image OCR is not available — please upload a PDF instead."}), 503
             api_key = os.environ.get("GOOGLE_API_KEY")
             if not api_key:
                 return jsonify({"error": "GOOGLE_API_KEY not configured"}), 500
