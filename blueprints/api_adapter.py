@@ -1187,29 +1187,38 @@ def analytics_event():
 def list_groups():
     """Return study groups matching frontend StudyGroup type."""
     uid = current_user_id()
-    db = get_db()
-    rows = db.execute(
-        "SELECT g.*, "
-        "(SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) as member_count, "
-        "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ?) as is_member, "
-        "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ? AND gm.role = 'admin') as is_admin "
-        "FROM study_groups g ORDER BY g.created_at DESC",
-        (uid, uid),
-    ).fetchall()
+    try:
+        db = get_db()
+        rows = db.execute(
+            "SELECT g.id, g.name, g.subject, g.created_at, "
+            "(SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) as member_count, "
+            "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ?) as is_member, "
+            "(SELECT 1 FROM group_members gm WHERE gm.group_id = g.id AND gm.user_id = ? AND gm.role = 'admin') as is_admin "
+            "FROM study_groups g ORDER BY g.created_at DESC",
+            (uid, uid),
+        ).fetchall()
 
-    groups = []
-    for r in rows:
-        groups.append({
-            "id": r["id"],
-            "name": r["name"],
-            "description": r.get("description", "") or "",
-            "member_count": r["member_count"] or 0,
-            "subject": r["subject"] or "",
-            "is_member": bool(r["is_member"]),
-            "is_admin": bool(r["is_admin"]),
-        })
+        groups = []
+        for r in rows:
+            groups.append({
+                "id": r["id"],
+                "name": r["name"],
+                "description": "",
+                "member_count": r["member_count"] or 0,
+                "subject": r["subject"] or "",
+                "is_member": bool(r["is_member"]),
+                "is_admin": bool(r["is_admin"]),
+            })
 
-    return jsonify({"groups": groups})
+        return jsonify({"groups": groups})
+    except Exception as exc:
+        logging.exception("list_groups failed for user %s: %s", uid, exc)
+        db = get_db()
+        try:
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        return jsonify({"groups": []})
 
 
 @bp.route("/api/groups/<int:group_id>/join", methods=["POST"])

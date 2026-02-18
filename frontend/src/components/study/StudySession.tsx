@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { BookOpen, RefreshCw } from "lucide-react";
+import { BookOpen, RefreshCw, Lightbulb, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 import { useStudy } from "@/lib/hooks/useStudy";
+import { api } from "@/lib/api-client";
 import { SubjectSelector } from "./SubjectSelector";
 import { QuestionCard } from "./QuestionCard";
 import { AnswerInput } from "./AnswerInput";
 import { GradeDisplay } from "./GradeDisplay";
+import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type SessionPhase = "select" | "question" | "answer" | "grading" | "result";
@@ -20,6 +23,11 @@ interface StudySessionProps {
 
 export function StudySession({ className }: StudySessionProps) {
   const [phase, setPhase] = useState<SessionPhase>("select");
+  const [hints, setHints] = useState<string[]>([]);
+  const [hintLevel, setHintLevel] = useState(0);
+  const [showModelAnswer, setShowModelAnswer] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+
   const {
     currentQuestion,
     answer,
@@ -37,6 +45,21 @@ export function StudySession({ className }: StudySessionProps) {
     reset,
   } = useStudy();
 
+  // Hint mutation
+  const hintMutation = useMutation({
+    mutationFn: async (level: number) => {
+      return api.post<{ hint: string; hint_level: number }>("/api/study/hint", {
+        question: currentQuestion?.question_text ?? currentQuestion?.question ?? "",
+        command_term: currentQuestion?.command_term ?? "",
+        hint_level: level,
+      });
+    },
+    onSuccess: (data) => {
+      setHints((prev) => [...prev, data.hint]);
+      setHintLevel(data.hint_level);
+    },
+  });
+
   const handleSelect = useCallback(
     (subject: string, topic: string) => {
       setSelectedSubject(subject);
@@ -50,6 +73,10 @@ export function StudySession({ className }: StudySessionProps) {
   const handleGenerate = useCallback(async () => {
     if (!selectedSubject || !selectedTopic) return;
     setPhase("question");
+    setHints([]);
+    setHintLevel(0);
+    setShowModelAnswer(false);
+    setAttachments([]);
     await generateQuestion({ subject: selectedSubject, topic: selectedTopic });
     setPhase("answer");
   }, [selectedSubject, selectedTopic, generateQuestion]);
@@ -64,14 +91,27 @@ export function StudySession({ className }: StudySessionProps) {
   const handleNextQuestion = useCallback(() => {
     reset();
     setPhase("select");
+    setHints([]);
+    setHintLevel(0);
+    setShowModelAnswer(false);
+    setAttachments([]);
   }, [reset]);
 
   const handleTryAnother = useCallback(async () => {
     reset();
+    setHints([]);
+    setHintLevel(0);
+    setShowModelAnswer(false);
+    setAttachments([]);
     setPhase("question");
     await generateQuestion({ subject: selectedSubject, topic: selectedTopic });
     setPhase("answer");
   }, [reset, selectedSubject, selectedTopic, generateQuestion]);
+
+  const handleGetHint = useCallback(() => {
+    const nextLevel = Math.min(hintLevel + 1, 3);
+    hintMutation.mutate(nextLevel);
+  }, [hintLevel, hintMutation]);
 
   return (
     <div className={cn("mx-auto max-w-3xl space-y-6", className)}>
@@ -129,6 +169,83 @@ export function StudySession({ className }: StudySessionProps) {
         />
       )}
 
+      {/* Hints & Model Answer toolbar (during answer phase) */}
+      {phase === "answer" && currentQuestion && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGetHint}
+            disabled={hintMutation.isPending || hintLevel >= 3}
+          >
+            {hintMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Lightbulb className="mr-2 h-4 w-4" />
+            )}
+            {hintLevel === 0
+              ? "Get Hint"
+              : hintLevel >= 3
+                ? "Max Hints Used"
+                : `Get More Hints (${hintLevel}/3)`}
+          </Button>
+
+          {currentQuestion.model_answer && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowModelAnswer(!showModelAnswer)}
+            >
+              {showModelAnswer ? (
+                <EyeOff className="mr-2 h-4 w-4" />
+              ) : (
+                <Eye className="mr-2 h-4 w-4" />
+              )}
+              {showModelAnswer ? "Hide Model Answer" : "View Model Answer"}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Hints display */}
+      {hints.length > 0 && (phase === "answer" || phase === "grading") && (
+        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-900/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span className="text-amber-800 dark:text-amber-300">
+                Hints ({hints.length}/3)
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {hints.map((hint, i) => (
+              <div
+                key={i}
+                className="rounded-md bg-amber-100/50 p-2.5 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200"
+              >
+                <span className="mr-1.5 font-semibold">Hint {i + 1}:</span>
+                {hint}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Model answer reveal */}
+      {showModelAnswer && currentQuestion?.model_answer && phase === "answer" && (
+        <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-blue-800 dark:text-blue-300">
+              Model Answer
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MarkdownRenderer content={currentQuestion.model_answer} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Answer input */}
       {phase === "answer" && currentQuestion && (
         <AnswerInput
@@ -136,6 +253,8 @@ export function StudySession({ className }: StudySessionProps) {
           onChange={setAnswer}
           onSubmit={handleSubmitAnswer}
           isGrading={false}
+          attachments={attachments}
+          onAttachmentsChange={setAttachments}
         />
       )}
 

@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useFlashcardDecks } from "@/lib/hooks/useFlashcards";
+import { Plus } from "lucide-react";
+import { useFlashcardDecks, useCreateFlashcard } from "@/lib/hooks/useFlashcards";
 import {
   Card,
   CardHeader,
@@ -10,11 +12,146 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 
+function CreateCardDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [front, setFront] = useState("");
+  const [back, setBack] = useState("");
+  const [subject, setSubject] = useState("");
+  const [topic, setTopic] = useState("");
+
+  const createFlashcard = useCreateFlashcard();
+
+  const canSubmit =
+    front.trim().length > 0 &&
+    back.trim().length > 0 &&
+    subject.trim().length > 0;
+
+  function resetForm() {
+    setFront("");
+    setBack("");
+    setSubject("");
+    setTopic("");
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+
+    createFlashcard.mutate(
+      {
+        front: front.trim(),
+        back: back.trim(),
+        subject: subject.trim(),
+        topic: topic.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          resetForm();
+          onOpenChange(false);
+        },
+      }
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create Flashcard</DialogTitle>
+          <DialogDescription>
+            Add a new flashcard with a question and answer.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="card-front">Front (Question)</Label>
+            <Textarea
+              id="card-front"
+              placeholder="Enter the question or prompt..."
+              value={front}
+              onChange={(e) => setFront(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="card-back">Back (Answer)</Label>
+            <Textarea
+              id="card-back"
+              placeholder="Enter the answer..."
+              value={back}
+              onChange={(e) => setBack(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="card-subject">Subject</Label>
+            <Input
+              id="card-subject"
+              placeholder="e.g. Biology, Mathematics"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="card-topic">
+              Topic <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="card-topic"
+              placeholder="e.g. Cell Division, Calculus"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!canSubmit || createFlashcard.isPending}
+            >
+              {createFlashcard.isPending ? "Creating..." : "Create Card"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function FlashcardsPage() {
   const { data, isLoading, error } = useFlashcardDecks();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   if (isLoading) return <LoadingSkeleton variant="card" count={6} />;
 
@@ -32,24 +169,41 @@ export default function FlashcardsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Flashcards</h1>
-        <p className="text-muted-foreground">
-          Review and master key concepts with spaced repetition
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Flashcards</h1>
+          <p className="text-muted-foreground">
+            Review and master key concepts with spaced repetition
+          </p>
+        </div>
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Card
+        </Button>
       </div>
+
+      <CreateCardDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       {decks.length === 0 ? (
         <EmptyState
           title="No flashcard decks yet"
           description="Upload study materials or create decks manually to start reviewing with spaced repetition."
           action={
-            <Link
-              href="/upload"
-              className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Upload Materials
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/upload"
+                className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Upload Materials
+              </Link>
+              <Button
+                variant="outline"
+                onClick={() => setDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create Card
+              </Button>
+            </div>
           }
         />
       ) : (

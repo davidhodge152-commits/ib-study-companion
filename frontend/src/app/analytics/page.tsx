@@ -42,16 +42,14 @@ export default function AnalyticsPage() {
     );
   }
 
-  const {
-    study_allocation,
-    command_term_stats,
-    subject_stats,
-    grade_distribution,
-    total_answers,
-    average_percentage,
-    average_grade,
-    insights,
-  } = data;
+  const study_allocation = data.study_allocation ?? [];
+  const command_term_stats = data.command_term_stats ?? [];
+  const subject_stats = data.subject_stats ?? [];
+  const grade_distribution = data.grade_distribution ?? {};
+  const total_answers = data.total_answers ?? 0;
+  const average_percentage = data.average_percentage ?? 0;
+  const average_grade = data.average_grade ?? 0;
+  const insights = data.insights ?? [];
 
   // Compute max values for bar scaling (guard against division by zero)
   const maxAllocation =

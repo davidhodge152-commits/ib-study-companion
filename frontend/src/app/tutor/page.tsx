@@ -85,7 +85,7 @@ export default function TutorPage() {
     if (!conversation) return;
 
     setActiveConversationId(conversationId);
-    setMessages(conversation.messages);
+    setMessages(conversation.messages ?? []);
     if (conversation.subject) setSelectedSubject(conversation.subject);
     if (conversation.topic) setSelectedTopic(conversation.topic);
 
@@ -102,11 +102,9 @@ export default function TutorPage() {
     setSelectedTopic("");
   }
 
-  function getConversationPreview(messages: { content: string }[]) {
-    const firstUserMsg = messages.find(
-      (m: { content: string } & { role?: string }) =>
-        (m as { role: string }).role === "user"
-    );
+  function getConversationPreview(messages?: { content: string; role?: string }[]) {
+    if (!messages || messages.length === 0) return "Empty conversation";
+    const firstUserMsg = messages.find((m) => m.role === "user");
     if (!firstUserMsg) return "Empty conversation";
     return firstUserMsg.content.length > 60
       ? firstUserMsg.content.slice(0, 60) + "..."
@@ -197,7 +195,7 @@ export default function TutorPage() {
                         )}
                       </div>
                       <p className="mt-1 text-xs text-foreground line-clamp-2">
-                        {getConversationPreview(conv.messages)}
+                        {getConversationPreview(conv.messages ?? [])}
                       </p>
                       <p className="mt-1 text-[10px] text-muted-foreground">
                         {new Date(conv.created_at).toLocaleDateString([], {

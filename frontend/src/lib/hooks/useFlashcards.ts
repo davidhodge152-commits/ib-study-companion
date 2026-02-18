@@ -45,3 +45,25 @@ export function useReviewFlashcard() {
     },
   });
 }
+
+interface CreateFlashcardInput {
+  front: string;
+  back: string;
+  subject: string;
+  topic?: string;
+}
+
+export function useCreateFlashcard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateFlashcardInput) =>
+      api.post<{ success: true; card_id: string }>("/api/flashcards/create", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["flashcards"] });
+      toast.success("Flashcard created successfully!");
+    },
+    onError: () => {
+      toast.error("Failed to create flashcard. Please try again.");
+    },
+  });
+}
