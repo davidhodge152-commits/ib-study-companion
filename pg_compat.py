@@ -115,16 +115,22 @@ class PgCursorWrapper:
         # For INSERT statements, add RETURNING id to capture lastrowid
         upper = translated.strip().upper()
         if upper.startswith("INSERT") and "RETURNING" not in upper:
-            # Try to add RETURNING for id column
+            # Try to add RETURNING for id column, using a savepoint
+            # so failure doesn't abort the whole transaction
             try:
+                self._cursor.execute("SAVEPOINT _ret_id")
                 self._cursor.execute(translated + " RETURNING id", params)
                 row = self._cursor.fetchone()
                 if row:
                     self._last_id = row[0]
+                self._cursor.execute("RELEASE SAVEPOINT _ret_id")
                 return self
             except Exception:
-                # If RETURNING id fails (e.g., table has no id column), fall back
-                pass
+                # Roll back to savepoint to recover the transaction state
+                try:
+                    self._cursor.execute("ROLLBACK TO SAVEPOINT _ret_id")
+                except Exception:
+                    pass
 
         self._cursor.execute(translated, params)
         if self._cursor.description:
@@ -172,7 +178,8 @@ class PgConnectionWrapper:
         cursor = self._conn.cursor()
         for stmt in statements:
             try:
-                cursor.execute(stmt)
+                # Also translate DML syntax (INSERT OR IGNORE, ? placeholders)
+                cursor.execute(_translate_sql(stmt))
             except Exception as e:
                 # Handle "already exists" and "duplicate column" gracefully
                 err_msg = str(e).lower()

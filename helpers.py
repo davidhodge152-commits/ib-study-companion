@@ -19,7 +19,8 @@ from flask_login import current_user
 from auth import login_manager
 
 DATA_DIR = Path(__file__).parent / "data"
-DATA_DIR.mkdir(exist_ok=True)
+if not os.environ.get("VERCEL"):
+    DATA_DIR.mkdir(exist_ok=True)
 
 
 def current_user_id() -> int:

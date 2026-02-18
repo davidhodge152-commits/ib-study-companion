@@ -188,29 +188,41 @@ def register():
         db.execute("INSERT OR IGNORE INTO gamification (user_id) VALUES (?)", (user_id,))
         db.commit()
 
-        # Generate email verification token
-        token = secrets.token_urlsafe(32)
-        db.execute(
-            "UPDATE users SET email_verification_token = ? WHERE id = ?",
-            (token, user_id),
-        )
-        db.commit()
-
-        # Send verification email
+        # Email verification: skip if no real email backend configured
         from flask import current_app
-        from email_service import EmailService
-        base = current_app.config.get("BASE_URL", "http://localhost:5001")
-        verify_url = f"{base}/verify-email/{token}"
-        EmailService.send(
-            email,
-            "Verify Your Email — IB Study Companion",
-            f"<p>Welcome to IB Study Companion! Please verify your email:</p>"
-            f'<p><a href="{verify_url}">Verify Email Address</a></p>'
-            f"<p>This link expires in 24 hours.</p>",
-        )
+        email_backend = current_app.config.get("EMAIL_BACKEND", "log")
+        if email_backend == "log":
+            # Auto-verify when no email service is available
+            db.execute(
+                "UPDATE users SET email_verified = 1 WHERE id = ?",
+                (user_id,),
+            )
+            db.commit()
+            log_event("register", user_id, f"email={email} auto_verified=true")
+            flash("Account created! You can now sign in.", "success")
+        else:
+            # Generate email verification token
+            token = secrets.token_urlsafe(32)
+            db.execute(
+                "UPDATE users SET email_verification_token = ? WHERE id = ?",
+                (token, user_id),
+            )
+            db.commit()
 
-        log_event("register", user_id, f"email={email}")
-        flash("Account created! Please check your email to verify your address.", "success")
+            # Send verification email
+            from email_service import EmailService
+            base = current_app.config.get("BASE_URL", "http://localhost:5001")
+            verify_url = f"{base}/verify-email/{token}"
+            EmailService.send(
+                email,
+                "Verify Your Email — IB Study Companion",
+                f"<p>Welcome to IB Study Companion! Please verify your email:</p>"
+                f'<p><a href="{verify_url}">Verify Email Address</a></p>'
+                f"<p>This link expires in 24 hours.</p>",
+            )
+            log_event("register", user_id, f"email={email}")
+            flash("Account created! Please check your email to verify your address.", "success")
+
         return redirect(url_for("auth.login"))
 
     return render_template("register.html")

@@ -17,8 +17,11 @@ from typing import Optional
 
 from subject_config import IB_SUBJECTS  # noqa: F401 — re-exported for backward compat
 
+import os
+
 SESSION_DIR = Path(__file__).parent / "session_data"
-SESSION_DIR.mkdir(exist_ok=True)
+if not os.environ.get("VERCEL"):
+    SESSION_DIR.mkdir(exist_ok=True)
 
 PROFILE_PATH = SESSION_DIR / "profile.json"
 WRITING_PROFILE_PATH = SESSION_DIR / "writing_profile.json"

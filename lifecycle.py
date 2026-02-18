@@ -18,8 +18,11 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime
 
+import os
+
 SESSION_DIR = Path(__file__).parent / "session_data"
-SESSION_DIR.mkdir(exist_ok=True)
+if not os.environ.get("VERCEL"):
+    SESSION_DIR.mkdir(exist_ok=True)
 LIFECYCLE_PATH = SESSION_DIR / "lifecycle.json"
 
 

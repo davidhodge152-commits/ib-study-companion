@@ -98,16 +98,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         pass
 
     # Static file serving for production (whitenoise) with long cache headers
-    try:
-        from whitenoise import WhiteNoise
-        app.wsgi_app = WhiteNoise(
-            app.wsgi_app,
-            root=os.path.join(app.root_path, 'static'),
-            prefix='static/',
-            max_age=31536000 if not app.debug else 0,
-        )
-    except ImportError:
-        pass
+    # On Vercel, static files are served by the CDN — skip WhiteNoise to reduce cold start
+    if not os.environ.get("VERCEL"):
+        try:
+            from whitenoise import WhiteNoise
+            app.wsgi_app = WhiteNoise(
+                app.wsgi_app,
+                root=os.path.join(app.root_path, 'static'),
+                prefix='static/',
+                max_age=31536000 if not app.debug else 0,
+            )
+        except ImportError:
+            pass
 
     # Cache backend (Redis or in-memory fallback)
     from cache_backend import init_cache

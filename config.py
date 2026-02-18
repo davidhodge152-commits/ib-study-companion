@@ -119,6 +119,11 @@ class ProductionConfig(BaseConfig):
             )
 
 
+class VercelConfig(ProductionConfig):
+    """Vercel serverless deployment."""
+    SESSION_TYPE = None  # Prevent Flask-Session filesystem attempts
+
+
 class TestingConfig(BaseConfig):
     TESTING = True
     WTF_CSRF_ENABLED = False
@@ -127,5 +132,6 @@ class TestingConfig(BaseConfig):
 config_by_name = {
     "development": DevelopmentConfig,
     "production": ProductionConfig,
+    "vercel": VercelConfig,
     "testing": TestingConfig,
 }

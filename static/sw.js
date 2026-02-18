@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ib-study-v2';
+const CACHE_NAME = 'ib-study-v3';
 const FLASHCARD_CACHE = 'ib-flashcards-v1';
 
 const STATIC_ASSETS = [

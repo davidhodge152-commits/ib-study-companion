@@ -2,10 +2,21 @@
  * Centralized API client with auth redirect on 401.
  */
 
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+}
+
 async function apiFetch(url, options = {}) {
+    const csrfToken = getCsrfToken();
     const defaults = {
         headers: { 'Content-Type': 'application/json' },
     };
+
+    // Add CSRF token for state-changing requests
+    if (csrfToken) {
+        defaults.headers['X-CSRFToken'] = csrfToken;
+    }
 
     // Don't set Content-Type for FormData (browser sets boundary automatically)
     if (options.body instanceof FormData) {

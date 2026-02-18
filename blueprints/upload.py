@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -50,6 +51,12 @@ def upload():
 @bp.route("/api/upload", methods=["POST"])
 @login_required
 def api_upload():
+    if os.environ.get("VERCEL"):
+        return jsonify({
+            "error": "File uploads are not available in the serverless deployment. "
+                     "Please use the local version for document upload features."
+        }), 501
+
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
 

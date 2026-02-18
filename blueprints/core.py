@@ -1,9 +1,10 @@
-"""Core routes — dashboard, onboarding, index, service_worker, redirects, health checks."""
+"""Core routes — dashboard, onboarding, index, service_worker, redirects, health checks, cron."""
 
 from __future__ import annotations
 
+import os
 import time
-from datetime import date
+from datetime import date, datetime
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_login import login_required
@@ -163,6 +164,15 @@ def dashboard():
                         "date": dp.date,
                     })
 
+    total_entries = len(grade_log.recent(1))
+    is_new_user = total_entries == 0
+    getting_started = {
+        "profile_done": True,
+        "first_practice": total_entries > 0,
+        "plan_generated": plan_data is not None,
+        "flashcards_started": flashcard_due > 0 or len(fc_deck.cards) > 0,
+    }
+
     subject_predictions = []
     for s in profile.subjects:
         entries = grade_log.by_subject(s.name)
@@ -234,6 +244,8 @@ def dashboard():
         flashcard_due=flashcard_due,
         today_tasks=today_tasks,
         subject_predictions=subject_predictions,
+        is_new_user=is_new_user,
+        getting_started=getting_started,
     )
 
 
@@ -281,9 +293,89 @@ def ready():
         db.execute("SELECT 1").fetchone()
         return jsonify({"status": "ready"}), 200
     except Exception as exc:
-        return jsonify({"status": "not_ready", "error": str(exc)}), 503
+        import traceback
+        return jsonify({
+            "status": "not_ready",
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
+        }), 503
 
 
 @bp.route("/live")
 def live():
     return jsonify({"status": "alive"}), 200
+
+
+# ── Vercel Cron Endpoints ─────────────────────────────────
+# Called by Vercel Cron (see vercel.json). Authenticated via CRON_SECRET header.
+
+def _verify_cron_secret():
+    """Verify the request carries a valid CRON_SECRET header."""
+    expected = os.environ.get("CRON_SECRET", "")
+    if not expected:
+        return False
+    return request.headers.get("Authorization") == f"Bearer {expected}"
+
+
+@bp.route("/api/cron/study-reminders", methods=["GET", "POST"])
+def cron_study_reminders():
+    if not _verify_cron_secret():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        from push import send_study_reminders
+        send_study_reminders(current_app._get_current_object())
+        return jsonify({"status": "ok", "job": "study-reminders"})
+    except Exception as e:
+        current_app.logger.error("Cron study-reminders failed: %s", e)
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/cron/daily-analytics", methods=["GET", "POST"])
+def cron_daily_analytics():
+    if not _verify_cron_secret():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        from data_pipeline import aggregate_daily_analytics
+        aggregate_daily_analytics(current_app._get_current_object())
+        return jsonify({"status": "ok", "job": "daily-analytics"})
+    except Exception as e:
+        current_app.logger.error("Cron daily-analytics failed: %s", e)
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/cron/monthly-credits", methods=["GET", "POST"])
+def cron_monthly_credits():
+    if not _verify_cron_secret():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        from database import get_db
+        db = get_db()
+        today = date.today().isoformat()
+        rows = db.execute(
+            "SELECT cb.user_id, cb.monthly_allocation, cb.balance "
+            "FROM credit_balances cb "
+            "JOIN user_subscriptions us ON cb.user_id = us.user_id "
+            "WHERE us.status = 'active' "
+            "AND cb.monthly_allocation > 0 "
+            "AND (cb.last_allocation_date < ? OR cb.last_allocation_date = '')",
+            (today[:7],),
+        ).fetchall()
+        for r in rows:
+            new_balance = r["balance"] + r["monthly_allocation"]
+            db.execute(
+                "UPDATE credit_balances SET balance = ?, last_allocation_date = ? "
+                "WHERE user_id = ?",
+                (new_balance, today, r["user_id"]),
+            )
+            db.execute(
+                "INSERT INTO credit_transactions (user_id, amount, type, feature, "
+                "description, balance_after, created_at) "
+                "VALUES (?, ?, 'allocation', 'monthly', 'Monthly credit allocation', ?, ?)",
+                (r["user_id"], r["monthly_allocation"], new_balance,
+                 datetime.now().isoformat()),
+            )
+        db.commit()
+        return jsonify({"status": "ok", "job": "monthly-credits", "processed": len(rows)})
+    except Exception as e:
+        current_app.logger.error("Cron monthly-credits failed: %s", e)
+        return jsonify({"error": str(e)}), 500

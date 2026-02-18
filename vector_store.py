@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -32,6 +33,28 @@ class VectorStore(Protocol):
             where: dict | None = None) -> dict: ...
     def delete(self, ids: list[str]) -> None: ...
     def count(self) -> int: ...
+
+
+class NullVectorStore:
+    """No-op vector store for serverless environments without ChromaDB."""
+
+    def add(self, ids: list[str], documents: list[str],
+            metadatas: list[dict] | None = None) -> None:
+        pass
+
+    def query(self, query_texts: list[str], n_results: int = 5,
+              where: dict | None = None) -> dict:
+        return {"documents": [[]], "metadatas": [[]], "distances": [[]]}
+
+    def get(self, ids: list[str] | None = None,
+            where: dict | None = None) -> dict:
+        return {"ids": [], "documents": [], "metadatas": []}
+
+    def delete(self, ids: list[str]) -> None:
+        pass
+
+    def count(self) -> int:
+        return 0
 
 
 class ChromaDBStore:
@@ -101,7 +124,10 @@ def get_vector_store(chroma_dir: str | Path | None = None,
     """Factory function returning the vector store singleton."""
     global _store
     if _store is None:
-        _store = ChromaDBStore(chroma_dir=chroma_dir, collection_name=collection_name)
+        if os.environ.get("VERCEL"):
+            _store = NullVectorStore()
+        else:
+            _store = ChromaDBStore(chroma_dir=chroma_dir, collection_name=collection_name)
     return _store
 
 

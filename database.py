@@ -7,7 +7,10 @@ A schema_version table handles migrations.
 
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # Not available on all runtimes (e.g. Vercel)
 import json
 import sqlite3
 from datetime import datetime
@@ -1053,7 +1056,8 @@ def run_migrations() -> None:
         lock_path = Path(db_url).with_suffix(".migration.lock")
         try:
             lock_file = open(lock_path, "w")
-            fcntl.flock(lock_file, fcntl.LOCK_EX)
+            if fcntl:
+                fcntl.flock(lock_file, fcntl.LOCK_EX)
         except OSError:
             lock_file = None
 
@@ -1078,7 +1082,8 @@ def run_migrations() -> None:
                 db.commit()
     finally:
         if lock_file:
-            fcntl.flock(lock_file, fcntl.LOCK_UN)
+            if fcntl:
+                fcntl.flock(lock_file, fcntl.LOCK_UN)
             lock_file.close()
 
 
@@ -1089,10 +1094,18 @@ def init_app(app) -> None:
     @app.before_request
     def _ensure_db():
         if not getattr(app, "_db_initialized", False):
-            init_db()
-            _maybe_migrate_json()
-            run_migrations()
-            app._db_initialized = True
+            try:
+                init_db()
+                _maybe_migrate_json()
+                run_migrations()
+                app._db_initialized = True
+            except Exception as e:
+                app.logger.error("Database initialization failed: %s", e)
+                # Allow health/ready endpoints to still respond
+                from flask import request
+                if request.path in ("/health", "/live"):
+                    return
+                raise
 
 
 def _maybe_migrate_json() -> None:

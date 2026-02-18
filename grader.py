@@ -19,8 +19,11 @@ if TYPE_CHECKING:
 
 from subject_config import get_subject_config, SubjectConfig
 
+import os
+
 SESSION_DIR = Path(__file__).parent / "session_data"
-SESSION_DIR.mkdir(exist_ok=True)
+if not os.environ.get("VERCEL"):
+    SESSION_DIR.mkdir(exist_ok=True)
 
 IB_EXAMINER_SYSTEM_PROMPT = """You are a SENIOR IB EXAMINER with 15+ years of experience marking
 IB Diploma Programme papers. You are precise, fair, but strict.
