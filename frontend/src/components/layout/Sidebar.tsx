@@ -25,6 +25,7 @@ import {
   LogOut,
   Settings,
   Search,
+  GraduationCap,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ const SOCIAL_ITEMS = [
   { href: "/groups", label: "Study Groups", icon: Users },
   { href: "/community", label: "Community Papers", icon: Newspaper },
   { href: "/tutor", label: "AI Tutor", icon: MessageCircle },
+  { href: "/admissions", label: "Admissions", icon: GraduationCap },
   { href: "/analytics", label: "Analytics", icon: LineChart },
 ];
 
@@ -74,17 +76,17 @@ function NavLink({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
         active
-          ? "bg-brand-600 text-white"
-          : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "text-muted-foreground hover:bg-accent hover:text-foreground"
       )}
       aria-current={active ? "page" : undefined}
     >
-      <Icon className="h-5 w-5 shrink-0" />
+      <Icon className="h-[18px] w-[18px] shrink-0" />
       {label}
       {badge && badge > 0 ? (
-        <span className="ml-auto rounded-full bg-violet-500 px-2 py-0.5 text-xs font-bold text-white">
+        <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">
           {badge}
         </span>
       ) : null}
@@ -100,14 +102,19 @@ export function Sidebar() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   return (
-    <aside className="hidden lg:flex w-64 flex-col bg-slate-900 dark:bg-slate-950 text-white fixed h-full z-30">
+    <aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card text-card-foreground fixed h-full z-30">
       {/* Header */}
-      <div className="border-b border-slate-700 p-5">
-        <h1 className="text-lg font-bold">IB Study Companion</h1>
+      <div className="border-b border-border p-5">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <BookOpen className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <h1 className="text-base font-bold">IB Study</h1>
+        </div>
         {profile && (
           <>
-            <p className="mt-1 text-sm text-slate-400">{profile.name}</p>
-            <p className="text-xs text-slate-500">{profile.exam_session}</p>
+            <p className="mt-2 text-sm font-medium">{profile.name}</p>
+            <p className="text-xs text-muted-foreground">{profile.exam_session}</p>
           </>
         )}
 
@@ -115,21 +122,21 @@ export function Sidebar() {
         {gamification ? (
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-xs font-bold">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                 {gamification.level}
               </span>
               <div className="flex-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">
+                  <span className="text-muted-foreground">
                     Level {gamification.level}
                   </span>
-                  <span className="text-brand-400">
+                  <span className="font-medium text-primary">
                     {gamification.total_xp} XP
                   </span>
                 </div>
-                <div className="mt-0.5 h-1.5 w-full rounded-full bg-slate-700">
+                <div className="mt-0.5 h-1.5 w-full rounded-full bg-muted">
                   <div
-                    className="h-1.5 rounded-full bg-brand-500 transition-all"
+                    className="h-1.5 rounded-full bg-primary transition-all"
                     style={{ width: `${gamification.xp_progress_pct}%` }}
                   />
                 </div>
@@ -139,10 +146,8 @@ export function Sidebar() {
               <div className="flex items-center gap-1">
                 <span
                   className={cn(
-                    "text-lg",
-                    gamification.current_streak > 0
-                      ? "animate-pulse"
-                      : "opacity-40"
+                    "text-lg leading-none",
+                    gamification.current_streak > 0 ? "" : "opacity-40"
                   )}
                 >
                   🔥
@@ -150,8 +155,8 @@ export function Sidebar() {
                 <span
                   className={cn(
                     gamification.current_streak > 0
-                      ? "font-semibold text-orange-400"
-                      : "text-slate-500"
+                      ? "font-semibold text-orange-500"
+                      : "text-muted-foreground"
                   )}
                 >
                   {gamification.current_streak} day
@@ -166,23 +171,23 @@ export function Sidebar() {
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
-                    stroke="#374151"
+                    className="stroke-muted"
                     strokeWidth="3"
                   />
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
-                    stroke={
+                    className={
                       gamification.daily_goal_pct >= 100
-                        ? "#22c55e"
-                        : "#6366f1"
+                        ? "stroke-green-500"
+                        : "stroke-primary"
                     }
                     strokeWidth="3"
                     strokeDasharray={`${gamification.daily_goal_pct}, 100`}
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="text-slate-400">
+                <span className="text-muted-foreground">
                   {gamification.daily_goal_pct}%
                 </span>
               </div>
@@ -191,18 +196,14 @@ export function Sidebar() {
         ) : isAuthenticated ? (
           <div className="mt-3 space-y-2" aria-label="Loading gamification stats">
             <div className="flex items-center gap-2">
-              <span className="inline-block h-7 w-7 animate-pulse rounded-full bg-slate-700" />
+              <span className="inline-block h-7 w-7 animate-pulse rounded-full bg-muted" />
               <div className="flex-1 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="inline-block h-3 w-12 animate-pulse rounded bg-slate-700" />
-                  <span className="inline-block h-3 w-10 animate-pulse rounded bg-slate-700" />
+                  <span className="inline-block h-3 w-12 animate-pulse rounded bg-muted" />
+                  <span className="inline-block h-3 w-10 animate-pulse rounded bg-muted" />
                 </div>
-                <div className="h-1.5 w-full animate-pulse rounded-full bg-slate-700" />
+                <div className="h-1.5 w-full animate-pulse rounded-full bg-muted" />
               </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="inline-block h-4 w-16 animate-pulse rounded bg-slate-700" />
-              <span className="inline-block h-4 w-10 animate-pulse rounded bg-slate-700" />
             </div>
           </div>
         ) : null}
@@ -216,11 +217,11 @@ export function Sidebar() {
               new KeyboardEvent("keydown", { key: "k", metaKey: true })
             )
           }
-          className="flex w-full items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-300"
+          className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <Search className="h-4 w-4" />
           <span>Search...</span>
-          <kbd className="ml-auto rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+          <kbd className="ml-auto rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             ⌘K
           </kbd>
         </button>
@@ -228,7 +229,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <ScrollArea className="flex-1 p-4">
-        <nav className="space-y-1" aria-label="Main navigation">
+        <nav className="space-y-0.5" aria-label="Main navigation">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.href}
@@ -237,9 +238,9 @@ export function Sidebar() {
             />
           ))}
 
-          <div className="mt-2 border-t border-slate-700 pt-2">
-            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Social
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Social & AI
             </p>
           </div>
           {SOCIAL_ITEMS.map((item) => (
@@ -250,8 +251,8 @@ export function Sidebar() {
             />
           ))}
 
-          <div className="mt-2 border-t border-slate-700 pt-2">
-            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Settings
             </p>
           </div>
@@ -266,41 +267,41 @@ export function Sidebar() {
       </ScrollArea>
 
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-slate-700 p-4">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between border-t border-border p-4">
+        <div className="flex items-center gap-1">
           <Link
             href="/onboarding"
-            className="flex items-center px-3 py-2 text-xs text-slate-500 transition-colors hover:text-slate-300"
+            className="flex items-center px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground rounded-md hover:bg-accent"
           >
-            <Settings className="mr-1 h-3 w-3" />
+            <Settings className="mr-1.5 h-3.5 w-3.5" />
             Edit Profile
           </Link>
           {isAuthenticated && (
             <button
               onClick={() => setShowLogoutConfirm(true)}
-              className="flex items-center px-3 py-2 text-xs text-slate-500 transition-colors hover:text-red-400"
+              className="flex items-center px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-destructive rounded-md hover:bg-destructive/10"
             >
-              <LogOut className="mr-1 h-3 w-3" />
+              <LogOut className="mr-1.5 h-3.5 w-3.5" />
               Logout
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button
             onClick={togglePanel}
-            className="relative flex h-[44px] w-[44px] items-center justify-center rounded-lg text-slate-500 transition-colors hover:text-slate-300"
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+              <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
                 {unreadCount}
               </span>
             )}
           </button>
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="flex h-[44px] w-[44px] items-center justify-center rounded-lg text-slate-500 transition-colors hover:text-slate-300"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
             aria-label="Toggle dark mode"
           >
             {theme === "dark" ? (

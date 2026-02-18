@@ -1,5 +1,9 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
+import { api } from "@/lib/api-client";
 import {
   Card,
   CardHeader,
@@ -10,13 +14,18 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = {
-  title: "Pricing",
-  description:
-    "Choose the right plan for your IB exam preparation. Free, Pro, and Premium plans available.",
-};
+interface PlanInfo {
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  cta: string;
+  planId: string | null; // null = no checkout (free plan)
+  highlighted: boolean;
+}
 
-const plans = [
+const plans: PlanInfo[] = [
   {
     name: "Free",
     price: "$0",
@@ -30,7 +39,7 @@ const plans = [
       "1 document upload",
     ],
     cta: "Get Started",
-    href: "/register",
+    planId: null,
     highlighted: false,
   },
   {
@@ -49,7 +58,7 @@ const plans = [
       "Priority support",
     ],
     cta: "Upgrade to Pro",
-    href: "/api/billing/checkout?plan=pro",
+    planId: "scholar",
     highlighted: true,
   },
   {
@@ -69,12 +78,29 @@ const plans = [
       "Dedicated support",
     ],
     cta: "Upgrade to Premium",
-    href: "/api/billing/checkout?plan=premium",
+    planId: "diploma_pass",
     highlighted: false,
   },
 ];
 
 export default function PricingPage() {
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  async function handleCheckout(planId: string) {
+    setLoadingPlan(planId);
+    try {
+      const data = await api.post<{ url: string }>(
+        "/api/billing/checkout",
+        { plan_id: planId, interval: "monthly" }
+      );
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      setLoadingPlan(null);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="text-center">
@@ -85,63 +111,80 @@ export default function PricingPage() {
       </div>
 
       <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {plans.map((plan) => (
-          <Card
-            key={plan.name}
-            className={`relative flex flex-col ${
-              plan.highlighted
-                ? "border-primary shadow-lg ring-1 ring-primary"
-                : ""
-            }`}
-          >
-            {plan.highlighted && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-xs font-medium text-primary-foreground">
-                Most Popular
-              </div>
-            )}
-            <CardHeader>
-              <CardTitle className="text-xl">{plan.name}</CardTitle>
-              <CardDescription>{plan.description}</CardDescription>
-              <div className="mt-3">
-                <span className="text-3xl font-bold">{plan.price}</span>
-                <span className="text-sm text-muted-foreground">
-                  {plan.period}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <ul className="space-y-2.5">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-sm">
-                    <svg
-                      className="mt-0.5 h-4 w-4 shrink-0 text-primary"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
+        {plans.map((plan) => {
+          const isLoading = loadingPlan === plan.planId;
+
+          return (
+            <Card
+              key={plan.name}
+              className={`relative flex flex-col ${
+                plan.highlighted
+                  ? "border-primary shadow-lg ring-1 ring-primary"
+                  : ""
+              }`}
+            >
+              {plan.highlighted && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-xs font-medium text-primary-foreground">
+                  Most Popular
+                </div>
+              )}
+              <CardHeader>
+                <CardTitle className="text-xl">{plan.name}</CardTitle>
+                <CardDescription>{plan.description}</CardDescription>
+                <div className="mt-3">
+                  <span className="text-3xl font-bold">{plan.price}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {plan.period}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1">
+                <ul className="space-y-2.5">
+                  {plan.features.map((feature) => (
+                    <li
+                      key={feature}
+                      className="flex items-start gap-2 text-sm"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button
-                asChild
-                variant={plan.highlighted ? "default" : "outline"}
-                className="w-full"
-              >
-                <Link href={plan.href}>{plan.cta}</Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+                      <svg
+                        className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                {plan.planId ? (
+                  <Button
+                    variant={plan.highlighted ? "default" : "outline"}
+                    className="w-full"
+                    disabled={!!loadingPlan}
+                    onClick={() => handleCheckout(plan.planId!)}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    {isLoading ? "Redirecting..." : plan.cta}
+                  </Button>
+                ) : (
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/register">{plan.cta}</Link>
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

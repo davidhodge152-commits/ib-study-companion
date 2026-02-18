@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { api } from "../api-client";
 import {
   useNotificationStore,
@@ -31,6 +32,7 @@ export function useNotifications() {
     onSuccess: () => {
       store.markAllRead();
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success("All notifications marked as read.");
     },
   });
 

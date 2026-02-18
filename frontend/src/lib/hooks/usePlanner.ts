@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "../api-client";
 import type { PlannerTask } from "../types";
 
@@ -59,6 +60,10 @@ export function useGenerateStudyPlan() {
     mutationFn: () => api.post("/api/planner/generate"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planner"] });
+      toast.success("Study plan generated!");
+    },
+    onError: () => {
+      toast.error("Failed to generate study plan. Please try again.");
     },
   });
 }

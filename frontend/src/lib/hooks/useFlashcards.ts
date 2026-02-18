@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "../api-client";
 import type { FlashcardDeck, Flashcard, ReviewResult } from "../types";
 
@@ -38,6 +39,9 @@ export function useReviewFlashcard() {
       api.post("/api/flashcards/review", review),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flashcards"] });
+    },
+    onError: () => {
+      toast.error("Failed to save review. Please try again.");
     },
   });
 }

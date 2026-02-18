@@ -1,6 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "../api-client";
 import type { Comment, CommunityPost, PaginatedResponse } from "../types";
 
@@ -28,6 +29,10 @@ export function useCreatePost() {
     }) => api.post("/api/community/post", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["community"] });
+      toast.success("Post published!");
+    },
+    onError: () => {
+      toast.error("Failed to publish post.");
     },
   });
 }
@@ -108,6 +113,10 @@ export function useCreateComment() {
         queryKey: ["community", "comments", variables.postId],
       });
       queryClient.invalidateQueries({ queryKey: ["community", "posts"] });
+      toast.success("Comment added!");
+    },
+    onError: () => {
+      toast.error("Failed to post comment.");
     },
   });
 }

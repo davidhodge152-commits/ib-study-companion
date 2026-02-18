@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "../api-client";
 import type { StudyGroup } from "../types";
 
@@ -19,6 +20,10 @@ export function useJoinGroup() {
       api.post(`/api/groups/${groupId}/join`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
+      toast.success("Joined group!");
+    },
+    onError: () => {
+      toast.error("Failed to join group.");
     },
   });
 }
@@ -30,6 +35,10 @@ export function useCreateGroup() {
       api.post("/api/groups/create", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
+      toast.success("Group created!");
+    },
+    onError: () => {
+      toast.error("Failed to create group.");
     },
   });
 }
