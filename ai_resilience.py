@@ -7,6 +7,7 @@ calls with retry logic, circuit breaking, response caching, and cost tracking.
 from __future__ import annotations
 
 import hashlib
+import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -353,6 +354,11 @@ def resilient_llm_call(
         (response_text, metadata_dict) where metadata includes tokens, cost,
         latency, cache_hit, provider, model.
     """
+    # On Vercel, Gemini SDK is not installed — redirect to Claude immediately
+    if provider == "gemini" and os.environ.get("VERCEL"):
+        provider = "claude"
+        model = _FALLBACK_MODELS["claude"]
+
     # Check cache (prefer cache_backend if available, fall back to local TTLCache)
     try:
         from cache_backend import get_cache as _get_cache_backend
