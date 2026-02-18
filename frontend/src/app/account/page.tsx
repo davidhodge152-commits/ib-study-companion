@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Card,
   CardHeader,
@@ -11,6 +12,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { api } from "@/lib/api-client";
 import type { User } from "@/lib/types";
 
@@ -22,14 +24,6 @@ export default function AccountPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
-  const [profileMsg, setProfileMsg] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-  const [passwordMsg, setPasswordMsg] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
 
   const { data: user } = useQuery({
     queryKey: ["auth", "user"],
@@ -48,20 +42,14 @@ export default function AccountPage() {
   async function handleProfileSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    setProfileMsg(null);
     try {
       await api.patch("/api/account/profile", { name, email });
-      setProfileMsg({
-        type: "success",
-        text: "Profile updated successfully.",
-      });
+      toast.success("Profile updated successfully.");
       queryClient.invalidateQueries({ queryKey: ["auth"] });
     } catch (err) {
-      setProfileMsg({
-        type: "error",
-        text:
-          err instanceof Error ? err.message : "Failed to update profile.",
-      });
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update profile."
+      );
     } finally {
       setSaving(false);
     }
@@ -71,25 +59,19 @@ export default function AccountPage() {
     e.preventDefault();
     if (newPassword !== confirmPassword) return;
     setSaving(true);
-    setPasswordMsg(null);
     try {
       await api.post("/api/account/change-password", {
         currentPassword,
         newPassword,
       });
-      setPasswordMsg({
-        type: "success",
-        text: "Password updated successfully.",
-      });
+      toast.success("Password updated successfully.");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setPasswordMsg({
-        type: "error",
-        text:
-          err instanceof Error ? err.message : "Failed to update password.",
-      });
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update password."
+      );
     } finally {
       setSaving(false);
     }
@@ -107,6 +89,33 @@ export default function AccountPage() {
         </p>
       </div>
 
+      <div className="grid gap-6">
+        {/* Subscription Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Subscription</CardTitle>
+            <CardDescription>Your current plan and credits</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Plan</span>
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold capitalize text-primary">
+                {user?.plan || "free"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Credits</span>
+              <span className="text-sm tabular-nums">{user?.credits ?? 0}</span>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild variant="outline">
+              <Link href="/pricing">Manage Subscription</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Profile Form */}
         <Card>
@@ -118,17 +127,6 @@ export default function AccountPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {profileMsg && (
-                <div
-                  className={`rounded-lg border p-3 text-sm ${
-                    profileMsg.type === "success"
-                      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
-                      : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
-                  }`}
-                >
-                  {profileMsg.text}
-                </div>
-              )}
               <div>
                 <label
                   htmlFor="name"
@@ -180,17 +178,6 @@ export default function AccountPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {passwordMsg && (
-                <div
-                  className={`rounded-lg border p-3 text-sm ${
-                    passwordMsg.type === "success"
-                      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
-                      : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
-                  }`}
-                >
-                  {passwordMsg.text}
-                </div>
-              )}
               <div>
                 <label
                   htmlFor="current-password"

@@ -99,7 +99,7 @@ export default function PlannerPage() {
                             completed: true,
                           })
                         }
-                        disabled={toggleTask.isPending}
+
                         className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-primary transition-colors hover:bg-primary/10"
                         aria-label={`Mark "${task.title}" as complete`}
                       >
@@ -153,7 +153,7 @@ export default function PlannerPage() {
                             completed: false,
                           })
                         }
-                        disabled={toggleTask.isPending}
+
                         className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-muted-foreground bg-primary transition-colors"
                         aria-label={`Mark "${task.title}" as incomplete`}
                       >

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { toast } from "sonner";
 
 export default function GroupsPage() {
   const { data, isLoading, error } = useGroups();
@@ -33,10 +34,14 @@ export default function GroupsPage() {
       { name: name.trim(), description: description.trim(), subject: subject.trim() },
       {
         onSuccess: () => {
+          toast.success("Group created!");
           setName("");
           setDescription("");
           setSubject("");
           setShowCreateForm(false);
+        },
+        onError: () => {
+          toast.error("Failed to create group. Please try again.");
         },
       }
     );

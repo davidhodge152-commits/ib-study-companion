@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import {
   Card,
@@ -86,25 +87,52 @@ function getDaysUntil(target: Date): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
+function loadLocalMilestones(): Record<string, boolean> {
+  try {
+    const stored = localStorage.getItem("ib-lifecycle-milestones");
+    if (stored) return JSON.parse(stored);
+  } catch {
+    // ignore parse errors
+  }
+  return {};
+}
+
 export default function LifecyclePage() {
   const queryClient = useQueryClient();
 
-  // Track completed milestones in local state (persisted to localStorage)
+  // Track completed milestones in local state
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [examDate, setExamDate] = useState<Date>(getNextExamDate());
   const [daysLeft, setDaysLeft] = useState<number>(getDaysUntil(getNextExamDate()));
 
-  // Load persisted milestones on mount
+  // Attempt to load milestones from API, falling back to localStorage
+  const { data: apiMilestones, isError: apiError, isFetched } = useQuery({
+    queryKey: ["lifecycle", "milestones"],
+    queryFn: () => api.get<Record<string, boolean>>("/api/lifecycle/milestones"),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Once the API call resolves, hydrate state from API or localStorage
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("ib-lifecycle-milestones");
-      if (stored) {
-        setCompleted(JSON.parse(stored));
+    if (!isFetched) return;
+
+    if (!apiError && apiMilestones && Object.keys(apiMilestones).length > 0) {
+      // API returned data — use it and sync to localStorage
+      setCompleted(apiMilestones);
+      try {
+        localStorage.setItem(
+          "ib-lifecycle-milestones",
+          JSON.stringify(apiMilestones)
+        );
+      } catch {
+        // ignore storage errors
       }
-    } catch {
-      // ignore parse errors
+    } else {
+      // API unavailable or empty — fall back to localStorage
+      setCompleted(loadLocalMilestones());
     }
-  }, []);
+  }, [isFetched, apiError, apiMilestones]);
 
   // Update countdown every minute
   useEffect(() => {
@@ -123,7 +151,7 @@ export default function LifecyclePage() {
     mutationFn: (data: { milestone_id: string; completed: boolean }) =>
       api.post("/api/lifecycle/milestone", data),
     onError: () => {
-      // Revert optimistic update on error - no-op here since we already saved
+      toast.error("Failed to save milestone. Please try again.");
     },
   });
 

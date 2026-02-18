@@ -37,7 +37,51 @@ export function useVotePost() {
   return useMutation({
     mutationFn: ({ postId, vote }: { postId: number; vote: 1 | -1 }) =>
       api.post(`/api/community/posts/${postId}/vote`, { vote }),
-    onSuccess: () => {
+    onMutate: async ({ postId, vote }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["community", "posts"] });
+
+      // Snapshot the previous value
+      const previous = queryClient.getQueryData(["community", "posts"]);
+
+      // Optimistically update the infinite query cache
+      queryClient.setQueryData(
+        ["community", "posts"],
+        (old: { pages: PaginatedResponse<CommunityPost>[]; pageParams: unknown[] } | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items.map((post) => {
+                if (post.id !== postId) return post;
+
+                const previousVote = post.user_vote ?? 0;
+                // If the user taps the same vote direction, toggle it off
+                const newVote = previousVote === vote ? 0 : vote;
+                const voteDelta = newVote - previousVote;
+
+                return {
+                  ...post,
+                  votes: post.votes + voteDelta,
+                  user_vote: newVote as -1 | 0 | 1,
+                };
+              }),
+            })),
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      // Roll back to the previous value on error
+      if (context?.previous) {
+        queryClient.setQueryData(["community", "posts"], context.previous);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure server state
       queryClient.invalidateQueries({ queryKey: ["community"] });
     },
   });

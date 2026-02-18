@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -23,12 +24,14 @@ import {
   Bell,
   LogOut,
   Settings,
+  Search,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Command Center", icon: Home },
@@ -94,6 +97,7 @@ export function Sidebar() {
   const { theme, setTheme } = useTheme();
   const { profile, gamification, logout, isAuthenticated } = useAuth();
   const { unreadCount, togglePanel } = useNotifications();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   return (
     <aside className="hidden lg:flex w-64 flex-col bg-slate-900 dark:bg-slate-950 text-white fixed h-full z-30">
@@ -108,7 +112,7 @@ export function Sidebar() {
         )}
 
         {/* XP & Streak */}
-        {gamification && (
+        {gamification ? (
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-2">
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-xs font-bold">
@@ -184,7 +188,42 @@ export function Sidebar() {
               </div>
             </div>
           </div>
-        )}
+        ) : isAuthenticated ? (
+          <div className="mt-3 space-y-2" aria-label="Loading gamification stats">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-7 w-7 animate-pulse rounded-full bg-slate-700" />
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="inline-block h-3 w-12 animate-pulse rounded bg-slate-700" />
+                  <span className="inline-block h-3 w-10 animate-pulse rounded bg-slate-700" />
+                </div>
+                <div className="h-1.5 w-full animate-pulse rounded-full bg-slate-700" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="inline-block h-4 w-16 animate-pulse rounded bg-slate-700" />
+              <span className="inline-block h-4 w-10 animate-pulse rounded bg-slate-700" />
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Search trigger */}
+      <div className="px-4 pt-4">
+        <button
+          onClick={() =>
+            document.dispatchEvent(
+              new KeyboardEvent("keydown", { key: "k", metaKey: true })
+            )
+          }
+          className="flex w-full items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-300"
+        >
+          <Search className="h-4 w-4" />
+          <span>Search...</span>
+          <kbd className="ml-auto rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+            ⌘K
+          </kbd>
+        </button>
       </div>
 
       {/* Navigation */}
@@ -238,7 +277,7 @@ export function Sidebar() {
           </Link>
           {isAuthenticated && (
             <button
-              onClick={() => logout()}
+              onClick={() => setShowLogoutConfirm(true)}
               className="flex items-center px-3 py-2 text-xs text-slate-500 transition-colors hover:text-red-400"
             >
               <LogOut className="mr-1 h-3 w-3" />
@@ -272,6 +311,17 @@ export function Sidebar() {
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        onOpenChange={setShowLogoutConfirm}
+        title="Log out?"
+        description="Are you sure you want to log out? Any unsaved progress will be lost."
+        confirmLabel="Log out"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={() => logout()}
+      />
     </aside>
   );
 }

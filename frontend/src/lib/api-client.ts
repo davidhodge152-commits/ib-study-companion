@@ -88,6 +88,13 @@ class ApiClient {
       throw new ApiRequestError("Forbidden", 403);
     }
 
+    if (res.status === 429) {
+      throw new ApiRequestError(
+        "You're making requests too quickly. Please wait a moment and try again.",
+        429
+      );
+    }
+
     if (!res.ok) {
       let message = `Request failed: ${res.status}`;
       try {

@@ -27,6 +27,7 @@ import {
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useSubjects } from "@/lib/hooks/useStudy";
+import { toast } from "sonner";
 import type { CommunityPost } from "@/lib/types";
 
 export default function CommunityPage() {
@@ -79,23 +80,36 @@ export default function CommunityPage() {
     const trimmedContent = newContent.trim();
     if (!trimmedTitle || !trimmedContent || !newSubject) return;
 
-    await createPost.mutateAsync({
-      title: trimmedTitle,
-      content: trimmedContent,
-      subject: newSubject,
-    });
+    try {
+      await createPost.mutateAsync({
+        title: trimmedTitle,
+        content: trimmedContent,
+        subject: newSubject,
+      });
+      toast.success("Post created!");
 
-    // Reset form
-    setNewTitle("");
-    setNewContent("");
-    setNewSubject("");
-    setShowCreateForm(false);
+      // Reset form
+      setNewTitle("");
+      setNewContent("");
+      setNewSubject("");
+      setShowCreateForm(false);
+    } catch {
+      toast.error("Failed to create post. Please try again.");
+    }
   }
 
   function handleVote(postId: number, vote: 1 | -1, currentVote?: -1 | 0 | 1) {
     // If the user already voted with the same value, we still send the request
-    // to let the backend handle toggling
-    votePost.mutate({ postId, vote });
+    // to let the backend handle toggling. The vote count updates optimistically
+    // via onMutate in useVotePost and rolls back automatically on error.
+    votePost.mutate(
+      { postId, vote },
+      {
+        onError: () => {
+          toast.error("Failed to register vote. Please try again.");
+        },
+      }
+    );
   }
 
   if (isLoading) return <LoadingSkeleton variant="list" count={5} />;
@@ -266,7 +280,7 @@ export default function CommunityPage() {
                       onClick={() =>
                         handleVote(post.id, 1, post.user_vote)
                       }
-                      disabled={votePost.isPending}
+
                       className={`rounded p-1 transition-colors hover:bg-muted ${
                         post.user_vote === 1
                           ? "text-primary"
@@ -303,7 +317,7 @@ export default function CommunityPage() {
                       onClick={() =>
                         handleVote(post.id, -1, post.user_vote)
                       }
-                      disabled={votePost.isPending}
+
                       className={`rounded p-1 transition-colors hover:bg-muted ${
                         post.user_vote === -1
                           ? "text-destructive"

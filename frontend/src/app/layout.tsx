@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "./app-shell";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -47,6 +48,7 @@ export default function RootLayout({
             <TooltipProvider>
               <AuthProvider>
                 <AppShell>{children}</AppShell>
+                <Toaster richColors position="bottom-right" />
               </AuthProvider>
             </TooltipProvider>
           </ThemeProvider>

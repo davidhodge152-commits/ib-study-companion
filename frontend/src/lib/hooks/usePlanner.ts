@@ -17,7 +17,37 @@ export function useToggleTask() {
   return useMutation({
     mutationFn: ({ id, completed }: { id: number; completed: boolean }) =>
       api.patch(`/api/planner/tasks/${id}`, { completed }),
-    onSuccess: () => {
+    onMutate: async ({ id, completed }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["planner", "tasks"] });
+
+      // Snapshot the previous value
+      const previous = queryClient.getQueryData(["planner", "tasks"]);
+
+      // Optimistically update the task's completed status
+      queryClient.setQueryData(
+        ["planner", "tasks"],
+        (old: { tasks: PlannerTask[] } | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            tasks: old.tasks.map((task) =>
+              task.id === id ? { ...task, completed } : task
+            ),
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      // Roll back to the previous value on error
+      if (context?.previous) {
+        queryClient.setQueryData(["planner", "tasks"], context.previous);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure server state
       queryClient.invalidateQueries({ queryKey: ["planner"] });
     },
   });

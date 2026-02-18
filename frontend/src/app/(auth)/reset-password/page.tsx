@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const userId = searchParams.get("id") ?? "";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,7 +35,7 @@ export default function ResetPasswordPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post("/api/auth/reset-password", { token, password });
+      await api.post("/api/auth/reset-password", { id: userId, token, password });
       setDone(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Reset failed");

@@ -137,8 +137,8 @@ export default function AdmissionsPage() {
 
   const psFeedback = useMutation({
     mutationFn: (statement: string) =>
-      api.post<{ feedback: string }>("/api/admissions/ps-feedback", {
-        statement,
+      api.post<{ statement: string; metadata: Record<string, unknown> }>("/api/admissions/personal-statement", {
+        target: "feedback", statement,
       }),
   });
 
@@ -270,11 +270,11 @@ export default function AdmissionsPage() {
                 </div>
               )}
 
-              {psFeedback.isSuccess && psFeedback.data?.feedback && (
+              {psFeedback.isSuccess && psFeedback.data?.statement && (
                 <div className="w-full rounded-lg border bg-muted/50 p-4">
                   <h3 className="mb-2 text-sm font-semibold">AI Feedback</h3>
                   <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                    {psFeedback.data.feedback}
+                    {psFeedback.data.statement}
                   </p>
                 </div>
               )}

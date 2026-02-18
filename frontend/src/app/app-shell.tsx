@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { UpgradeModal } from "@/components/shared/UpgradeModal";
+import { CommandPalette } from "@/components/shared/CommandPalette";
 import { isPublicRoute } from "@/lib/auth";
 
 /** Pages that render full-width without sidebar (auth, onboarding) */
@@ -48,6 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
       <MobileNav />
       <UpgradeModal />
+      <CommandPalette />
     </div>
   );
 }

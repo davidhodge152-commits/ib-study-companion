@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Loader2, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +57,7 @@ interface SubjectEntry {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [examSession, setExamSession] = useState("");
@@ -93,6 +96,8 @@ export default function OnboardingPage() {
         exam_session: examSession,
         subjects: subjects.filter((s) => s.name),
       });
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+      toast.success("Profile created!");
       router.push("/dashboard");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save profile");
