@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../stores/auth-store";
@@ -33,19 +34,30 @@ export function useAuth() {
     staleTime: 60 * 1000,
   });
 
-  // Sync to store
-  if (userQuery.data !== undefined) {
-    setUser(userQuery.data);
-  }
-  if (profileQuery.data !== undefined) {
-    setProfile(profileQuery.data);
-  }
-  if (gamQuery.data !== undefined) {
-    setGamification(gamQuery.data);
-  }
-  if (!userQuery.isLoading) {
-    setLoading(false);
-  }
+  // Sync to store inside useEffect to avoid setState during render
+  useEffect(() => {
+    if (userQuery.data !== undefined) {
+      setUser(userQuery.data);
+    }
+  }, [userQuery.data, setUser]);
+
+  useEffect(() => {
+    if (profileQuery.data !== undefined) {
+      setProfile(profileQuery.data);
+    }
+  }, [profileQuery.data, setProfile]);
+
+  useEffect(() => {
+    if (gamQuery.data !== undefined) {
+      setGamification(gamQuery.data);
+    }
+  }, [gamQuery.data, setGamification]);
+
+  useEffect(() => {
+    if (!userQuery.isLoading) {
+      setLoading(false);
+    }
+  }, [userQuery.isLoading, setLoading]);
 
   const loginMutation = useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>

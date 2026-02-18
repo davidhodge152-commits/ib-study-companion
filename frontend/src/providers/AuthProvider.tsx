@@ -13,11 +13,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const showUpgradeModal = useUIStore((s) => s.showUpgradeModal);
 
-  // Wire up API client callbacks
+  // Wire up API client callbacks — only redirect if not already on a public route
   useEffect(() => {
-    api.setOnUnauthorized(() => router.push("/login"));
+    api.setOnUnauthorized(() => {
+      if (!isPublicRoute(pathname)) {
+        router.push("/login");
+      }
+    });
     api.setOnUpgradeRequired((type, plan) => showUpgradeModal(type, plan));
-  }, [router, showUpgradeModal]);
+  }, [router, pathname, showUpgradeModal]);
 
   // Redirect unauthenticated users away from protected routes
   useEffect(() => {
