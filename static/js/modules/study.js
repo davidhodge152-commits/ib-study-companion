@@ -763,17 +763,19 @@ function _populateTopicDropdown(selectEl, inputEl, topics, level) {
 
     selectEl.classList.remove('hidden');
     inputEl.classList.add('hidden');
+}
 
-    selectEl.onchange = () => {
-        if (selectEl.value === '__custom__') {
-            selectEl.classList.add('hidden');
-            inputEl.classList.remove('hidden');
-            inputEl.value = '';
-            inputEl.focus();
-        } else {
-            inputEl.value = selectEl.value;
-        }
-    };
+export function handleTopicSelectChange(selectEl) {
+    const inputEl = document.getElementById('study-topic');
+    if (!inputEl) return;
+    if (selectEl.value === '__custom__') {
+        selectEl.classList.add('hidden');
+        inputEl.classList.remove('hidden');
+        inputEl.value = '';
+        inputEl.focus();
+    } else {
+        inputEl.value = selectEl.value;
+    }
 }
 
 function loadSubjectTips(subject, level) {

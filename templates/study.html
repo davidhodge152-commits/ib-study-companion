@@ -137,11 +137,20 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Topic</label>
-                <select id="study-topic-select" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white hidden">
+                {% set first_subject = profile.subjects[0].name if profile.subjects else '' %}
+                {% set first_topics = syllabus_topics.get(first_subject, []) if syllabus_topics else [] %}
+                <select id="study-topic-select" onchange="handleTopicSelectChange(this)"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white{% if not first_topics %} hidden{% endif %}">
                     <option value="">Select a topic...</option>
+                    {% for t in first_topics %}
+                    {% if not (t.hl_only and profile.subjects[0].level == 'SL') %}
+                    <option value="{{ t.name }}">{{ t.name }}{% if t.hl_only %} (HL){% endif %}</option>
+                    {% endif %}
+                    {% endfor %}
+                    <option value="__custom__">Other (type your own)...</option>
                 </select>
                 <input type="text" id="study-topic" placeholder="e.g. Cell Biology, Market Structures, WW2..."
-                       class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                       class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition{% if first_topics %} hidden{% endif %}">
             </div>
 
             <!-- Subject Tips Panel -->
