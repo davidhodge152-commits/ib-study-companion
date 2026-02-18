@@ -88,9 +88,9 @@ export default function ParentDashboardPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Avg. Grade</CardDescription>
+            <CardDescription>Avg. Score</CardDescription>
             <CardTitle className="text-3xl">
-              {stats ? stats.avg_grade.toFixed(1) : "--"}
+              {stats ? `${stats.avg_grade.toFixed(1)}%` : "--%"}
             </CardTitle>
           </CardHeader>
         </Card>

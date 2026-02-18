@@ -8,6 +8,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "./app-shell";
 import { Toaster } from "sonner";
+import { ServiceWorkerRegistrar } from "@/components/shared/ServiceWorkerRegistrar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,8 +21,28 @@ export const metadata: Metadata = {
     default: "IB Study Companion",
     template: "%s | IB Study Companion",
   },
-  description: "AI-powered IB exam preparation platform",
+  description:
+    "AI-powered IB exam preparation platform with personalized study tools, flashcards, AI tutoring, and grade predictions.",
   manifest: "/manifest.json",
+  metadataBase: new URL("https://ib-study-companion.vercel.app"),
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: "IB Study Companion",
+    title: "IB Study Companion — AI-Powered IB Exam Prep",
+    description:
+      "Personalized study tools, flashcards, AI tutoring, and grade predictions for IB Diploma students.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "IB Study Companion — AI-Powered IB Exam Prep",
+    description:
+      "Personalized study tools, flashcards, AI tutoring, and grade predictions for IB Diploma students.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -49,6 +70,7 @@ export default function RootLayout({
               <AuthProvider>
                 <AppShell>{children}</AppShell>
                 <Toaster richColors position="bottom-right" />
+                <ServiceWorkerRegistrar />
               </AuthProvider>
             </TooltipProvider>
           </ThemeProvider>

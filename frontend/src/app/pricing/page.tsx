@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Card,
@@ -8,6 +9,12 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "Pricing",
+  description:
+    "Choose the right plan for your IB exam preparation. Free, Pro, and Premium plans available.",
+};
 
 const plans = [
   {

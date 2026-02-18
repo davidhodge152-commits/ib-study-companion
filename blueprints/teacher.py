@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, Response, abort, jsonify, render_template, request
 from flask_login import login_required
@@ -295,7 +298,8 @@ def api_teacher_batch_grade():
             (job_id,),
         )
         db.commit()
-        return jsonify({"error": str(e), "job_id": job_id}), 500
+        logger.error("api_teacher_batch_grade failed (job_id=%s): %s", job_id, e, exc_info=True)
+        return jsonify({"error": "Batch grading failed. Please try again.", "job_id": job_id}), 500
 
 
 @bp.route("/api/teacher/batch-grade/<int:job_id>")

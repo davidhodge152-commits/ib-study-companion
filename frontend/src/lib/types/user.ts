@@ -8,6 +8,7 @@ export interface User {
   created_at?: string;
   locale?: string;
   role?: "student" | "teacher" | "parent";
+  email_verified?: boolean;
 }
 
 export interface UserProfile {

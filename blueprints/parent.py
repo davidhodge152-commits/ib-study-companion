@@ -62,6 +62,21 @@ def api_parent_toggle():
     })
 
 
+@bp.route("/api/parent/privacy")
+@login_required
+def api_parent_privacy_get():
+    """Return current privacy settings for the authenticated student."""
+    uid = current_user_id()
+    parent_config = ParentConfigDB(uid)
+    return jsonify({
+        "show_subject_grades": parent_config.show_subject_grades,
+        "show_recent_activity": parent_config.show_recent_activity,
+        "show_study_consistency": parent_config.show_study_consistency,
+        "show_insights": parent_config.show_insights,
+        "show_exam_countdown": parent_config.show_exam_countdown,
+    })
+
+
 @bp.route("/api/parent/privacy", methods=["POST"])
 @login_required
 def api_parent_privacy():

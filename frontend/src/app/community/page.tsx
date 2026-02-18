@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { CommentThread } from "@/components/community/CommentThread";
 import { useSubjects } from "@/lib/hooks/useStudy";
 import { toast } from "sonner";
 import type { CommunityPost } from "@/lib/types";
@@ -50,6 +51,9 @@ export default function CommunityPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [newSubject, setNewSubject] = useState("");
+
+  // Track which post has its comments expanded
+  const [expandedPost, setExpandedPost] = useState<number | null>(null);
 
   const observerRef = useRef<HTMLDivElement>(null);
 
@@ -341,8 +345,19 @@ export default function CommunityPage() {
                     </button>
                   </div>
 
-                  {/* Comment count */}
-                  <span className="flex items-center gap-1">
+                  {/* Comment toggle */}
+                  <button
+                    onClick={() =>
+                      setExpandedPost(
+                        expandedPost === post.id ? null : post.id
+                      )
+                    }
+                    className={`flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-muted ${
+                      expandedPost === post.id
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
                     <svg
                       className="h-4 w-4"
                       fill="none"
@@ -358,8 +373,15 @@ export default function CommunityPage() {
                     </svg>
                     {post.comment_count}{" "}
                     {post.comment_count === 1 ? "comment" : "comments"}
-                  </span>
+                  </button>
                 </div>
+
+                {/* Expanded comment thread */}
+                {expandedPost === post.id && (
+                  <div className="mt-4">
+                    <CommentThread postId={post.id} />
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

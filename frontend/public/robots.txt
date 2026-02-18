@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /account
+Disallow: /billing/
+Disallow: /parent/
+Disallow: /teacher/
+
+Sitemap: https://ib-study-companion.vercel.app/sitemap.xml

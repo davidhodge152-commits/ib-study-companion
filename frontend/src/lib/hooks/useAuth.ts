@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../stores/auth-store";
 import * as authLib from "../auth";
+import { analytics } from "../analytics";
 import type { User, UserProfile, Gamification } from "../types";
 
 export function useAuth() {
@@ -64,6 +65,7 @@ export function useAuth() {
       authLib.login(email, password),
     onSuccess: (result) => {
       if (result.success) {
+        analytics.track("login");
         queryClient.invalidateQueries({ queryKey: ["auth"] });
         router.push("/dashboard");
       }
@@ -74,6 +76,7 @@ export function useAuth() {
     mutationFn: authLib.register,
     onSuccess: (result) => {
       if (result.success) {
+        analytics.track("register");
         queryClient.invalidateQueries({ queryKey: ["auth"] });
         router.push("/onboarding");
       }

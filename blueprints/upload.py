@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import uuid
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
@@ -135,7 +138,8 @@ def api_upload():
         EngineManager.reset()
 
     except Exception as e:
-        return jsonify({"error": f"Ingestion failed: {e}"}), 500
+        logger.error("api_upload ingestion failed: %s", e, exc_info=True)
+        return jsonify({"error": "Ingestion failed. Please try again."}), 500
 
     uid = current_user_id()
     upload_entry = {

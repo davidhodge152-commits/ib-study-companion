@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session as flask_session, url_for
 from flask_login import current_user, login_required
@@ -170,7 +173,8 @@ def api_study_generate():
     except FileNotFoundError:
         return jsonify({"error": "No documents ingested yet. Upload some PDFs first."}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_study_generate failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/study/grade", methods=["POST"])
@@ -340,7 +344,8 @@ def api_study_grade():
     except FileNotFoundError:
         return jsonify({"error": "No documents ingested yet. Upload some PDFs first."}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_study_grade failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/study/extract-answer", methods=["POST"])
@@ -405,7 +410,8 @@ def api_study_extract_answer():
         return jsonify({"text": text.strip()})
 
     except Exception as e:
-        return jsonify({"error": f"Extraction failed: {e}"}), 500
+        logger.error("api_study_extract_answer failed: %s", e, exc_info=True)
+        return jsonify({"error": "Extraction failed. Please try again."}), 500
 
 
 @bp.route("/api/study/hint", methods=["POST"])
@@ -442,7 +448,8 @@ Keep your hint to 2-3 sentences maximum."""
         hint_text = engine.ask(prompt)
         return jsonify({"hint": hint_text, "hint_level": hint_level})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_study_hint failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/difficulty/<subject>")

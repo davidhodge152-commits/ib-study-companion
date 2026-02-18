@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from datetime import date, datetime
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_login import login_required
@@ -293,11 +296,9 @@ def ready():
         db.execute("SELECT 1").fetchone()
         return jsonify({"status": "ready"}), 200
     except Exception as exc:
-        import traceback
+        logger.error("Readiness check failed: %s", exc, exc_info=True)
         return jsonify({
             "status": "not_ready",
-            "error": str(exc),
-            "traceback": traceback.format_exc(),
         }), 503
 
 
@@ -326,8 +327,8 @@ def cron_study_reminders():
         send_study_reminders(current_app._get_current_object())
         return jsonify({"status": "ok", "job": "study-reminders"})
     except Exception as e:
-        current_app.logger.error("Cron study-reminders failed: %s", e)
-        return jsonify({"error": str(e)}), 500
+        logger.error("Cron study-reminders failed: %s", e, exc_info=True)
+        return jsonify({"error": "Cron job failed."}), 500
 
 
 @bp.route("/api/cron/daily-analytics", methods=["GET", "POST"])
@@ -339,8 +340,8 @@ def cron_daily_analytics():
         aggregate_daily_analytics(current_app._get_current_object())
         return jsonify({"status": "ok", "job": "daily-analytics"})
     except Exception as e:
-        current_app.logger.error("Cron daily-analytics failed: %s", e)
-        return jsonify({"error": str(e)}), 500
+        logger.error("Cron daily-analytics failed: %s", e, exc_info=True)
+        return jsonify({"error": "Cron job failed."}), 500
 
 
 @bp.route("/api/cron/monthly-credits", methods=["GET", "POST"])
@@ -377,5 +378,5 @@ def cron_monthly_credits():
         db.commit()
         return jsonify({"status": "ok", "job": "monthly-credits", "processed": len(rows)})
     except Exception as e:
-        current_app.logger.error("Cron monthly-credits failed: %s", e)
-        return jsonify({"error": str(e)}), 500
+        logger.error("Cron monthly-credits failed: %s", e, exc_info=True)
+        return jsonify({"error": "Cron job failed."}), 500

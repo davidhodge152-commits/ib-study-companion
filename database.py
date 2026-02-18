@@ -987,6 +987,20 @@ MIGRATIONS: list[tuple[int, str]] = [
         ALTER TABLE users ADD COLUMN oauth_provider TEXT NOT NULL DEFAULT '';
         ALTER TABLE users ADD COLUMN oauth_id TEXT NOT NULL DEFAULT '';
     """),
+
+    # Migration 40: Community comments
+    (40, """
+        CREATE TABLE IF NOT EXISTS community_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (post_id) REFERENCES community_papers(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_comments_post ON community_comments(post_id);
+    """),
 ]
 
 

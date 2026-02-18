@@ -145,6 +145,14 @@ export interface CommunityPost {
   user_vote?: -1 | 0 | 1;
 }
 
+export interface Comment {
+  id: number;
+  content: string;
+  author_name: string;
+  user_id: number;
+  created_at: string;
+}
+
 export interface StudyGroup {
   id: number;
   name: string;

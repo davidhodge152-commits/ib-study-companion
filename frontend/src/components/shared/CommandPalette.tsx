@@ -9,6 +9,7 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
+  CommandSeparator,
 } from "@/components/ui/command";
 import {
   LayoutDashboard,
@@ -85,6 +86,21 @@ export function CommandPalette() {
               {item.name}
             </CommandItem>
           ))}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Keyboard Shortcuts">
+          <CommandItem disabled className="text-xs text-muted-foreground">
+            <kbd className="mr-2 rounded border bg-muted px-1.5 py-0.5 text-[10px]">g</kbd>
+            then
+            <kbd className="mx-1 rounded border bg-muted px-1.5 py-0.5 text-[10px]">d</kbd>
+            Dashboard,
+            <kbd className="mx-1 rounded border bg-muted px-1.5 py-0.5 text-[10px]">s</kbd>
+            Study,
+            <kbd className="mx-1 rounded border bg-muted px-1.5 py-0.5 text-[10px]">t</kbd>
+            Tutor,
+            <kbd className="mx-1 rounded border bg-muted px-1.5 py-0.5 text-[10px]">f</kbd>
+            Flashcards
+          </CommandItem>
         </CommandGroup>
       </CommandList>
     </CommandDialog>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api-client";
-import type { CommunityPost, PaginatedResponse } from "../types";
+import type { Comment, CommunityPost, PaginatedResponse } from "../types";
 
 export function useCommunityPosts() {
   return useInfiniteQuery({
@@ -83,6 +83,31 @@ export function useVotePost() {
     onSettled: () => {
       // Always refetch after error or success to ensure server state
       queryClient.invalidateQueries({ queryKey: ["community"] });
+    },
+  });
+}
+
+export function useComments(postId: number | null) {
+  return useQuery({
+    queryKey: ["community", "comments", postId],
+    queryFn: () =>
+      api.get<{ comments: Comment[] }>(
+        `/api/community/posts/${postId}/comments`
+      ),
+    enabled: !!postId,
+  });
+}
+
+export function useCreateComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ postId, content }: { postId: number; content: string }) =>
+      api.post(`/api/community/posts/${postId}/comments`, { content }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["community", "comments", variables.postId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["community", "posts"] });
     },
   });
 }

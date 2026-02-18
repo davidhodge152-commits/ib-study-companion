@@ -8,9 +8,12 @@ Flask service layer. All endpoints return JSON and accept JSON bodies.
 from __future__ import annotations
 
 import json
+import logging
 import math
 import secrets
 from datetime import date, datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required, login_user, logout_user
@@ -50,7 +53,7 @@ def auth_me():
 
     db = get_db()
     row = db.execute(
-        "SELECT id, name, email, role, created_at, locale FROM users WHERE id = ?",
+        "SELECT id, name, email, role, created_at, locale, email_verified FROM users WHERE id = ?",
         (current_user.id,),
     ).fetchone()
     if not row:
@@ -92,6 +95,7 @@ def auth_me():
         "credits": credits,
         "created_at": row["created_at"] or "",
         "locale": row["locale"] if "locale" in row.keys() else "en",
+        "email_verified": bool(row["email_verified"]) if "email_verified" in row.keys() else True,
     })
 
 
@@ -202,6 +206,51 @@ def auth_register():
     user = User(user_id, name, email, "student")
     login_user(user, remember=True)
     return jsonify({"success": True}), 201
+
+
+@bp.route("/api/auth/resend-verification", methods=["POST"])
+def auth_resend_verification():
+    """Resend email verification link (JSON API)."""
+    data = request.get_json(force=True)
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    from auth import User
+    user = User.get_by_email(email)
+    if not user:
+        # Don't reveal whether the email exists
+        return jsonify({"success": True})
+
+    # Already verified — nothing to do
+    email_verified = user["email_verified"] if "email_verified" in user.keys() else 1
+    if email_verified:
+        return jsonify({"success": True, "message": "Email already verified"})
+
+    try:
+        token = secrets.token_urlsafe(32)
+        db = get_db()
+        db.execute(
+            "UPDATE users SET email_verification_token = ? WHERE id = ?",
+            (token, user["id"]),
+        )
+        db.commit()
+
+        from flask import current_app
+        from email_service import EmailService
+        base = current_app.config.get("BASE_URL", "http://localhost:5001")
+        verify_url = f"{base}/verify-email/{token}"
+        EmailService.send(
+            email,
+            "Verify Your Email — IB Study Companion",
+            f"<p>Here's your verification link:</p>"
+            f'<p><a href="{verify_url}">Verify Email Address</a></p>'
+            f"<p>This link expires in 24 hours.</p>",
+        )
+    except Exception as e:
+        logger.error("resend_verification failed: %s", e, exc_info=True)
+
+    return jsonify({"success": True})
 
 
 @bp.route("/api/auth/logout", methods=["POST"])
@@ -388,10 +437,10 @@ def dashboard_data():
 
     # Stats
     total_questions = gam.total_questions_answered
-    avg_grade = 0
+    avg_grade = 0.0
     entries = grade_log.entries
     if entries:
-        avg_grade = round(sum(e.percentage for e in entries) / len(entries))
+        avg_grade = round(sum(e.percentage for e in entries) / len(entries), 1)
 
     # Count upcoming (incomplete) planner tasks
     upcoming_tasks = 0
@@ -750,7 +799,8 @@ def generate_study_plan():
         result = agent.generate_smart_plan(user_id=uid)
         return jsonify({"success": True, "response": result.content})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("generate_study_plan failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 # ── Documents ────────────────────────────────────────────────
@@ -929,6 +979,13 @@ def community_posts():
         ).fetchone()
         user_vote = user_vote_row["rating"] if user_vote_row else 0
 
+        # Real comment count
+        comment_row = db.execute(
+            "SELECT COUNT(*) as cnt FROM community_comments WHERE post_id = ?",
+            (paper_id,),
+        ).fetchone()
+        comment_count = comment_row["cnt"] if comment_row else 0
+
         items.append({
             "id": paper_id,
             "title": r["title"],
@@ -936,7 +993,7 @@ def community_posts():
             "author": r["author_name"] or "Anonymous",
             "subject": r["subject"],
             "votes": votes,
-            "comment_count": r["download_count"] or 0,
+            "comment_count": comment_count,
             "created_at": r["created_at"],
             "user_vote": user_vote,
         })
@@ -984,6 +1041,71 @@ def vote_community_post(post_id):
     )
     db.commit()
     return jsonify({"success": True})
+
+
+@bp.route("/api/community/posts/<int:post_id>/comments")
+@login_required
+def get_post_comments(post_id):
+    """Return comments for a community post."""
+    db = get_db()
+    rows = db.execute(
+        """SELECT c.id, c.content, c.created_at, c.user_id, u.name as author_name
+           FROM community_comments c
+           JOIN users u ON c.user_id = u.id
+           WHERE c.post_id = ?
+           ORDER BY c.created_at ASC""",
+        (post_id,),
+    ).fetchall()
+    return jsonify({"comments": [dict(r) for r in rows]})
+
+
+@bp.route("/api/community/posts/<int:post_id>/comments", methods=["POST"])
+@login_required
+def create_comment(post_id):
+    """Create a comment on a community post."""
+    data = request.get_json(force=True)
+    content = (data.get("content") or "").strip()
+    if not content:
+        return jsonify({"error": "Comment cannot be empty."}), 400
+
+    uid = current_user_id()
+    db = get_db()
+
+    # Verify post exists
+    post = db.execute(
+        "SELECT id FROM community_papers WHERE id = ?", (post_id,)
+    ).fetchone()
+    if not post:
+        return jsonify({"error": "Post not found."}), 404
+
+    db.execute(
+        "INSERT INTO community_comments (post_id, user_id, content, created_at) VALUES (?, ?, ?, ?)",
+        (post_id, uid, content, datetime.now().isoformat()),
+    )
+    db.commit()
+    return jsonify({"success": True}), 201
+
+
+# ── Analytics Events ──────────────────────────────────────────
+
+@bp.route("/api/analytics/event", methods=["POST"])
+def analytics_event():
+    """Ingest frontend analytics event (fire-and-forget)."""
+    analytics_logger = logging.getLogger("analytics")
+    try:
+        data = request.get_json(silent=True) or {}
+        uid = current_user.id if current_user.is_authenticated else None
+        event_type = data.get("type", "unknown")
+        analytics_logger.info(
+            "analytics %s user=%s event=%s path=%s",
+            event_type,
+            uid,
+            data.get("event", ""),
+            data.get("path", ""),
+        )
+    except Exception:
+        pass
+    return jsonify({"ok": True})
 
 
 # ── Groups ───────────────────────────────────────────────────

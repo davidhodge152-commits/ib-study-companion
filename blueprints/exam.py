@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
+
+logger = logging.getLogger(__name__)
 
 from helpers import current_user_id
 from extensions import EngineManager
@@ -26,7 +30,8 @@ def api_exam_generate():
         gen = ExamPaperGenerator(EngineManager.get_engine())
         paper = gen.generate_paper(subject, level, paper_number)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_exam_generate failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
     store = ExamSessionStoreDB(uid)
     session_id = store.create(

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
@@ -153,7 +156,8 @@ def api_insights():
 
         return jsonify(analytics_data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_insights failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/insights/recommendation")
@@ -176,7 +180,8 @@ def api_weakness_report():
         report = grader.get_weakness_report()
         return jsonify({"report": report})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_weakness_report failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/boundaries/<subject>/<level>")
@@ -193,7 +198,8 @@ def api_boundaries(subject, level):
             "raw_text": result.raw_text,
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_boundaries failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/subject-config/<subject>")
@@ -286,7 +292,8 @@ def api_predictions():
         result = model.predict_total_ib_score(uid)
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_predictions failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/insights/study-patterns")
@@ -300,7 +307,8 @@ def api_study_patterns():
         result = model.study_pattern_analysis(uid)
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_study_patterns failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/insights/peer-ranking/<subject>")
@@ -313,7 +321,8 @@ def api_peer_ranking(subject):
         result = peer_percentile(uid, subject)
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_peer_ranking failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/insights/share", methods=["POST"])
@@ -353,7 +362,8 @@ def api_share_summary():
 
         return jsonify({"token": token, "expires_at": expires_at})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_share_summary failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/share/<token>")

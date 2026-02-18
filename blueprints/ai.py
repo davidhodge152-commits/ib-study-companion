@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
@@ -92,7 +95,8 @@ def api_tutor_message():
     except ImportError:
         response = "The AI tutor requires the Gemini API. Please configure your API key."
     except Exception as e:
-        response = f"I encountered an issue: {str(e)}"
+        logger.error("api_tutor_message failed: %s", e, exc_info=True)
+        response = "I encountered an issue processing your message. Please try again."
 
     store.add_message(conv_id, "assistant", response)
     return jsonify({"success": True, "response": response, "follow_ups": follow_ups})
@@ -196,7 +200,8 @@ def api_knowledge_graph(subject):
             "prerequisites": prerequisites,
         })
     except (ImportError, Exception) as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_knowledge_graph failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/recommended-topics/<subject>")
@@ -213,7 +218,8 @@ def api_recommended_topics(subject):
             "recommended": recommended,
         })
     except (ImportError, Exception) as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_recommended_topics failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 # ── Handwriting Vision Analysis ──────────────────────────────
@@ -255,7 +261,8 @@ def api_analyze_handwriting():
             "metadata": result.metadata,
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_analyze_handwriting failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 # ── Oral Exam Roleplay ──────────────────────────────────────
@@ -285,7 +292,8 @@ def api_oral_start():
             "phase": result.metadata.get("phase"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_oral_start failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/oral/respond", methods=["POST"])
@@ -317,7 +325,8 @@ def api_oral_respond():
             "claims_count": result.metadata.get("claims_count"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_oral_respond failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/oral/grade", methods=["POST"])
@@ -344,7 +353,8 @@ def api_oral_grade():
             "total_possible": result.metadata.get("total_possible"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_oral_grade failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/oral/history")
@@ -374,7 +384,8 @@ def api_oral_history():
         result["sessions"] = result.pop("items")
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_oral_history failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 # ── Coursework IDE ──────────────────────────────────────────
@@ -401,7 +412,8 @@ def api_coursework_feasibility():
             "verdict": result.metadata.get("verdict"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_coursework_feasibility failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/coursework/analyze-data", methods=["POST"])
@@ -426,7 +438,8 @@ def api_coursework_analyze_data():
             "has_computed_results": result.metadata.get("has_computed_results"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_coursework_analyze_data failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/coursework/review-draft", methods=["POST"])
@@ -455,7 +468,8 @@ def api_coursework_review_draft():
             "version": result.metadata.get("version"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_coursework_review_draft failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/coursework/sessions/<int:session_id>")
@@ -489,7 +503,8 @@ def api_coursework_session(session_id):
             "analyses": [dict(a) for a in analyses],
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_coursework_session failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 # ── Parametric Question Generation ──────────────────────────
@@ -518,7 +533,8 @@ def api_generate_parametric():
             "total_verified": result.metadata.get("total_verified"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_generate_parametric failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 # ── Executive Function & Study Planning ──────────────────────
@@ -539,7 +555,8 @@ def api_daily_briefing():
             "priority_subjects": result.metadata.get("priority_subjects"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_daily_briefing failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/executive/generate-plan", methods=["POST"])
@@ -562,7 +579,8 @@ def api_generate_plan():
             "deadlines": result.metadata.get("deadlines"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_generate_plan failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/executive/reprioritize", methods=["POST"])
@@ -583,7 +601,8 @@ def api_reprioritize():
             "event": result.metadata.get("event"),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_reprioritize failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/executive/burnout-check")
@@ -597,7 +616,8 @@ def api_burnout_check():
         burnout = agent.detect_burnout(uid)
         return jsonify(burnout)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_burnout_check failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 # ── Admissions Agent ──────────────────────────────────────
@@ -766,7 +786,8 @@ def api_tutor_upload_image():
     except ImportError:
         return jsonify({"error": "Vision agent not available. Please configure your API key."}), 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_tutor_upload_image failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 # ── AI Feedback ──────────────────────────────────────────

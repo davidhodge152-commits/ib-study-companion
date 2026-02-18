@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
@@ -214,7 +217,8 @@ Be constructive and specific. Reference actual text where possible."""
             "word_count": len(draft_text.split()),
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_draft_feedback failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/lifecycle/rq-check", methods=["POST"])
@@ -246,4 +250,5 @@ End with an OVERALL rating (Strong / Adequate / Needs Work) and a SUGGESTED IMPR
         feedback = engine.ask(prompt)
         return jsonify({"feedback": feedback})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_rq_check failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500

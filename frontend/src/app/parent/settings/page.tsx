@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import {
   Card,
@@ -70,6 +70,19 @@ const DEFAULT_SETTINGS: PrivacySettings = {
 export default function ParentSettingsPage() {
   const [settings, setSettings] = useState<PrivacySettings>(DEFAULT_SETTINGS);
   const [saved, setSaved] = useState(false);
+
+  const { data: serverSettings } = useQuery({
+    queryKey: ["parent", "privacy"],
+    queryFn: () => api.get<PrivacySettings>("/api/parent/privacy"),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Sync local state when server settings load
+  useEffect(() => {
+    if (serverSettings) {
+      setSettings(serverSettings);
+    }
+  }, [serverSettings]);
 
   const saveMutation = useMutation({
     mutationFn: (data: PrivacySettings) =>

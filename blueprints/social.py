@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required
+
+logger = logging.getLogger(__name__)
 
 from helpers import current_user_id
 from db_stores import (
@@ -356,7 +360,8 @@ def api_analytics_global():
         from community_analytics import global_stats
         return jsonify(global_stats())
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_analytics_global failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @bp.route("/api/analytics/trending")
@@ -365,4 +370,5 @@ def api_analytics_trending():
         from community_analytics import trending_topics
         return jsonify({"topics": trending_topics()})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("api_analytics_trending failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
