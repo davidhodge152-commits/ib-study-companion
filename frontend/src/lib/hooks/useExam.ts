@@ -17,8 +17,8 @@ export function useExamGenerate() {
       level: string;
       paper_number: number;
     }) => api.post<ExamGenerateResponse>("/api/exam/generate", params),
-    onError: () => {
-      toast.error("Failed to generate exam paper. Please try again.");
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to generate exam paper. Please try again.");
     },
   });
 }
@@ -40,8 +40,8 @@ export function useExamSubmit() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exam", "history"] });
     },
-    onError: () => {
-      toast.error("Failed to submit exam. Please try again.");
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to submit exam. Please try again.");
     },
   });
 }

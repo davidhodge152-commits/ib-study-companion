@@ -29,9 +29,12 @@ def api_exam_generate():
         from exam_simulation import ExamPaperGenerator
         gen = ExamPaperGenerator(EngineManager.get_engine())
         paper = gen.generate_paper(subject, level, paper_number)
+    except RuntimeError as e:
+        logger.error("api_exam_generate config error: %s", e)
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
         logger.error("api_exam_generate failed: %s", e, exc_info=True)
-        return jsonify({"error": "Something went wrong. Please try again."}), 500
+        return jsonify({"error": f"Failed to generate paper: {e}"}), 500
 
     store = ExamSessionStoreDB(uid)
     session_id = store.create(

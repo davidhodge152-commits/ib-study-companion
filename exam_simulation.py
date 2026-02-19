@@ -31,6 +31,9 @@ class ExamPaperGenerator:
                     total_marks = comp.get("marks", 60)
                     break
 
+        if not self.engine or not self.engine.model:
+            raise RuntimeError("AI engine is not configured — check GOOGLE_API_KEY")
+
         display_subject = subject.replace("_", " ").title()
 
         prompt = f"""You are an IB {display_subject} ({level}) Chief Examiner creating Paper {paper_number}.
@@ -88,10 +91,16 @@ COMMAND_TERM: [the IB command term]
                     q["command_term"] = line.split(":", 1)[1].strip()
 
             if "question" in q and len(q["question"].split()) >= 5:
+                # Normalise keys for the frontend
+                q["question_text"] = q.pop("question")
                 q.setdefault("section", current_section)
                 q.setdefault("marks", 4)
                 q.setdefault("command_term", "")
                 q.setdefault("number", str(len(questions) + 1))
+                try:
+                    q["number"] = int(q["number"])
+                except (ValueError, TypeError):
+                    q["number"] = len(questions) + 1
                 questions.append(q)
 
         return {
