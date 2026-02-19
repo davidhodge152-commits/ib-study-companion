@@ -2670,7 +2670,13 @@ class ExamSessionStoreDB:
             "SELECT * FROM exam_sessions WHERE user_id = ? ORDER BY started_at DESC LIMIT ?",
             (self.user_id, limit),
         ).fetchall()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["questions"] = json.loads(d.get("questions", "[]"))
+            d["answers"] = json.loads(d.get("answers", "[]"))
+            result.append(d)
+        return result
 
 
 # ── Tutor Conversations ──────────────────────────────────────────────

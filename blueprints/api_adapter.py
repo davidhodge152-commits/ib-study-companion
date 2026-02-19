@@ -782,7 +782,7 @@ def toggle_planner_task(task_id):
             for i, t in enumerate(dp.tasks):
                 if counter == numeric_id:
                     t.completed = completed
-                    plan_db.save(plan_data)
+                    plan_db.save(plan_data["generated_date"], plan_data["exam_date"], plan_data["daily_plans"])
                     return jsonify({"success": True})
                 counter += 1
     except ValueError:
@@ -795,7 +795,7 @@ def toggle_planner_task(task_id):
                 for dp in plan_data["daily_plans"]:
                     if dp.date == target_date and idx < len(dp.tasks):
                         dp.tasks[idx].completed = completed
-                        plan_db.save(plan_data)
+                        plan_db.save(plan_data["generated_date"], plan_data["exam_date"], plan_data["daily_plans"])
                         return jsonify({"success": True})
             except ValueError:
                 pass

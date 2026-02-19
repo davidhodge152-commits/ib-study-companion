@@ -106,7 +106,11 @@ export function useToggleMilestone() {
       milestone_key: string;
       completed: boolean;
       subject?: string;
-    }) => api.post("/api/lifecycle/milestone", data),
+    }) => api.post("/api/lifecycle/milestone", {
+      milestone_id: data.milestone_key,
+      completed: data.completed,
+      subject: data.subject,
+    }),
     onError: () => {
       toast.error("Failed to update milestone.");
     },

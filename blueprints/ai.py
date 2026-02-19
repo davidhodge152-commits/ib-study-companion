@@ -564,10 +564,34 @@ def api_coursework_session(session_id):
             (session_id,),
         ).fetchall()
 
+        # Remap DB column names to frontend-expected field names
+        mapped_drafts = []
+        for d in drafts:
+            dd = dict(d)
+            dd["text"] = dd.pop("text_content", "")
+            # Feedback is stored as JSON array; frontend expects a string
+            fb = dd.get("feedback", "[]")
+            if isinstance(fb, str):
+                try:
+                    parsed = json.loads(fb)
+                    if isinstance(parsed, list):
+                        dd["feedback"] = "\n\n".join(str(item) for item in parsed)
+                    else:
+                        dd["feedback"] = str(parsed)
+                except (json.JSONDecodeError, TypeError):
+                    dd["feedback"] = fb
+            mapped_drafts.append(dd)
+
+        mapped_analyses = []
+        for a in analyses:
+            ad = dict(a)
+            ad["result"] = ad.pop("analysis_result", "")
+            mapped_analyses.append(ad)
+
         return jsonify({
             "session": dict(session),
-            "drafts": [dict(d) for d in drafts],
-            "analyses": [dict(a) for a in analyses],
+            "drafts": mapped_drafts,
+            "analyses": mapped_analyses,
         })
     except Exception as e:
         logger.error("api_coursework_session failed: %s", e, exc_info=True)
@@ -679,7 +703,8 @@ def api_burnout_check():
     uid = current_user_id()
     try:
         from agents.executive_agent import ExecutiveAgent
-        agent = ExecutiveAgent()
+        from extensions import EngineManager
+        agent = ExecutiveAgent(EngineManager.get_engine())
         burnout = agent.detect_burnout(uid)
         return jsonify(burnout)
     except Exception as e:
