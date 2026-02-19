@@ -24,11 +24,12 @@ class ExamPaperGenerator:
         # Determine paper parameters from config
         duration = 90  # default
         total_marks = 60
-        if config and config.assessment_components:
-            for comp in config.assessment_components:
-                if f"Paper {paper_number}" in comp.get("name", ""):
-                    duration = comp.get("duration_minutes", 90)
-                    total_marks = comp.get("marks", 60)
+        if config:
+            components = config.assessment_hl if level == "HL" else config.assessment_sl
+            for comp in components:
+                if f"Paper {paper_number}" in comp.name:
+                    duration = comp.duration_minutes
+                    total_marks = comp.marks
                     break
 
         if not self.engine or not self.engine.model:
