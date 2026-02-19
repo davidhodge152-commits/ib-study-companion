@@ -687,6 +687,138 @@ def api_burnout_check():
         return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
+# ── Smart Plan & Deadlines ──────────────────────────────────
+
+@bp.route("/api/executive/smart-plan")
+@login_required
+def api_smart_plan():
+    """Read latest smart study plan for user."""
+    uid = current_user_id()
+    try:
+        from database import get_db
+        db = get_db()
+        row = db.execute(
+            "SELECT * FROM smart_study_plans WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+            (uid,),
+        ).fetchone()
+        if not row:
+            return jsonify({"plan": None})
+        return jsonify({"plan": dict(row)})
+    except Exception as e:
+        logger.error("api_smart_plan failed: %s", e, exc_info=True)
+        return jsonify({"plan": None})
+
+
+@bp.route("/api/deadlines")
+@login_required
+def api_list_deadlines():
+    """List user's study deadlines."""
+    uid = current_user_id()
+    try:
+        from database import get_db
+        db = get_db()
+        rows = db.execute(
+            "SELECT * FROM study_deadlines WHERE user_id = ? ORDER BY due_date ASC",
+            (uid,),
+        ).fetchall()
+        return jsonify({"deadlines": [dict(r) for r in rows]})
+    except Exception as e:
+        logger.error("api_list_deadlines failed: %s", e, exc_info=True)
+        return jsonify({"deadlines": []})
+
+
+@bp.route("/api/deadlines", methods=["POST"])
+@login_required
+def api_create_deadline():
+    """Create a study deadline."""
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    try:
+        from database import get_db
+        db = get_db()
+        cursor = db.execute(
+            """INSERT INTO study_deadlines (user_id, title, subject, deadline_type, due_date, importance, completed)
+               VALUES (?, ?, ?, ?, ?, ?, 0)""",
+            (uid, data.get("title", ""), data.get("subject", ""),
+             data.get("deadline_type", "exam"), data.get("due_date", ""),
+             data.get("importance", "medium")),
+        )
+        db.commit()
+        return jsonify({"success": True, "id": cursor.lastrowid})
+    except Exception as e:
+        logger.error("api_create_deadline failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
+@bp.route("/api/deadlines/<int:deadline_id>", methods=["PATCH"])
+@login_required
+def api_update_deadline(deadline_id):
+    """Update a study deadline."""
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    try:
+        from database import get_db
+        db = get_db()
+        # Build SET clause dynamically for provided fields
+        allowed = {"title", "subject", "deadline_type", "due_date", "importance", "completed"}
+        updates = {k: v for k, v in data.items() if k in allowed}
+        if not updates:
+            return jsonify({"error": "No valid fields to update"}), 400
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        values = list(updates.values()) + [deadline_id, uid]
+        db.execute(
+            f"UPDATE study_deadlines SET {set_clause} WHERE id = ? AND user_id = ?",
+            values,
+        )
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api_update_deadline failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
+# ── Coursework Sessions List/Create ──────────────────────
+
+@bp.route("/api/coursework/sessions")
+@login_required
+def api_coursework_sessions_list():
+    """List user's coursework sessions."""
+    uid = current_user_id()
+    try:
+        from database import get_db
+        db = get_db()
+        rows = db.execute(
+            "SELECT * FROM coursework_sessions WHERE user_id = ? ORDER BY created_at DESC",
+            (uid,),
+        ).fetchall()
+        return jsonify({"sessions": [dict(r) for r in rows]})
+    except Exception as e:
+        logger.error("api_coursework_sessions_list failed: %s", e, exc_info=True)
+        return jsonify({"sessions": []})
+
+
+@bp.route("/api/coursework/sessions", methods=["POST"])
+@login_required
+def api_coursework_sessions_create():
+    """Create a new coursework session."""
+    uid = current_user_id()
+    data = request.get_json(force=True)
+    try:
+        from database import get_db
+        db = get_db()
+        cursor = db.execute(
+            """INSERT INTO coursework_sessions (user_id, doc_type, subject, title, current_phase)
+               VALUES (?, ?, ?, ?, 'proposal')""",
+            (uid, data.get("doc_type", "ia"), data.get("subject", ""),
+             data.get("title", "")),
+        )
+        db.commit()
+        return jsonify({"success": True, "session_id": cursor.lastrowid})
+    except Exception as e:
+        logger.error("api_coursework_sessions_create failed: %s", e, exc_info=True)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
 # ── Admissions Agent ──────────────────────────────────────
 
 @bp.route("/admissions")

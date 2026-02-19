@@ -12,6 +12,8 @@ import {
   BarChart3,
   CalendarCheck,
   CalendarDays,
+  Timer,
+  FileEdit,
   Users,
   Newspaper,
   MessageCircle,
@@ -37,11 +39,13 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Command Center", icon: Home },
   { href: "/study", label: "Study", icon: BookOpen },
+  { href: "/exam", label: "Exam Mode", icon: Timer },
   { href: "/flashcards", label: "Flashcards", icon: Layers },
   { href: "/upload", label: "Upload", icon: Upload },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/insights", label: "Insights", icon: BarChart3 },
   { href: "/lifecycle", label: "IB Lifecycle", icon: CalendarCheck },
+  { href: "/ia", label: "IA Workspace", icon: FileEdit },
   { href: "/planner", label: "Study Plan", icon: CalendarDays },
 ];
 
