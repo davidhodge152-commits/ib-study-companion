@@ -59,8 +59,8 @@ MARKS: [integer]
 COMMAND_TERM: [the IB command term]
 ---"""
 
-        from ai_resilience import resilient_call
-        text, _meta = resilient_call(
+        from ai_resilience import resilient_llm_call
+        text, _meta = resilient_llm_call(
             provider="gemini",
             model="gemini-2.0-flash",
             prompt=prompt,
