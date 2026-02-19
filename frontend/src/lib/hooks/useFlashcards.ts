@@ -36,7 +36,10 @@ export function useReviewFlashcard() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (review: ReviewResult) =>
-      api.post("/api/flashcards/review", review),
+      api.post("/api/flashcards/review", {
+        card_id: review.card_id,
+        rating: Math.min(review.quality, 4) as 1 | 2 | 3 | 4,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flashcards"] });
     },
