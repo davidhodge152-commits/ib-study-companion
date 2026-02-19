@@ -158,9 +158,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         from blueprints.gamification import bp as _gam_bp
         from blueprints.export import bp as _export_bp
         from blueprints.billing import bp as _billing_bp
+        from blueprints.exam import bp as _exam_bp
+        from blueprints.lifecycle import bp as _lifecycle_bp
+        from blueprints.planner import bp as _planner_bp
+        from blueprints.notifications import bp as _notif_bp
 
         for _bp in [_api_bp, _study_bp, _ai_bp, _fc_bp, _insights_bp,
-                     _gam_bp, _export_bp, _billing_bp]:
+                     _gam_bp, _export_bp, _billing_bp, _exam_bp,
+                     _lifecycle_bp, _planner_bp, _notif_bp]:
             csrf.exempt(_bp)
 
     # Google OAuth (optional)
