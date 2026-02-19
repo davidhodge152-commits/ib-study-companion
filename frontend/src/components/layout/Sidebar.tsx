@@ -228,7 +228,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 min-h-0 p-4">
         <nav className="space-y-0.5" aria-label="Main navigation">
           {NAV_ITEMS.map((item) => (
             <NavLink

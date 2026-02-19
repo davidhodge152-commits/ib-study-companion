@@ -19,10 +19,12 @@ import {
   CreditCard,
   GraduationCap,
   UserCog,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SheetClose } from "@/components/ui/sheet";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 const ALL_ITEMS = [
   { href: "/dashboard", label: "Command Center", icon: Home, section: "main" },
@@ -45,6 +47,7 @@ const ALL_ITEMS = [
 
 export function MobileSidebar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   const renderSection = (section: string, title?: string) => (
     <>
@@ -85,6 +88,18 @@ export function MobileSidebar() {
         {renderSection("main")}
         {renderSection("social", "Social & AI")}
         {renderSection("settings", "Settings")}
+
+        <div className="mt-2 border-t border-border pt-3">
+          <SheetClose asChild>
+            <button
+              onClick={() => logout()}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+            >
+              <LogOut className="h-5 w-5 shrink-0" />
+              Log Out
+            </button>
+          </SheetClose>
+        </div>
       </nav>
     </ScrollArea>
   );

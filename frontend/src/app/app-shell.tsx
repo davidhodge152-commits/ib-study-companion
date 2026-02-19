@@ -13,6 +13,7 @@ import { PageViewTracker } from "@/components/shared/PageViewTracker";
 
 /** Pages that render full-width without sidebar (auth, onboarding) */
 const FULL_WIDTH_ROUTES = [
+  "/",
   "/login",
   "/register",
   "/forgot-password",
