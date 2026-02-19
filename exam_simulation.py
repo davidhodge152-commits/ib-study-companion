@@ -8,9 +8,9 @@ from subject_config import get_subject_config
 
 
 class ExamPaperGenerator:
-    """Generates realistic full IB exam papers using Gemini."""
+    """Generates realistic full IB exam papers via the resilient AI layer."""
 
-    def __init__(self, engine) -> None:
+    def __init__(self, engine=None) -> None:
         self.engine = engine
 
     def generate_paper(self, subject: str, level: str = "HL",
@@ -31,9 +31,6 @@ class ExamPaperGenerator:
                     duration = comp.duration_minutes
                     total_marks = comp.marks
                     break
-
-        if not self.engine or not self.engine.model:
-            raise RuntimeError("AI engine is not configured — check GOOGLE_API_KEY")
 
         display_subject = subject.replace("_", " ").title()
 
@@ -62,8 +59,13 @@ MARKS: [integer]
 COMMAND_TERM: [the IB command term]
 ---"""
 
-        response = self.engine.model.generate_content(prompt)
-        text = response.text
+        from ai_resilience import resilient_call
+        text, _meta = resilient_call(
+            provider="gemini",
+            model="gemini-2.0-flash",
+            prompt=prompt,
+            system="You are an IB Chief Examiner. Output only the structured exam paper.",
+        )
 
         questions = []
         current_section = "A"
