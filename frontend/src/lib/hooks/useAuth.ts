@@ -85,7 +85,9 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: authLib.logout,
-    onSuccess: () => {
+    onSettled: () => {
+      // Always clear state and redirect, even if the API call failed
+      // (e.g. session already expired). The user wants to be logged out.
       reset();
       queryClient.clear();
       router.push("/login");

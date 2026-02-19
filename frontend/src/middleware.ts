@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 /** Routes that don't require authentication */
 const PUBLIC_ROUTES = [
+  "/",
   "/login",
   "/register",
   "/forgot-password",
@@ -34,17 +35,17 @@ export function middleware(request: NextRequest) {
   const sessionCookie =
     request.cookies.get("session") ?? request.cookies.get("remember_token");
 
-  // Redirect unauthenticated users to login
-  if (!sessionCookie && !isPublicRoute(pathname) && pathname !== "/") {
+  // Redirect unauthenticated users to login (skip public routes)
+  if (!sessionCookie && !isPublicRoute(pathname)) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect authenticated users away from auth pages
-  if (sessionCookie && isPublicRoute(pathname)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
+  // NOTE: We intentionally do NOT redirect authenticated users away from
+  // public routes here. The session cookie may exist but be invalidated
+  // server-side (e.g. after logout), so we can't trust it. Client-side
+  // auth checks handle redirecting authenticated users to /dashboard.
 
   return NextResponse.next();
 }
